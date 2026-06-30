@@ -1,0 +1,363 @@
+<div class="content-card">
+    <div class="create-item-header">
+
+        <!-- TOP ROW -->
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-4">
+
+            <!-- LEFT CONTENT -->
+            <div>
+                <div class="ps-3">
+                    <h1 class="page-title">
+                        Labels
+                    </h1>
+
+                    <p class="page-description">
+                        Labels help you organize and find your learning items easily. <br>
+                        it will also help in customizing your tests for revision
+                    </p>
+                </div>
+        
+            </div>
+
+            <!-- RIGHT ACTIONS -->
+            <div class="d-flex align-items-center gap-3">
+
+                <button
+                    type="button"
+                    class="primary-btn"
+                    (click)="resetForm()"
+                >
+                    Create Label
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card mt-3">
+
+        <div class="row g-5 align-items-start">
+
+            <!-- LEFT SECTION -->
+            <div class="col-lg-7">
+
+            <div class="label-form-section">
+
+                <h2 class="section-title">
+                {{ editingLabelId() ? 'Edit Label' : 'Create New Label' }}
+                </h2>
+
+                <form
+                [formGroup]="labelForm"
+
+                (ngSubmit)="onCreateLabel()"
+                >
+
+                <!-- LABEL INPUT -->
+                <div class="mb-4">
+
+                    <label class="app-label">
+
+                    Label Name
+
+                    </label>
+
+                    <input
+                    type="text"
+
+                    class="app-input"
+
+                    formControlName="labelName"
+
+                    placeholder="Enter label name"
+                    >
+
+                    <p class="input-helper">
+
+                    Choose a short, meaningful
+                    name for your label.
+
+                    </p>
+
+                </div>
+
+                <!-- ACTIONS -->
+                <div class="d-flex align-items-center gap-3 mt-5">
+
+                    <button
+                    type="button"
+
+                    class="primary-btn-outlined"
+
+                    (click)="resetForm()"
+                    >
+
+                    Cancel
+
+                    </button>
+
+                    <button
+                    type="submit"
+
+                    class="primary-btn"
+
+                    [disabled]="labelForm.invalid"
+                    >
+
+                    {{ editingLabelId() ? 'Update Label' : 'Create Label' }}
+
+                    </button>
+
+                </div>
+
+                </form>
+
+            </div>
+
+            </div>
+
+            <!-- RIGHT PREVIEW -->
+            <div class="col-lg-5">
+
+            <div class="preview-card-custom">
+
+                <h4 class="preview-title">
+
+                Preview
+
+                </h4>
+
+                <div class="label-preview-badge">
+
+                    <i class="ph ph-tag"></i>
+
+                    <span>
+
+                        {{
+                        labelForm.get('labelName')
+                        ?.value || 'Sample Label'
+                        }}
+
+                    </span>
+
+                </div>
+
+                <p class="preview-text">
+
+                This is how your label will
+                appear across the app.
+
+                </p>
+
+            </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card mt-3">
+
+        <!-- ========================================
+            TOP BAR
+        ========================================= -->
+
+        <div
+            class="
+            d-flex
+            justify-content-between
+            align-items-center
+            flex-wrap
+            gap-3
+            mb-4
+            "
+        >
+
+            <!-- LEFT -->
+            <div>
+
+            <div class="table-heading-wrapper">
+
+                <h2 class="table-title">
+                Your Labels
+                </h2>
+
+                <span class="label-count">
+
+                {{ labels().length }}
+
+                </span>
+
+            </div>
+
+            </div>
+
+            <!-- RIGHT -->
+            <div class="sort-dropdown">
+
+            <button
+                type="button"
+
+                class="sort-btn"
+            >
+
+                Sort by: Name (A-Z)
+
+                <i class="ph ph-caret-down"></i>
+
+            </button>
+
+            </div>
+
+        </div>
+
+        <!-- ========================================
+            SEARCH
+        ========================================= -->
+
+        <div class="search-wrapper mb-4">
+
+            <i class="ph ph-magnifying-glass"></i>
+
+            <input
+            type="text"
+
+            placeholder="Search labels..."
+
+            
+            >
+            <!-- [(ngModel)]="searchTerm" -->
+        </div>
+
+        <!-- ========================================
+            TABLE
+        ========================================= -->
+
+        <div class="labels-table-wrapper">
+
+            <!-- TABLE HEADER: Items and Created on columns are removed for now. -->
+            <div class="table-header-row">
+
+            <div>Label</div>
+
+            <div>Actions</div>
+
+            </div>
+
+            <!-- TABLE BODY -->
+            <div
+            class="table-body-row"
+
+            *ngFor="
+                let label of filteredLabels()
+            "
+            >
+
+            <!-- LABEL -->
+            <div class="label-cell">
+
+                <div class="label-icon">
+
+                <i class="ph ph-tag"></i>
+
+                </div>
+
+                <span>
+                {{ label.label_name }}
+                </span>
+
+            </div>
+
+            <!-- ACTIONS: Edit fills the form and update uses PATCH. -->
+            <div class="actions-cell">
+
+                <button
+                type="button"
+
+                class="action-btn edit-btn"
+
+                aria-label="Edit label"
+
+                (click)="onEditLabel(label)"
+                >
+
+                <i class="ph ph-pencil-simple"></i>
+
+                </button>
+
+                <button
+                type="button"
+
+                class="action-btn delete-btn"
+
+                aria-label="Delete label"
+                >
+
+                <i class="ph ph-trash"></i>
+
+                </button>
+
+            </div>
+
+            </div>
+
+        </div>
+
+        <!-- ========================================
+            FOOTER
+        ========================================= -->
+
+        <div
+            class="
+            d-flex
+            justify-content-between
+            align-items-center
+            mt-4
+            flex-wrap
+            gap-3
+            "
+        >
+
+            <p class="pagination-info">
+
+            Showing
+            1 to {{ labels().length }}
+            of {{ labels().length }}
+            labels
+
+            </p>
+
+            <div class="pagination-wrapper">
+
+            <button class="pagination-btn">
+
+                <i class="ph ph-caret-left"></i>
+
+            </button>
+
+            <button
+                class="
+                pagination-btn
+                active-page
+                "
+            >
+
+                1
+
+            </button>
+
+            <button class="pagination-btn">
+
+                <i class="ph ph-caret-right"></i>
+
+            </button>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>

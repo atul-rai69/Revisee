@@ -1,0 +1,379 @@
+<div class="content-card learning-item-view-page">
+  <section class="learning-item-toolbar">
+    <a
+      class="back-link"
+      routerLink="/app/dashboard"
+    >
+      <i class="ph ph-caret-left"></i>
+      <span>Back to My Items</span>
+    </a>
+
+    <div class="button-row learning-item-actions">
+      <button
+        class="primary-btn-outlined"
+        (click)="check()"
+        type="button"
+      >
+        <i class="ph ph-pencil-simple"></i>
+        <span>Edit Item</span>
+      </button>
+
+      <!-- <button
+        class="primary-btn-outlined"
+        type="button"
+      >
+        <i class="ph ph-plus"></i>
+        <span>Add to Quiz</span>
+      </button> -->
+
+    </div>
+  </section>
+
+  <section class="learning-item-hero">
+    <div class="learning-item-summary">
+      <div class="tag-row">
+        <span
+          class="topic-tag"
+          *ngFor="let label of labels"
+        >
+          {{ label | titlecase}}
+        </span>
+      </div>
+
+      <div class="mt-1 item-content">
+        <h1 class="page-title">
+          {{topicTitle}}
+        </h1>
+
+        <p class="page-description mt-3">
+          {{topicDescription}}
+        </p>
+      </div>
+      
+
+      <!-- <div class="learning-item-meta-grid mt-3">
+        <div
+          class="learning-item-meta"
+          *ngFor="let item of metaItems"
+        >
+          <i [class]="item.icon"></i>
+
+          <div>
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+          </div>
+        </div>
+      </div> -->
+
+      <div class="learning-item-meta-grid mt-3">
+        <div class="learning-item-meta">
+          <i class="ph ph-calendar-blank"></i>
+          <div>
+            <span>Created on</span>
+            <strong>{{ created_at | date:'dd MMM yyyy' }}</strong>
+          </div>
+        </div>
+        <div class="learning-item-meta">
+          <i class="ph ph-clock"></i>
+          <div>
+            <span>Last updated</span>
+            <strong>{{ updated_at | date:'dd MMM yyyy' }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- <div class="learning-item-stat-row mt-3">
+        <span
+          class="learning-item-stat"
+          *ngFor="let stat of summaryStats"
+        >
+          <i [class]="stat.icon"></i>
+          {{ stat.value }}
+        </span>
+      </div> -->
+
+      <div class="learning-item-stat-row mt-3">
+        <span class="learning-item-stat">
+          <i class="ph ph-image"></i>
+          {{imageCount}} Image
+        </span>
+        <span class="learning-item-stat">
+          <i class="ph ph-file-pdf"></i>
+          {{pdfCount}} PDF
+        </span>
+        <span class="learning-item-stat">
+          <i class="ph ph-question"></i>
+          {{questionCount}} Questions
+        </span>
+      </div>
+
+    </div>
+
+    <div class="learning-item-cover">
+      <img
+        [src]="img_url"
+        [alt]="topicTitle"
+      >
+
+      <button
+        class="icon-btn cover-expand-btn"
+        type="button"
+        aria-label="Expand image"
+      >
+        <i class="ph ph-arrows-out"></i>
+      </button>
+    </div>
+  </section>
+
+  <section class="card learning-item-details-card">
+    <div class="detail-section">
+      <div class="d-flex justify-content-between">
+        <h2>Theory</h2>
+
+        <button
+          class="primary-btn"
+          (click)="generate()"
+          type="button"
+        >
+          <i class="ph ph-sparkle"></i>
+          <span>Generate</span>
+        </button>
+      </div>
+      
+
+      <div class="local-spinner-overlay" *ngIf="isLoading">
+        <div class="spinner"></div>
+      </div>
+      <p>
+        <!-- This item covers the fundamental structure of a cell, including the major
+        organelles and their roles. Understanding cell structure is essential for
+        grasping how cells function and interact. -->
+        {{theory}}
+      </p>
+    </div>
+
+    <div class="detail-section">
+      <h2>Key Points</h2>
+
+      <ul class="key-point-list">
+        <li *ngFor="let point of keyPoints">
+          <i class="ph ph-check-circle"></i>
+          <span>{{ point }}</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="detail-section">
+      <h2>Resources</h2>
+
+      <div
+        class="resource-row"
+        *ngFor="let resource of resources"
+      >
+        <span class="resource-icon">
+          <i class="ph ph-file-pdf"></i>
+        </span>
+
+        <div>
+          <strong>{{ resource.name }}</strong>
+          <span>{{ resource.size }}</span>
+        </div>
+
+        <button
+          class="primary-btn-outlined resource-download-btn"
+          type="button"
+        >
+          <i class="ph ph-download-simple"></i>
+          <span>Download</span>
+        </button>
+      </div>
+    </div>
+
+
+    <!-- image gallery section -->
+
+    <section class="gallery-section">
+      <div class="gallery-header">
+        <h2>Gallery ({{ img_urls.length }})</h2>
+
+        <button class="view-all-btn">
+          View All
+          <span>→</span>
+        </button>
+      </div>
+
+      <div class="gallery-grid">
+        <!-- <div
+          class="gallery-card"
+          *ngFor="let image of images; let i = index"
+          (click)="openLightbox(i)"
+        >
+          <img [src]="image.url" [alt]="image.title" />
+        </div> -->
+
+        <div
+          class="gallery-card"
+          *ngFor="let url of img_urls; let i = index"
+          (click)="openLightbox(i)"
+        >
+          <img [src]="url" [alt]="topicTitle" />
+        </div>
+      </div>
+    </section>
+
+    <!-- LIGHTBOX -->
+
+    <div
+      class="lightbox-overlay"
+      *ngIf="lightboxOpen"
+      (click)="closeLightbox()"
+    >
+
+      <div
+        class="lightbox-modal"
+        (click)="$event.stopPropagation()"
+      >
+
+        <button
+          class="close-btn"
+          (click)="closeLightbox()"
+        >
+          ✕
+        </button>
+
+        <button
+          class="nav-btn left"
+          (click)="previousImage()"
+        >
+          ❮
+        </button>
+
+        <button
+          class="nav-btn right"
+          (click)="nextImage()"
+        >
+          ❯
+        </button>
+
+        <div class="lightbox-image-wrapper">
+          <img
+            class="lightbox-image"
+            [src]="img_urls[currentIndex]"
+            [alt]="topicTitle"
+          />
+        </div>
+
+        <!-- <div class="lightbox-footer d-none">
+
+          <div class="text-align-center">
+            <h3>{{ images[currentIndex].title }}</h3>
+
+            <span>
+              {{ currentIndex + 1 }}
+              of
+              {{ images.length }}
+            </span>
+          </div>
+
+          <button
+            class="download-btn d-none"
+            (click)="downloadImage()"
+          >
+            Download
+          </button>
+
+        </div> -->
+
+        <div class="thumbnail-strip">
+
+          <div
+            class="thumbnail"
+            *ngFor="let url of img_urls; let i = index"
+            [class.active]="i === currentIndex"
+            (click)="selectImage(i)"
+          >
+            <img
+              [src]="url"
+              [alt]="topicTitle"
+            />
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+
+    <div class="detail-section">
+      <div class="section-heading-row">
+        <h2>Notes <span>({{ notes.length }})</span></h2>
+
+        <button
+          class="secondary-btn compact-btn"
+          type="button"
+        >
+          View All Notes
+        </button>
+      </div>
+
+      <div class="note-grid">
+        <button
+          class="note-preview"
+          type="button"
+          *ngFor="let note of notes"
+        >
+          <i class="ph ph-note"></i>
+
+          <span>
+            <strong>{{ note.title }}</strong>
+            <small>{{ note.meta }}</small>
+            <em>{{ note.preview }}</em>
+          </span>
+
+          <i class="ph ph-caret-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="section-heading-row">
+        <h2>Questions <span>(5)</span></h2>
+
+        <button
+          class="secondary-btn compact-btn"
+          type="button"
+        >
+          View All Questions
+        </button>
+      </div>
+
+      <article
+        class="question-panel"
+        *ngFor="let question of questions"
+      >
+        <div class="question-title">
+          <span>{{ question.number }}</span>
+          <h3>{{ question.question }}</h3>
+        </div>
+
+        <div class="answer-list">
+          <div
+            class="answer-option"
+            [class.correct]="option.isCorrect"
+            *ngFor="let option of question.options"
+          >
+            <span>{{ option.label }}</span>
+            <strong>{{ option.text }}</strong>
+            <i
+              class="ph ph-check-circle"
+              *ngIf="option.isCorrect"
+            ></i>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+</div>

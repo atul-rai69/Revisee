@@ -1,0 +1,639 @@
+<form [formGroup]="learningItemForm" (ngSubmit)="onSubmit()">
+    <div class="content-card">
+        <div class="create-item-header">
+
+            <!-- TOP ROW -->
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-4">
+
+                <!-- LEFT CONTENT -->
+                <div>
+
+                <!-- <button class="back-btn">
+
+                    <i class="ph ph-arrow-left"></i>
+
+                    <span>Back</span>
+
+                </button> -->
+
+                <div class="ps-3">
+                    <h1 class="page-title">
+                        Create Learning Item
+                    </h1>
+
+                    <p class="page-description">
+                        Add the details of your learning item to revise and remember better.
+                    </p>
+                </div>
+                
+
+                </div>
+
+                <!-- RIGHT ACTIONS -->
+                <div class="d-flex align-items-center gap-3">
+
+                <button type="button" class="primary-btn-outlined">
+                    Save Draft
+                </button>
+
+                <button type="submit" class="primary-btn">
+                    Publish
+                </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card">
+            <div class="topic-field-wrapper">
+
+            <!-- LABEL -->
+            <div class="field-label-row">
+
+                <label for="topicTitle" class="field-label">
+                Title of the topic
+                <span class="required">*</span>
+                </label>
+
+                <span class="character-count">
+                {{ topicTitle.value?.length || 0 }}/100
+                </span>
+
+            </div>
+
+            <!-- INPUT WRAPPER -->
+            <div
+                class="input-container"
+                [ngClass]="{
+                'input-error':
+                    topicTitle.invalid &&
+                    (topicTitle.touched || topicTitle.dirty)
+                }"
+            >
+
+                <input
+                id="topicTitle"
+                type="text"
+                class="topic-input"
+                placeholder="Enter a clear and concise title"
+                maxlength="100"
+                formControlName="title"
+                />
+
+            </div>
+
+            <!-- HELPER / ERROR -->
+            <div class="field-footer">
+
+                <!-- NORMAL HELPER -->
+                <p
+                class="helper-text"
+                *ngIf="!(
+                    topicTitle.invalid &&
+                    (topicTitle.touched || topicTitle.dirty)
+                )"
+                >
+                Keep it short and descriptive
+                </p>
+
+                <!-- ERROR -->
+                <p
+                class="error-text"
+                *ngIf="
+                    topicTitle.invalid &&
+                    (topicTitle.touched || topicTitle.dirty)
+                "
+                >
+
+                <span *ngIf="topicTitle.errors?.['required']">
+                    Topic title is required
+                </span>
+
+                <span *ngIf="topicTitle.errors?.['minlength']">
+                    Minimum 3 characters required
+                </span>
+
+                </p>
+
+            </div>
+
+        </div>
+        </div>
+
+
+        <div class="card pt-3 mt-3">
+            <div class="notes-section">
+
+                <!-- HEADER -->
+                <div class="notes-header">
+
+                    <label class="notes-label">
+                    Notes & pointers
+                    <span class="required">*</span>
+                    </label>
+
+                    <p class="notes-description">
+                    Write key notes, pointers, concepts or anything important you want to revise.
+                    </p>
+
+                </div>
+
+                <!-- EDITOR CONTAINER -->
+                <div
+                    class="editor-container"
+                    [ngClass]="{
+                    'editor-error':
+                        descriptionTextControl.invalid &&
+                        (descriptionTextControl.touched || descriptionTextControl.dirty)
+                    }"
+                >
+
+                    <!-- TOOLBAR -->
+                    <div class="editor-toolbar">
+
+                    <!-- LEFT ACTIONS -->
+                    <div class="toolbar-left">
+
+                        <button
+                        type="button"
+                        class="toolbar-btn"
+                        (click)="toggleBold()"
+                        >
+                        <i class="ph ph-text-b"></i>
+                        </button>
+
+                        <button
+                        type="button"
+                        class="toolbar-btn"
+                        (click)="toggleItalic()"
+                        >
+                        <i class="ph ph-text-italic"></i>
+                        </button>
+
+                        <button
+                        type="button"
+                        class="toolbar-btn"
+                        (click)="toggleUnderline()"
+                        >
+                        <i class="ph ph-text-underline"></i>
+                        </button>
+
+                        <div class="toolbar-divider"></div>
+
+                        <button
+                        type="button"
+                        class="toolbar-btn"
+                        (click)="toggleBulletList()"
+                        >
+                        <i class="ph ph-list-bullets"></i>
+                        </button>
+
+                        <button
+                        type="button"
+                        class="toolbar-btn"
+                        (click)="toggleOrderedList()"
+                        >
+                        <i class="ph ph-list-numbers"></i>
+                        </button>
+
+                    </div>
+
+                    <!-- RIGHT ACTIONS -->
+                    <div class="toolbar-right">
+
+                        <button
+                        type="button"
+                        class="toolbar-btn"
+                        (click)="undo()"
+                        >
+                        <i class="ph ph-arrow-counter-clockwise"></i>
+                        </button>
+
+                        <button
+                        type="button"
+                        class="toolbar-btn"
+                        (click)="redo()"
+                        >
+                        <i class="ph ph-arrow-clockwise"></i>
+                        </button>
+
+                    </div>
+
+                    </div>
+
+                    <!-- EDITOR -->
+                    <div class="editor-content-wrapper">
+
+                    <div
+                        #editorElement
+                        class="editor-content"
+                    ></div>
+
+                    </div>
+
+                </div>
+
+                <!-- FOOTER -->
+                <div class="editor-footer d-none">
+
+                    <!-- ERROR -->
+                    <p
+                    class="error-text"
+                    *ngIf="
+                        descriptionTextControl.invalid &&
+                        (descriptionTextControl.touched || descriptionTextControl.dirty)
+                    "
+                    >
+                    Notes are required
+                    </p>
+
+                    <!-- WORD COUNT -->
+                    <p class="word-count">
+                    {{ wordCount }} words
+                    </p>
+
+                </div>
+
+            </div>
+        </div>
+
+
+        <div class="card  mt-3 pt-3">
+
+            <div class="image-section-header">
+
+                <h3>Images</h3>
+
+                <p>
+                Add images that help you understand
+                and remember this better.
+                </p>
+
+            </div>
+
+            <div class="image-upload-layout">
+
+                <!-- UPLOAD ZONE -->
+                <div
+                class="upload-zone"
+
+                [class.dragging]="isDragging"
+
+                (click)="fileInput.click()"
+
+                (dragover)="onDragOver($event)"
+
+                (dragleave)="onDragLeave()"
+
+                (drop)="onDrop($event)"
+                >
+
+                <input
+                    #fileInput
+                    type="file"
+                    multiple
+                    hidden
+
+                    (change)="onFileSelected($event)"
+                >
+
+                <div class="upload-content">
+
+                    <div class="upload-icon">
+
+                    <i class="ph ph-upload-simple"></i>
+
+                    </div>
+
+                    <h3 class="upload-title">
+                    Drag & drop images here
+                    </h3>
+
+                    <span class="upload-or">
+                    or
+                    </span>
+
+                    <button
+                    type="button"
+
+                    class="upload-btn"
+                    >
+                    Upload Images
+                    </button>
+
+                    <p class="upload-subtitle">
+                    JPG, PNG, WEBP up to 10MB each
+                    </p>
+
+                </div>
+
+                </div>
+
+                <!-- PREVIEWS -->
+                <div class="preview-grid">
+
+                    <div
+                        class="preview-card"
+
+                        *ngFor="
+                        let image of uploadedImages;
+                        let i = index
+                        "
+                    >
+
+                        <button
+                        type="button"
+
+                        class="remove-btn"
+
+                        (click)="removeImage(i)"
+                        >
+
+                        <i class="ph ph-x"></i>
+
+                        </button>
+
+                        <img
+                        [src]="image.preview"
+                        >
+
+                    </div>
+
+                    <!-- ADD MORE -->
+                    <button
+                        type="button"
+
+                        class="add-more-btn"
+
+                        (click)="fileInput.click()"
+                    >
+
+                        <i class="ph ph-plus"></i>
+
+                        Add more images
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="card mt-4">
+
+            <!-- HEADER -->
+            <div class="labels-header">
+
+                <h3>
+                Labels (Topic group)
+                </h3>
+
+                <p>
+                Add labels to classify this item
+                under relevant topics.
+                </p>
+
+            </div>
+
+            <!-- INPUT AREA -->
+            <div class="labels-input-wrapper">
+
+                <!-- SELECTED LABELS -->
+                <div
+                class="selected-label"
+
+                *ngFor="
+                    let label of selectedLabels
+                "
+                >
+
+                <span>
+                    <!-- {{ label }} -->
+                    {{ label.label_name | titlecase }}
+                </span>
+
+                <button
+                    type="button"
+
+                    (click)="removeLabel(label)"
+                >
+
+                    <i class="ph ph-x"></i>
+
+                </button>
+
+                </div>
+
+                <!-- INPUT -->
+                <input
+                type="text"
+
+                placeholder="Add or search labels"
+
+                [(ngModel)]="labelSearch"
+                >
+
+            </div>
+
+            <!-- POPULAR LABELS -->
+            <div class="popular-labels-section">
+
+                <h4>
+                Popular labels
+                </h4>
+
+                <div class="popular-labels-list">
+
+                <button
+                    type="button"
+
+                    class="popular-label-btn"
+
+                    *ngFor="
+                    let label of availableLabels
+                    "
+
+                    (click)="addLabel(label)"
+                >
+
+                    {{ label.label_name | titlecase }}
+
+                </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="card pt-3 mt-3">
+
+            <!-- HEADER -->
+            <div class="pdf-section-header">
+
+                <h3>Upload PDFs</h3>
+
+                <p>
+                Add reference PDFs or study materials.
+                </p>
+
+            </div>
+
+            <!-- MAIN LAYOUT -->
+            <div class="pdf-upload-layout">
+
+                <!-- LEFT UPLOAD ZONE -->
+                <div
+                class="pdf-upload-zone"
+
+                [class.dragging]="isPdfDragging"
+
+                (click)="pdfInput.click()"
+
+                (dragover)="onPdfDragOver($event)"
+
+                (dragleave)="onPdfDragLeave()"
+
+                (drop)="onPdfDrop($event)"
+                >
+
+                <input
+                    #pdfInput
+
+                    type="file"
+
+                    accept=".pdf"
+
+                    multiple
+
+                    hidden
+
+                    (change)="onPdfSelected($event)"
+                >
+
+                <div class="pdf-upload-content">
+
+                    <div class="pdf-upload-icon">
+
+                    <i class="ph ph-file-pdf"></i>
+
+                    </div>
+
+                    <h3 class="pdf-upload-title">
+                    Drag & drop PDFs here
+                    </h3>
+
+                    <span class="pdf-upload-or">
+                    or
+                    </span>
+
+                    <button
+                    type="button"
+
+                    class="pdf-upload-btn"
+                    >
+                    Upload PDFs
+                    </button>
+
+                    <p class="pdf-upload-subtitle">
+                    PDF up to 25MB each
+                    </p>
+
+                </div>
+
+                </div>
+
+                <!-- PDF LIST -->
+                <div class="pdf-list">
+
+                <div
+                    class="pdf-item"
+
+                    *ngFor="
+                    let pdf of uploadedPdfs;
+                    let i = index
+                    "
+                >
+
+                    <!-- LEFT -->
+                    <div class="pdf-info">
+
+                    <div class="pdf-icon">
+
+                        <i class="ph-fill ph-file-pdf"></i>
+
+                    </div>
+
+                    <span class="pdf-name">
+
+                        {{ pdf.file.name }}
+
+                    </span>
+
+                    </div>
+
+                    <!-- RIGHT -->
+                    <div class="pdf-actions">
+
+                    <span class="pdf-size">
+
+                        {{
+                        (
+                            pdf.file.size /
+                            1024 /
+                            1024
+                        ).toFixed(1)
+                        }} MB
+
+                    </span>
+
+                    <button
+                        type="button"
+
+                        class="pdf-remove-btn"
+
+                        (click)="removePdf(i)"
+                    >
+
+                        <i class="ph ph-x"></i>
+
+                    </button>
+
+                    </div>
+
+                </div>
+
+                <!-- ADD MORE -->
+                <button
+                    type="button"
+
+                    class="add-more-pdf-btn"
+
+                    (click)="pdfInput.click()"
+                >
+
+                    <i class="ph ph-plus"></i>
+
+                    Add more PDFs
+
+                </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    
+        
+        
+    </div>
+</form>
+
+

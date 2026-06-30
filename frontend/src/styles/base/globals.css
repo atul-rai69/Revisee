@@ -1,0 +1,16 @@
+@import '../themes/light-theme.css';
+
+body {
+
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+
+  font-family: var(--font-family-base);
+  font-size: var(--text-md);
+  line-height: var(--line-height-base);
+
+  margin: 0;
+  padding: 0;
+
+  -webkit-font-smoothing: antialiased;
+}

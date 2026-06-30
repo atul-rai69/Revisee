@@ -1,0 +1,43 @@
+# ==========================
+# Python (Backend)
+# ==========================
+
+backend/.venv/
+backend/venv/
+backend/env/
+backend/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+backend/.mypy_cache/
+
+# Environment variables
+backend/.env
+
+# Logs
+backend/*.log
+
+# ==========================
+# Angular (Frontend)
+# ==========================
+
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.cache/
+
+# Environment files (if any)
+frontend/src/environments/environment*.ts
+
+# ==========================
+# IDE
+# ==========================
+
+.vscode/
+.idea/
+
+# ==========================
+# OS
+# ==========================
+
+.DS_Store
+Thumbs.db

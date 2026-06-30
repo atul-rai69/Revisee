@@ -1,0 +1,137 @@
+
+
+<div class="container-fluid d-none">
+
+  <div class="row">
+    <div class="col-lg-5">
+      <h2>Login</h2>
+
+      <form (ngSubmit)="onLogin()">
+
+        <input
+          type="text"
+          placeholder="Username"
+          [(ngModel)]="username"
+          name="username"
+        >
+
+        <input
+          type="password"
+          placeholder="Password"
+          [(ngModel)]="password"
+          name="password"
+        >
+
+        <button type="submit">
+          Login
+        </button>
+
+      </form>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="login-right w-100 h-100">
+        <img src="/login-image.png" alt="Study Illustration" class="img-fluid">
+      </div>
+    </div>
+  </div>
+  
+
+</div>
+
+<div class="container-fluid login-container-wrapper">
+
+  <div class="row h-100">
+
+    <!-- Left Side -->
+    <div class="col-lg-5 login-form-section">
+
+      <div class="login-container">
+
+        <div class="logo">
+          Revisee
+        </div>
+
+        <div class="content">
+
+          <h1>
+            Holla,<br>
+            Welcome Back
+          </h1>
+
+          <p class="subtitle">
+            Hey, welcome back to your special place
+          </p>
+
+          <form (ngSubmit)="onLogin()">
+
+            <!-- Email -->
+            <div class="input-box">
+              <span class="icon"><i class="ph ph-user"></i></span>
+
+              <input
+                type="text"
+                placeholder="Username"
+                [(ngModel)]="username"
+                name="username"
+              >
+            </div>
+
+            <!-- Password -->
+            <div class="input-box">
+              <span class="icon"><i class="ph ph-lock"></i></span>
+
+              <input
+                type="password"
+                placeholder="Password"
+                [(ngModel)]="password"
+                name="password"
+              >
+
+              <!-- <span class="eye">👁</span> -->
+            </div>
+
+            <!-- Options -->
+            <div class="options">
+
+              <label class="remember">
+                <input type="checkbox" checked>
+                <span>Remember me</span>
+              </label>
+
+              <a href="#">Forgot Password?</a>
+
+            </div>
+
+            <!-- Button -->
+            <button type="submit" class="cstm-primary-btn">
+              Sign In
+            </button>
+
+          </form>
+
+        </div>
+
+        <div class="signup-text">
+          Don't have an account?
+          <a href="#">Sign Up</a>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Right Side -->
+    <div class="col-lg-7 image-section">
+
+      <img
+        src="/login-image3.png"
+        alt="Study Illustration"
+        class="login-image"
+      >
+
+    </div>
+
+  </div>
+
+</div>

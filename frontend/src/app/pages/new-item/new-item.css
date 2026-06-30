@@ -1,0 +1,1503 @@
+/* ========================================
+   PAGE HEADER
+======================================== */
+
+.create-item-header {
+
+  margin-bottom: var(--space-4xl);
+}
+
+/* ========================================
+   BACK BUTTON
+======================================== */
+
+.back-btn {
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+
+  border: none;
+
+  background: transparent;
+
+  padding: 0;
+
+  margin-bottom: var(--space-xl);
+
+  color: var(--color-text-secondary);
+
+  font-size: var(--text-md);
+
+  font-weight: var(--font-medium);
+
+  cursor: pointer;
+
+  transition: var(--transition-base);
+}
+
+.back-btn i {
+
+  font-size: 18px;
+}
+
+.back-btn:hover {
+
+  color: var(--color-primary);
+}
+
+/* ========================================
+   TITLE
+======================================== */
+
+.page-title {
+
+  margin: 0 0 var(--space-md) 0;
+
+  color: var(--color-text-primary);
+
+  font-size: var(--text-xl);
+
+  font-weight: var(--font-bold);
+
+  line-height: 1.05;
+
+  letter-spacing: -1px;
+}
+
+/* ========================================
+   DESCRIPTION
+======================================== */
+
+.page-description {
+
+  margin: 0;
+
+  max-width: 720px;
+
+  color: var(--color-text-secondary);
+
+  font-size: var(--text-lg);
+
+  line-height: var(--line-height-relaxed);
+}
+
+/* ========================================
+   BUTTONS
+======================================== */
+
+.btn-secondary-custom,
+.btn-primary-custom {
+
+  height: 54px;
+
+  padding:
+    0 var(--space-2xl);
+
+  border-radius: var(--radius-lg);
+
+  font-size: var(--text-md);
+
+  font-weight: var(--font-semibold);
+
+  transition: var(--transition-base);
+
+  cursor: pointer;
+}
+
+/* ========================================
+   SECONDARY BUTTON
+======================================== */
+
+.btn-secondary-custom {
+
+  background:
+    var(--color-bg-secondary);
+
+  border:
+    1px solid var(--color-primary);
+
+  color:
+    var(--color-primary);
+
+  box-shadow:
+    var(--shadow-sm);
+}
+
+.btn-secondary-custom:hover {
+
+  background:
+    var(--color-primary-soft);
+}
+
+/* ========================================
+   PRIMARY BUTTON
+======================================== */
+
+.btn-primary-custom {
+
+  border: none;
+
+  background:
+    linear-gradient(
+      135deg,
+      var(--color-primary),
+      var(--color-primary-hover)
+    );
+
+  color: white;
+
+  box-shadow:
+    var(--shadow-md);
+}
+
+.btn-primary-custom:hover {
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    var(--shadow-lg);
+}
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 768px) {
+
+  .page-title {
+
+    font-size: 40px;
+  }
+
+  .page-description {
+
+    font-size: var(--text-md);
+  }
+
+}
+
+/* ========================================
+   FIELD WRAPPER
+======================================== */
+
+.topic-field-wrapper {
+
+  display: flex;
+  flex-direction: column;
+
+  gap: var(--space-lg);
+}
+
+/* ========================================
+   LABEL ROW
+======================================== */
+
+.field-label-row {
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: var(--space-lg);
+}
+
+/* ========================================
+   LABEL
+======================================== */
+
+.field-label {
+
+  margin: 0;
+
+  color: var(--color-text-primary);
+
+  font-size: var(--text-lg);
+
+  font-weight: var(--font-semibold);
+}
+
+.required {
+
+  color: #ef4444;
+}
+
+/* ========================================
+   CHARACTER COUNT
+======================================== */
+
+.character-count {
+
+  color: var(--color-text-muted);
+
+  font-size: var(--text-sm);
+
+  font-weight: var(--font-medium);
+}
+
+/* ========================================
+   INPUT CONTAINER
+======================================== */
+
+.input-container {
+
+  border:
+    1px solid var(--color-border);
+
+  border-radius:
+    var(--radius-sm);
+
+  background:
+    var(--color-bg-secondary);
+
+  transition:
+    var(--transition-base);
+}
+
+/* ========================================
+   INPUT STATES
+======================================== */
+
+.input-container:focus-within {
+
+  border-color:
+    var(--color-primary);
+
+  box-shadow:
+    0 0 0 4px
+    var(--color-primary-soft);
+}
+
+.input-container.input-error {
+
+  border-color:
+    #ef4444;
+
+  box-shadow:
+    0 0 0 4px
+    rgba(239, 68, 68, 0.08);
+}
+
+/* ========================================
+   INPUT
+======================================== */
+
+.topic-input {
+
+  width: 100%;
+
+  height: 58px;
+
+  border: none;
+
+  outline: none;
+
+  background: transparent;
+
+  padding:
+    0 var(--space-xl);
+
+  color:
+    var(--color-text-primary);
+
+  font-size:
+    var(--text-md);
+
+  font-weight:
+    var(--font-medium);
+}
+
+.topic-input::placeholder {
+
+  color:
+    var(--color-text-muted);
+}
+
+/* ========================================
+   FOOTER
+======================================== */
+
+.field-footer {
+
+  min-height: 24px;
+}
+
+/* ========================================
+   HELPER TEXT
+======================================== */
+
+.helper-text {
+
+  margin: 0;
+
+  color:
+    var(--color-text-secondary);
+
+  font-size:
+    var(--text-sm);
+
+  line-height:
+    var(--line-height-normal);
+}
+
+/* ========================================
+   ERROR TEXT
+======================================== */
+
+.error-text {
+
+  margin: 0;
+
+  color:
+    #ef4444;
+
+  font-size:
+    var(--text-sm);
+
+  font-weight:
+    var(--font-medium);
+}
+
+
+
+/* ========================================
+   NOTES SECTION
+======================================== */
+
+.notes-section {
+
+  display: flex;
+  flex-direction: column;
+
+  gap: var(--space-xl);
+}
+
+/* ========================================
+   HEADER
+======================================== */
+
+.notes-header {
+
+  display: flex;
+  flex-direction: column;
+
+  gap: var(--space-sm);
+}
+
+.notes-label {
+
+  margin: 0;
+
+  color:
+    var(--color-text-primary);
+
+  font-size:
+    var(--text-lg);
+
+  font-weight:
+    var(--font-semibold);
+}
+
+.required {
+
+  color: #ef4444;
+}
+
+.notes-description {
+
+  margin: 0;
+
+  color:
+    var(--color-text-secondary);
+
+  font-size:
+    var(--text-md);
+
+  line-height:
+    var(--line-height-relaxed);
+}
+
+/* ========================================
+   EDITOR CONTAINER
+======================================== */
+
+.editor-container {
+
+  border:
+    1px solid var(--color-border);
+
+  border-radius:
+    var(--radius-sm);
+
+  background:
+    var(--color-bg-secondary);
+
+  overflow: hidden;
+
+  transition:
+    var(--transition-base);
+}
+
+.editor-container:focus-within {
+
+  border-color:
+    var(--color-primary);
+
+  box-shadow:
+    0 0 0 4px
+    var(--color-primary-soft);
+}
+
+.editor-container.editor-error {
+
+  border-color:
+    #ef4444;
+
+  box-shadow:
+    0 0 0 4px
+    rgba(239, 68, 68, 0.08);
+}
+
+/* ========================================
+   TOOLBAR
+======================================== */
+
+.editor-toolbar {
+
+  height: 64px;
+
+  padding:
+    0 var(--space-lg);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  border-bottom:
+    1px solid var(--color-border);
+
+  background:
+    rgba(255, 255, 255, 0.72);
+
+  backdrop-filter:
+    blur(10px);
+}
+
+.toolbar-left,
+.toolbar-right {
+
+  display: flex;
+  align-items: center;
+
+  gap: var(--space-sm);
+}
+
+.toolbar-divider {
+
+  width: 1px;
+  height: 24px;
+
+  background:
+    var(--color-border);
+
+  margin:
+    0 var(--space-sm);
+}
+
+/* ========================================
+   TOOLBAR BUTTON
+======================================== */
+
+.toolbar-btn {
+
+  width: 38px;
+  height: 38px;
+
+  border: none;
+
+  border-radius:
+    var(--radius-md);
+
+  background: transparent;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  transition:
+    var(--transition-base);
+}
+
+.toolbar-btn i {
+
+  font-size: 18px;
+
+  color:
+    var(--color-text-secondary);
+}
+
+.toolbar-btn:hover {
+
+  background:
+    var(--color-primary-soft);
+}
+
+.toolbar-btn:hover i {
+
+  color:
+    var(--color-primary);
+}
+
+/* ========================================
+   EDITOR CONTENT
+======================================== */
+
+.editor-content-wrapper {
+
+  min-height: 320px;
+
+  padding:
+    var(--space-2xl);
+}
+
+.editor-content {
+
+  min-height: 260px;
+}
+
+/* ========================================
+   PROSEMIRROR
+======================================== */
+
+:host ::ng-deep  .ProseMirror {
+
+  min-height: 260px !important;
+
+  outline: none;
+
+  color:
+    var(--color-text-primary) !important;
+
+  font-size:
+    var(--text-md) !important;
+
+  line-height:
+    1.8 !important;
+}
+
+:host ::ng-deep .ProseMirror p {
+
+  margin-bottom:
+    var(--space-lg);
+}
+
+:host ::ng-deep .ProseMirror ul,
+:host ::ng-deep .ProseMirror ol {
+
+  padding-left:
+    var(--space-2xl);
+}
+
+:host ::ng-deep .ProseMirror li {
+
+  margin-bottom:
+    var(--space-sm);
+}
+
+/* ========================================
+   FOOTER
+======================================== */
+
+.editor-footer {
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  min-height: 24px;
+}
+
+/* ========================================
+   ERROR
+======================================== */
+
+.error-text {
+
+  margin: 0;
+
+  color:
+    #ef4444;
+
+  font-size:
+    var(--text-sm);
+
+  font-weight:
+    var(--font-medium);
+}
+
+/* ========================================
+   WORD COUNT
+======================================== */
+
+.word-count {
+
+  margin-left: auto;
+  margin-bottom: 0;
+
+  color:
+    var(--color-text-muted);
+
+  font-size:
+    var(--text-sm);
+}
+
+
+/* ========================================
+   CARD
+======================================== */
+
+.image-upload-card {
+
+  padding: 32px;
+
+  border-radius: var(--radius-2xl);
+
+  background: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   HEADER
+======================================== */
+
+.image-section-header {
+
+  margin-bottom: 28px;
+}
+
+.image-section-header h3 {
+
+  margin: 0 0 8px 0;
+
+  font-size: 24px;
+
+  font-weight: 700;
+
+  color: var(--color-text-primary);
+}
+
+.image-section-header p {
+
+  margin: 0;
+
+  color: var(--color-text-secondary);
+
+  font-size: 15px;
+}
+
+/* ========================================
+   MAIN LAYOUT
+======================================== */
+
+.image-upload-layout {
+
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 28px;
+
+  flex-wrap: wrap;
+}
+
+/* ========================================
+   UPLOAD ZONE
+======================================== */
+
+.upload-zone {
+
+  width: 330px;
+
+  min-width: 330px;
+
+  height: 320px;
+
+  border: 2px dashed #cfd8dc;
+
+  border-radius: 24px;
+
+  background: #fcfefe;
+
+  padding: 24px;
+
+  cursor: pointer;
+
+  transition: var(--transition-base);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+}
+
+.upload-zone.dragging {
+
+  border-color: var(--color-primary);
+
+  background: rgba(20, 184, 166, 0.05);
+}
+
+/* ========================================
+   CONTENT
+======================================== */
+
+.upload-content {
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  text-align: center;
+}
+
+/* ========================================
+   ICON
+======================================== */
+
+.upload-icon {
+
+  margin-bottom: 20px;
+}
+
+.upload-icon i {
+
+  font-size: 44px;
+
+  color: var(--color-primary);
+}
+
+/* ========================================
+   TITLE
+======================================== */
+
+.upload-title {
+
+  margin: 0;
+
+  font-size: 24px;
+
+  font-weight: 700;
+
+  color: var(--color-text-primary);
+}
+
+/* ========================================
+   OR
+======================================== */
+
+.upload-or {
+
+  margin: 16px 0;
+
+  color: var(--color-text-secondary);
+
+  font-size: 15px;
+}
+
+/* ========================================
+   BUTTON
+======================================== */
+
+.upload-btn {
+
+  border: none;
+
+  background: rgba(20, 184, 166, 0.12);
+
+  color: var(--color-primary);
+
+  padding: 14px 24px;
+
+  border-radius: 14px;
+
+  font-weight: 600;
+
+  transition: var(--transition-base);
+}
+
+.upload-btn:hover {
+
+  background: rgba(20, 184, 166, 0.18);
+}
+
+/* ========================================
+   SUBTITLE
+======================================== */
+
+.upload-subtitle {
+
+  margin-top: 20px;
+
+  color: var(--color-text-secondary);
+
+  font-size: 14px;
+
+  line-height: 1.5;
+}
+
+/* ========================================
+   PREVIEW GRID
+======================================== */
+
+.preview-grid {
+
+  display: flex;
+
+  align-items: flex-start;
+
+  flex-wrap: wrap;
+
+  gap: 20px;
+
+  flex: 1;
+}
+
+/* ========================================
+   PREVIEW CARD
+======================================== */
+
+.preview-card {
+
+  position: relative;
+
+  width: 190px;
+
+  height: 190px;
+
+  border-radius: 22px;
+
+  overflow: hidden;
+
+  border: 1px solid var(--color-border);
+
+  background: var(--color-surface);
+
+  box-shadow: var(--shadow-sm);
+
+  transition: var(--transition-base);
+}
+
+.preview-card:hover {
+
+  transform: translateY(-3px);
+
+  box-shadow: var(--shadow-md);
+}
+
+/* ========================================
+   IMAGE
+======================================== */
+
+.preview-card img {
+
+  width: 100%;
+
+  height: 100%;
+
+  object-fit: cover;
+
+  display: block;
+}
+
+/* ========================================
+   REMOVE BUTTON
+======================================== */
+
+.remove-btn {
+
+  position: absolute;
+
+  top: 10px;
+
+  right: 10px;
+
+  width: 36px;
+
+  height: 36px;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.92);
+
+  backdrop-filter: blur(10px);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  cursor: pointer;
+
+  z-index: 5;
+}
+
+.remove-btn i {
+
+  font-size: 18px;
+
+  color: var(--color-text-primary);
+}
+
+/* ========================================
+   ADD MORE BUTTON
+======================================== */
+
+.add-more-btn {
+
+  border: none;
+
+  background: transparent;
+
+  color: var(--color-primary);
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  font-size: 18px;
+
+  font-weight: 600;
+
+  margin-top: 10px;
+}
+
+.add-more-btn i {
+
+  font-size: 22px;
+}
+
+/* ========================================
+   PDF CARD
+======================================== */
+
+.pdf-upload-card {
+
+  padding: 32px;
+
+  border-radius: var(--radius-2xl);
+
+  background: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   HEADER
+======================================== */
+
+.pdf-section-header {
+
+  margin-bottom: 28px;
+}
+
+.pdf-section-header h3 {
+
+  margin: 0 0 8px 0;
+
+  font-size: 24px;
+
+  font-weight: 700;
+
+  color: var(--color-text-primary);
+}
+
+.pdf-section-header p {
+
+  margin: 0;
+
+  color: var(--color-text-secondary);
+}
+
+/* ========================================
+   LAYOUT
+======================================== */
+
+.pdf-upload-layout {
+
+  display: flex;
+
+  gap: 28px;
+
+  align-items: flex-start;
+
+  flex-wrap: wrap;
+}
+
+/* ========================================
+   UPLOAD ZONE
+======================================== */
+
+.pdf-upload-zone {
+
+  width: 330px;
+
+  min-width: 330px;
+
+  height: 280px;
+
+  border: 2px dashed #cfd8dc;
+
+  border-radius: 24px;
+
+  background: #fcfefe;
+
+  padding: 24px;
+
+  cursor: pointer;
+
+  transition: var(--transition-base);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+}
+
+.pdf-upload-zone.dragging {
+
+  border-color: var(--color-primary);
+
+  background: rgba(20, 184, 166, 0.05);
+}
+
+/* ========================================
+   CONTENT
+======================================== */
+
+.pdf-upload-content {
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  text-align: center;
+}
+
+.pdf-upload-icon i {
+
+  font-size: 44px;
+
+  color: var(--color-primary);
+
+  margin-bottom: 20px;
+}
+
+.pdf-upload-title {
+
+  margin: 0;
+
+  font-size: 24px;
+
+  font-weight: 700;
+}
+
+.pdf-upload-or {
+
+  margin: 16px 0;
+
+  color: var(--color-text-secondary);
+}
+
+.pdf-upload-btn {
+
+  border: none;
+
+  background: rgba(20, 184, 166, 0.12);
+
+  color: var(--color-primary);
+
+  padding: 14px 24px;
+
+  border-radius: 14px;
+
+  font-weight: 600;
+}
+
+.pdf-upload-subtitle {
+
+  margin-top: 20px;
+
+  color: var(--color-text-secondary);
+
+  font-size: 14px;
+}
+
+/* ========================================
+   PDF LIST
+======================================== */
+
+.pdf-list {
+
+  flex: 1;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 14px;
+}
+
+/* ========================================
+   PDF ITEM
+======================================== */
+
+.pdf-item {
+
+  height: 72px;
+
+  border: 1px solid var(--color-border);
+
+  border-radius: 18px;
+
+  padding: 0 20px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  background: var(--color-surface);
+
+  transition: var(--transition-base);
+}
+
+.pdf-item:hover {
+
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   PDF INFO
+======================================== */
+
+.pdf-info {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 16px;
+}
+
+.pdf-icon i {
+
+  font-size: 34px;
+
+  color: #dc2626;
+}
+
+.pdf-name {
+
+  font-weight: 600;
+
+  color: var(--color-text-primary);
+}
+
+/* ========================================
+   ACTIONS
+======================================== */
+
+.pdf-actions {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 20px;
+}
+
+.pdf-size {
+
+  color: var(--color-text-secondary);
+
+  font-size: 14px;
+}
+
+.pdf-remove-btn {
+
+  border: none;
+
+  background: transparent;
+
+  width: 34px;
+
+  height: 34px;
+
+  border-radius: 50%;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+}
+
+.pdf-remove-btn i {
+
+  font-size: 20px;
+
+  color: var(--color-text-secondary);
+}
+
+/* ========================================
+   ADD MORE
+======================================== */
+
+.add-more-pdf-btn {
+
+  border: none;
+
+  background: transparent;
+
+  color: var(--color-primary);
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  font-size: 18px;
+
+  font-weight: 600;
+
+  margin-top: 8px;
+}
+
+/* ========================================
+   CARD
+======================================== */
+
+.labels-card {
+
+  padding: 32px;
+
+  border-radius: var(--radius-2xl);
+
+  background: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   HEADER
+======================================== */
+
+.labels-header {
+
+  margin-bottom: 24px;
+}
+
+.labels-header h3 {
+
+  margin: 0 0 8px 0;
+
+  font-size: 24px;
+
+  font-weight: 700;
+
+  color: var(--color-text-primary);
+}
+
+.labels-header p {
+
+  margin: 0;
+
+  color: var(--color-text-secondary);
+}
+
+/* ========================================
+   INPUT WRAPPER
+======================================== */
+
+.labels-input-wrapper {
+
+  min-height: 72px;
+
+  border: 1px solid var(--color-border);
+
+  border-radius: 18px;
+
+  padding: 12px;
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  align-items: center;
+
+  gap: 12px;
+
+  transition: var(--transition-base);
+}
+
+.labels-input-wrapper:focus-within {
+
+  border-color: var(--color-primary);
+
+  box-shadow:
+    0 0 0 4px rgba(20, 184, 166, 0.08);
+}
+
+/* ========================================
+   SELECTED LABEL
+======================================== */
+
+.selected-label {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background:
+    rgba(20, 184, 166, 0.1);
+  color:
+    var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.selected-label button {
+
+  border: none;
+
+  background: transparent;
+
+  padding: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+}
+
+.selected-label i {
+
+  font-size: 18px;
+
+  color: var(--color-primary);
+}
+
+/* ========================================
+   INPUT
+======================================== */
+
+.labels-input-wrapper input {
+
+  flex: 1;
+
+  min-width: 180px;
+
+  border: none;
+
+  outline: none;
+
+  background: transparent;
+
+  color: var(--color-text-primary);
+
+  font-size: 16px;
+}
+
+.labels-input-wrapper input::placeholder {
+
+  color: var(--color-text-secondary);
+}
+
+/* ========================================
+   POPULAR LABELS
+======================================== */
+
+.popular-labels-section {
+
+  margin-top: 28px;
+}
+
+.popular-labels-section h4 {
+
+  margin-bottom: 18px;
+
+  font-size: 20px;
+
+  font-weight: 700;
+}
+
+/* ========================================
+   LABEL LIST
+======================================== */
+
+.popular-labels-list {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 16px;
+}
+
+/* ========================================
+   LABEL BUTTON
+======================================== */
+
+.popular-label-btn {
+
+  height: 48px;
+
+  padding: 0 22px;
+
+  border-radius: 16px;
+
+  border:
+    1px solid rgba(20, 184, 166, 0.18);
+
+  background: transparent;
+
+  color: var(--color-primary);
+
+  font-size: 16px;
+
+  font-weight: 600;
+
+  transition: var(--transition-base);
+}
+
+.popular-label-btn:hover {
+
+  background:
+    rgba(20, 184, 166, 0.08);
+
+  transform:
+    translateY(-1px);
+}

@@ -1,0 +1,24 @@
+/* You can add global styles to this file, and also import other style files */
+@import './styles/abstracts/breakpoints.css';
+@import './styles/abstracts/colors.css';
+@import './styles/abstracts/radius.css';
+@import './styles/abstracts/shadows.css';
+@import './styles/abstracts/spacing.css';
+@import './styles/abstracts/transitions.css';
+@import './styles/abstracts/typography.css';
+@import './styles/abstracts/z-index.css';
+
+
+@import './styles/base/globals.css';
+@import './styles/base/reset.css';
+@import './styles/base/scrollbar.css';
+@import './styles/base/typography-base.css';
+
+@import './styles/themes/light-theme.css';
+
+@import './styles/utilities/flex-utils.css';
+@import './styles/utilities/spacing-utils.css';
+@import './styles/utilities/text-utils.css';
+@import './styles/utilities/visibility-utils.css';
+@import './styles/utilities/reusables.css';
+

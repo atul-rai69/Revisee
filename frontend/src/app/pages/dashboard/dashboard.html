@@ -1,0 +1,257 @@
+<div class="content-card dashboard-page">
+
+  <!-- Header section: page greeting, search input and main create action -->
+  <section class="dashboard-header">
+    <div>
+      <h1 class="page-title">
+        Good morning, {{ username() || 'Learner' }}
+      </h1>
+
+      <p class="page-description">
+        Here is what you have been learning.
+      </p>
+    </div>
+
+    <div class="dashboard-actions">
+      <label class="search-box" for="dashboardSearch">
+        <i class="ph ph-magnifying-glass"></i>
+
+        <input
+          id="dashboardSearch"
+          type="search"
+          placeholder="Search learning items..."
+        >
+      </label>
+
+      <button class="primary-btn" type="button" (click)="check()">
+        <i class="ph ph-plus"></i>
+        <span >Create New Item</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Stats section: quick performance cards at the top of the dashboard -->
+  <section class="stats-grid" aria-label="Learning statistics">
+    <article
+      class="card stat-card"
+      *ngFor="let stat of stats"
+      [ngClass]="'stat-card-' + stat.tone"
+    >
+      <div class="stat-icon">
+        <i [class]="stat.icon"></i>
+      </div>
+
+      <div>
+        <p class="stat-title">
+          {{ stat.title }}
+        </p>
+
+        <strong class="stat-value" [ngSwitch]="stat.metric">
+          <ng-container *ngSwitchCase="'totalItems'">
+            {{ totalItems() }}
+          </ng-container>
+
+          <ng-container *ngSwitchCase="'totalLabels'">
+            {{ totalLabels() }}
+          </ng-container>
+
+          <ng-container *ngSwitchCase="'itemsReviewed'">
+            {{ itemsReviewed() }}
+          </ng-container>
+
+          <ng-container *ngSwitchCase="'loginStreak'">
+            {{ loginStreak() }} {{ loginStreak() === 1 ? 'day' : 'days' }}
+          </ng-container>
+        </strong>
+
+        <p class="stat-detail">
+          {{ stat.detail }}
+        </p>
+      </div>
+    </article>
+  </section>
+
+  <!-- Recent items section: filters and the main learning item list -->
+  <section class="recent-section">
+    <div class="section-heading-row">
+      <h2>
+        Your Items
+      </h2>
+    </div>
+
+    <div class="filter-row d-none">
+      <div class="tab-group" aria-label="Item filters">
+        <button class="filter-tab active" type="button">
+          All Items
+        </button>
+
+        <button class="filter-tab" type="button">
+          Recently Viewed
+        </button>
+
+        <button class="filter-tab" type="button">
+          Favorites
+        </button>
+      </div>
+
+      <div class="select-group">
+        <button class="filter-select" type="button">
+          <span>All Topics</span>
+          <i class="ph ph-caret-down"></i>
+        </button>
+
+        <button class="filter-select" type="button">
+          <span>Sort: Newest</span>
+          <i class="ph ph-caret-down"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="items-list">
+      <div class="card item-card" *ngFor="let item of recentItems"  (click)="viewLearningItem(item.id)">
+        <img
+          class="item-image"
+          [src]="item.image"
+          [alt]="item.title"
+        >
+
+        <div class="item-content">
+          <div class="item-title-row">
+            <h3>
+              {{ item.title }}
+            </h3>
+
+            <div class="item-actions">
+              <span>{{ item.time }}</span>
+              <!-- <button type="button" aria-label="More options">
+                <i class="ph ph-dots-three-vertical"></i>
+              </button> -->
+              <button class="delete-btn" (click)="deleteItem(item.id)">
+                <i class="ph ph-trash"></i>
+              </button>
+            </div>
+          </div>
+
+          <p>
+            {{ item.description }}
+          </p>
+
+          <div class="tag-row">
+            <span class="topic-tag" *ngFor="let label of item.labels">
+              {{ label }}
+            </span>
+          </div>
+
+          <div class="item-meta-row">
+            <span>
+              <i class="ph ph-note"></i>
+              {{ item.notes }} {{ item.notes === 1 ? 'Note' : 'Notes' }}
+            </span>
+
+            <span *ngIf="item.images > 0">
+              <i class="ph ph-image"></i>
+              {{ item.images }} {{ item.images === 1 ? 'Image' : 'Images' }}
+            </span>
+
+            <span>
+              <i class="ph ph-file-pdf"></i>
+              {{ item.pdfs }} PDF
+            </span>
+          </div>
+        </div>
+
+        <!-- <button class="bookmark-btn" type="button" aria-label="Bookmark item">
+          <i class="ph ph-bookmark-simple"></i>
+        </button> -->
+      </div>
+    </div>
+
+    <button class="load-more-btn" type="button">
+      <span>Load more items</span>
+      <i class="ph ph-caret-down"></i>
+    </button>
+  </section>
+
+  <!-- Lower dashboard section: topic progress and recently viewed compact list -->
+  <section class="dashboard-bottom-grid">
+    <article class="card overview-card">
+      <div class="panel-title-row">
+        <h2>
+          Topics Overview
+        </h2>
+
+        <button type="button">
+          View all
+        </button>
+      </div>
+
+      <div class="topic-list">
+        <div class="topic-row" *ngFor="let topic of topics">
+          <div class="topic-name">
+            <span class="topic-icon">
+              <i [class]="topic.icon"></i>
+            </span>
+
+            <span>{{ topic.name }}</span>
+          </div>
+
+          <div class="topic-progress">
+            <span [style.width.%]="topic.progress"></span>
+          </div>
+
+          <p>
+            {{ topic.count }} items
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <article class="card viewed-card">
+      <div class="panel-title-row">
+        <h2>
+          Recently Viewed
+        </h2>
+
+        <button type="button">
+          View all
+        </button>
+      </div>
+
+      <div class="viewed-list">
+        <div class="viewed-item" *ngFor="let item of recentlyViewed">
+          <img
+            [src]="item.image"
+            [alt]="item.title"
+          >
+
+          <div class="viewed-content">
+            <div class="viewed-title-row">
+              <h3>
+                {{ item.title }}
+              </h3>
+
+              <span>
+                {{ item.time }}
+              </span>
+            </div>
+
+            <div class="tag-row compact">
+              <span class="topic-tag" *ngFor="let label of item.labels">
+                {{ label }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- Quote strip: soft closing message at the bottom of the page -->
+  <section class="learning-quote">
+    <i class="ph ph-lightbulb"></i>
+
+    <p>
+      The beautiful thing about learning is that no one can take it away from you.
+    </p>
+  </section>
+</div>

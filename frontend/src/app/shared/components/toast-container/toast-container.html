@@ -1,0 +1,35 @@
+<section
+  class="toast-stack"
+  aria-live="polite"
+  aria-atomic="true"
+>
+  @for (toast of toaster.toasts(); track toast.id) {
+    <article
+      class="toast-message"
+      [ngClass]="'toast-' + toast.type"
+      role="status"
+    >
+      <i
+        class="toast-icon ph"
+        [ngClass]="getIcon(toast.type)"
+        aria-hidden="true"
+      ></i>
+
+      <div class="toast-content">
+        <strong>{{ getTitle(toast) }}</strong>
+        <p>{{ toast.message }}</p>
+      </div>
+
+      @if (toast.dismissible) {
+        <button
+          type="button"
+          class="toast-close"
+          aria-label="Dismiss notification"
+          (click)="toaster.remove(toast.id)"
+        >
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      }
+    </article>
+  }
+</section>

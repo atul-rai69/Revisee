@@ -1,0 +1,707 @@
+/* ========================================
+   CARD
+======================================== */
+
+.create-label-card {
+
+  padding: 40px;
+
+  border-radius: var(--radius-3xl);
+
+  background: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   TITLE
+======================================== */
+
+.section-title {
+
+  margin-bottom: 40px;
+
+  font-size: 34px;
+
+  font-weight: 700;
+
+  color: var(--color-text-primary);
+}
+
+/* ========================================
+   LABEL
+======================================== */
+
+.app-label {
+
+  display: block;
+
+  margin-bottom: 12px;
+
+  font-size: 16px;
+
+  font-weight: 600;
+
+  color: var(--color-text-primary);
+}
+
+/* ========================================
+   INPUT
+======================================== */
+
+.app-input {
+
+  width: 100%;
+
+  height: 64px;
+
+  border:
+    1px solid var(--color-border);
+
+  border-radius:
+    var(--radius-sm);
+
+  padding: 0 20px;
+
+  background:
+    var(--color-surface);
+
+  color:
+    var(--color-text-primary);
+
+  font-size: 16px;
+
+  transition:
+    var(--transition-base);
+}
+
+.app-input:focus {
+
+  outline: none;
+
+  border-color:
+    var(--color-primary);
+
+  box-shadow:
+    0 0 0 4px rgba(20, 184, 166, 0.08);
+}
+
+.app-input::placeholder {
+
+  color:
+    var(--color-text-secondary);
+}
+
+/* ========================================
+   HELPER TEXT
+======================================== */
+
+.input-helper {
+
+  margin-top: 12px;
+
+  font-size: 14px;
+
+  color:
+    var(--color-text-secondary);
+}
+
+/* ========================================
+   BUTTONS
+======================================== */
+
+.btn-primary-custom {
+
+  height: 56px;
+
+  padding: 0 28px;
+
+  border: none;
+
+  border-radius:
+    var(--radius-xl);
+
+  background:
+    var(--color-primary);
+
+  color: white;
+
+  font-weight: 600;
+
+  font-size: 15px;
+
+  transition:
+    var(--transition-base);
+
+  box-shadow:
+    var(--shadow-sm);
+}
+
+.btn-primary-custom:hover {
+
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    var(--shadow-md);
+}
+
+/* ========================================
+   SECONDARY BUTTON
+======================================== */
+
+.btn-secondary-custom {
+
+  height: 56px;
+
+  padding: 0 28px;
+
+  border:
+    1px solid var(--color-border);
+
+  border-radius:
+    var(--radius-xl);
+
+  background:
+    var(--color-surface);
+
+  color:
+    var(--color-text-primary);
+
+  font-weight: 600;
+
+  transition:
+    var(--transition-base);
+}
+
+.btn-secondary-custom:hover {
+
+  background:
+    var(--color-bg-secondary);
+}
+
+/* ========================================
+   PREVIEW CARD
+======================================== */
+
+.preview-card-custom {
+
+  padding: 32px;
+
+  border-radius:
+    var(--radius-sm);
+
+  border:
+    1px solid var(--color-border);
+
+  background:
+    var(--color-surface);
+
+  min-height: 280px;
+}
+
+/* ========================================
+   PREVIEW TITLE
+======================================== */
+
+.preview-title {
+
+  margin-bottom: 28px;
+
+  font-size: 20px;
+
+  font-weight: 700;
+
+  color:
+    var(--color-text-primary);
+}
+
+/* ========================================
+   LABEL BADGE
+======================================== */
+
+.label-preview-badge {
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  height: 52px;
+
+  padding: 0 18px;
+
+  border-radius:
+    var(--radius-lg);
+
+  border:
+    1px solid rgba(20, 184, 166, 0.15);
+
+  background:
+    rgba(20, 184, 166, 0.06);
+
+  color:
+    var(--color-primary);
+
+  font-weight: 600;
+
+  margin-bottom: 28px;
+}
+
+.label-preview-badge i {
+
+  font-size: 18px;
+}
+
+/* ========================================
+   PREVIEW TEXT
+======================================== */
+
+.preview-text {
+
+  margin: 0;
+
+  font-size: 15px;
+
+  line-height: 1.8;
+
+  color:
+    var(--color-text-secondary);
+}
+
+/* ========================================
+   CARD
+======================================== */
+
+.labels-table-card {
+
+  padding: 32px;
+
+  border-radius: var(--radius-3xl);
+
+  background: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   TITLE
+======================================== */
+
+.table-heading-wrapper {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+.table-title {
+
+  margin: 0;
+
+  font-size: 28px;
+
+  font-weight: 700;
+
+  color: var(--color-text-primary);
+}
+
+.label-count {
+
+  min-width: 34px;
+  height: 34px;
+
+  padding: 0 10px;
+
+  border-radius: 999px;
+
+  background:
+    rgba(20, 184, 166, 0.08);
+
+  color:
+    var(--color-primary);
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 14px;
+
+  font-weight: 700;
+}
+
+/* ========================================
+   SEARCH
+======================================== */
+
+.search-wrapper {
+
+  position: relative;
+
+  width: 100%;
+  max-width: 340px;
+}
+
+.search-wrapper i {
+
+  position: absolute;
+
+  top: 50%;
+  left: 16px;
+
+  transform: translateY(-50%);
+
+  color:
+    var(--color-text-secondary);
+
+  font-size: 18px;
+}
+
+.search-wrapper input {
+
+  width: 100%;
+
+  height: 52px;
+
+  border:
+    1px solid var(--color-border);
+
+  border-radius:
+    var(--radius-xl);
+
+  background:
+    var(--color-surface);
+
+  padding:
+    0 18px 0 48px;
+
+  color:
+    var(--color-text-primary);
+
+  transition:
+    var(--transition-base);
+}
+
+.search-wrapper input:focus {
+
+  outline: none;
+
+  border-color:
+    var(--color-primary);
+
+  box-shadow:
+    0 0 0 4px rgba(20, 184, 166, 0.08);
+}
+
+/* ========================================
+   SORT BUTTON
+======================================== */
+
+.sort-btn {
+
+  height: 52px;
+
+  padding: 0 18px;
+
+  border:
+    1px solid var(--color-border);
+
+  border-radius:
+    var(--radius-xl);
+
+  background:
+    var(--color-surface);
+
+  color:
+    var(--color-text-primary);
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  font-weight: 500;
+
+  transition:
+    var(--transition-base);
+}
+
+.sort-btn:hover {
+
+  background:
+    var(--color-bg-secondary);
+}
+
+/* ========================================
+   TABLE WRAPPER
+======================================== */
+
+.labels-table-wrapper {
+
+  overflow: hidden;
+
+  border:
+    1px solid var(--color-border);
+
+  border-radius:
+    var(--radius-2xl);
+}
+
+/* ========================================
+   TABLE ROWS
+======================================== */
+
+.table-header-row,
+.table-body-row {
+
+  display: grid;
+
+  grid-template-columns:
+    1fr
+    auto;
+
+  align-items: center;
+
+  padding: 20px 24px;
+}
+
+/* ========================================
+   HEADER ROW
+======================================== */
+
+.table-header-row {
+
+  background:
+    var(--color-bg-secondary);
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  color:
+    var(--color-text-secondary);
+
+  border-bottom:
+    1px solid var(--color-border);
+}
+
+/* ========================================
+   BODY ROW
+======================================== */
+
+.table-body-row {
+
+  border-bottom:
+    1px solid var(--color-border);
+
+  transition:
+    var(--transition-base);
+}
+
+.table-body-row:last-child {
+
+  border-bottom: none;
+}
+
+.table-body-row:hover {
+
+  background:
+    rgba(20, 184, 166, 0.02);
+}
+
+/* ========================================
+   LABEL CELL
+======================================== */
+
+.label-cell {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 14px;
+
+  font-weight: 600;
+
+  color:
+    var(--color-text-primary);
+}
+
+.label-icon {
+
+  width: 42px;
+  height: 42px;
+
+  border-radius:
+    var(--radius-lg);
+
+  background:
+    rgba(20, 184, 166, 0.08);
+
+  color:
+    var(--color-primary);
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+}
+
+.label-icon i {
+
+  font-size: 18px;
+}
+
+/* ========================================
+   TEXT CELLS
+======================================== */
+
+.items-cell,
+.date-cell {
+
+  color:
+    var(--color-text-secondary);
+
+  font-weight: 500;
+}
+
+/* ========================================
+   ACTIONS
+======================================== */
+
+.actions-cell {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+.action-btn {
+
+  width: 42px;
+  height: 42px;
+
+  border-radius:
+    var(--radius-lg);
+
+  border:
+    1px solid var(--color-border);
+
+  background:
+    var(--color-surface);
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    var(--transition-base);
+}
+
+.action-btn i {
+
+  font-size: 18px;
+}
+
+.edit-btn {
+
+  color:
+    var(--color-text-primary);
+}
+
+.delete-btn {
+
+  color:
+    #ef4444;
+}
+
+.action-btn:hover {
+
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    var(--shadow-sm);
+}
+
+/* ========================================
+   FOOTER
+======================================== */
+
+.pagination-info {
+
+  margin: 0;
+
+  color:
+    var(--color-text-secondary);
+
+  font-size: 14px;
+}
+
+/* ========================================
+   PAGINATION
+======================================== */
+
+.pagination-wrapper {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+}
+
+.pagination-btn {
+
+  width: 42px;
+  height: 42px;
+
+  border-radius:
+    var(--radius-lg);
+
+  border:
+    1px solid var(--color-border);
+
+  background:
+    var(--color-surface);
+
+  color:
+    var(--color-text-primary);
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    var(--transition-base);
+}
+
+.pagination-btn:hover {
+
+  background:
+    var(--color-bg-secondary);
+}
+
+.active-page {
+
+  background:
+    var(--color-primary);
+
+  color: white;
+
+  border-color:
+    var(--color-primary);
+}

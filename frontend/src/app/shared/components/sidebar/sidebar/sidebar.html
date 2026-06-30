@@ -1,0 +1,115 @@
+ <aside class="sidebar">
+
+    <!-- TOP -->
+    <div class="sidebar-top">
+
+      <!-- LOGO -->
+      <a routerLink="" class="logo-wrapper">
+        <img src="/revisee_logo.png" class="img-fluid" alt="">
+      </a>
+
+      <!-- NAVIGATION -->
+      <nav class="nav-menu">
+
+        <!-- <a href="" class="nav-item  active">
+            <div class="icon-wrapper">
+                <i class="ph ph-house"></i>
+            </div>
+          
+          <span>Home</span>
+        </a> -->
+
+        <a 
+          routerLink="/app/dashboard"
+          routerLinkActive="active"
+          class="nav-item"
+        >
+            <div class="icon-wrapper">
+                <i class="ph ph-house"></i>
+            </div>
+          
+          <span>Home</span>
+        </a>
+
+        <a href="" class="nav-item">
+          <div class="icon-wrapper">
+            <i class="ph ph-file-text"></i>
+          </div>
+          
+          <span>My Items</span>
+        </a>
+
+        <a 
+          routerLink="/app/new-item"
+          routerLinkActive="active"
+          class="nav-item"
+        >
+          <div class="icon-wrapper">
+            <i class="ph ph-plus-square"></i>
+          </div>
+          
+          <span>Create</span>
+        </a>
+
+        <a 
+          routerLink="/app/labels"
+          routerLinkActive="active"
+          class="nav-item"
+        >
+          <div class="icon-wrapper">
+            <i class="ph ph-tag-simple"></i>
+          </div>
+          
+          <span>Labels</span>
+        </a>
+
+        <a href="" class="nav-item">
+          <div class="icon-wrapper">
+            <i class="ph ph-chart-bar"></i>
+          </div>
+          
+          <span>Analytics</span>
+        </a>
+
+        <a href="" class="nav-item">
+          <div class="icon-wrapper">
+            <i class="ph ph-gear"></i>
+          </div>
+          
+          <span>Settings</span>
+        </a>
+
+      </nav>
+    </div>
+
+    <!-- BOTTOM -->
+    <div class="sidebar-bottom">
+
+      <!-- NOTIFICATION -->
+      <div class="notification-btn">
+        
+        <i class="ph ph-bell"></i>
+        <div class="notification-dot"></div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="profile-avatar">
+        <img
+          src="https://i.pravatar.cc/100?img=12"
+          alt="User"
+        />
+      </div>
+
+      <div>
+        <button class="logout-btn"
+          type="button"
+          (click)="onLogout()"
+        >
+          <i class="ph ph-sign-out"></i>
+        </button>
+        
+      </div>
+
+    </div>
+
+  </aside>

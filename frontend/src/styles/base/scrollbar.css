@@ -1,0 +1,56 @@
+/* ========================================
+   GLOBAL SCROLLBAR
+======================================== */
+
+*::-webkit-scrollbar {
+
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+
+  background:
+    transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+
+  background:
+    rgba(15, 23, 42, 0.12);
+
+  border-radius: 999px;
+
+  border: 2px solid transparent;
+
+  background-clip: content-box;
+
+  transition:
+    background 0.2s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+
+  background:
+    rgba(20, 184, 166, 0.28);
+
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-corner {
+
+  background: transparent;
+}
+
+/* ========================================
+   FIREFOX
+======================================== */
+
+* {
+
+  scrollbar-width: thin;
+
+  scrollbar-color:
+    rgba(15, 23, 42, 0.16)
+    transparent;
+}
