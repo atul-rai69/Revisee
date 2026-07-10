@@ -11,7 +11,7 @@ import json
 from sqlalchemy.orm import Session
 from src.db import get_db
 from src.model import User, UserSession
-
+from src.schema import GeneratedRevisionResponse, GeneratedQuestion
 import cloudinary.uploader
 
 from src.google_config import client
@@ -166,6 +166,6 @@ async def generate_revision_content(
     )
 
 
-    print(response.usage_metadata)
-    return json.loads(response.text)
-    # return response.text
+    data = json.loads(response.text)
+    print(data)
+    return data

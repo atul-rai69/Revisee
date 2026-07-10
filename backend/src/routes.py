@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-
+from sqlalchemy import extract
 from sqlalchemy.orm import Session
-
+import traceback
 from src.crud import (
     get_current_user,
     SECRET_KEY,
@@ -14,10 +14,10 @@ from src.crud import (
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, distinct, text
-from src.schema import UserLogin,LearningItemView,LearningItemViewResponse, CreateLabel, UpdateLabel, DashboardSummaryResponse , LearningItemsSummaryResponse , GenerateRevisionRequest, GenerateRevisionResponse, deleteLearningItem
+from src.schema import UserLogin,LearningItemView,LearningItemViewResponse, CreateLabel, UpdateLabel, DashboardSummaryResponse , LearningItemsSummaryResponse , GenerateRevisionRequest,  deleteLearningItem
 # DB + Models
 from src.db import get_db
-from src.model import User, LearningItem, Label, LearningItemLabel, Question, RevisionSession, UserAttempt, Media, UserSession
+from src.model import User, LearningItem, Label, LearningItemLabel, Question, RevisionSession, UserAttempt, Media, UserSession, LearningItemKeyPoint
 from fastapi import Form, File, UploadFile
 from typing import List
 import json
@@ -423,18 +423,37 @@ def get_learning_items_summary(
         LearningItem.id,
         LearningItem.title,
         LearningItem.description_text,
-        func.group_concat(
-            distinct(Label.label_name)
+
+
+        # func.group_concat(
+        #     distinct(Label.label_name)
+        # ).label("labels")
+        
+        func.string_agg(
+            distinct(Label.label_name),
+            ", "
         ).label("labels"),
 
-        func.group_concat(
+        # func.group_concat(
+        #     case(
+        #         (
+        #             Media.type == "image",
+        #             Media.url
+        #         ),
+        #         else_=None
+        #     )
+        # ).label("image_urls")
+        
+        
+        func.string_agg(
             case(
                 (
                     Media.type == "image",
                     Media.url
                 ),
                 else_=None
-            )
+            ),
+            ","
         ).label("image_urls"),
 
         func.min(
@@ -473,11 +492,19 @@ def get_learning_items_summary(
             )
 
         ).label("pdf_count"),
-        func.timestampdiff(
-            text("HOUR"),
-            LearningItem.created_at,
-            func.now()
+
+
+        # func.timestampdiff(
+        #     text("HOUR"),
+        #     LearningItem.created_at,
+        #     func.now()
+        # ).label("hours_ago")
+
+        func.floor(
+            extract("epoch", func.now() - LearningItem.created_at) / 3600
         ).label("hours_ago")
+
+
     ).outerjoin(
         LearningItemLabel,
         LearningItem.id == LearningItemLabel.learning_item_id
@@ -536,28 +563,58 @@ def get_learning_item(
         LearningItem.id,
         LearningItem.title,
         LearningItem.description_text,
-        func.group_concat(
-            distinct(Label.label_name)
+
+        # func.group_concat(
+        #     distinct(Label.label_name)
+        # ).label("labels")
+        
+        func.string_agg(
+            distinct(Label.label_name),
+            ", "
         ).label("labels"),
 
-        func.group_concat(
+        # func.group_concat(
+        #     case(
+        #         (
+        #             Media.type == "image",
+        #             Media.url
+        #         ),
+        #         else_=None
+        #     )
+        # ).label("image_urls")
+        
+        
+        func.string_agg(
             case(
                 (
                     Media.type == "image",
                     Media.url
                 ),
                 else_=None
-            )
+            ),
+            ","
         ).label("image_urls"),
 
-        func.group_concat(
+        # func.group_concat(
+        #     case(
+        #         (
+        #             Media.type == "pdf",
+        #             Media.url
+        #         ),
+        #         else_=None
+        #     )
+        # ).label("pdf_urls")
+        
+        
+        func.string_agg(
             case(
                 (
                     Media.type == "pdf",
                     Media.url
                 ),
                 else_=None
-            )
+            ),
+            ","
         ).label("pdf_urls"),
 
         func.min(
@@ -595,10 +652,16 @@ def get_learning_item(
                 )
             )
         ).label("pdf_count"),
-        func.timestampdiff(
-            text("HOUR"),
-            LearningItem.created_at,
-            func.now()
+
+
+        # func.timestampdiff(
+        #     text("HOUR"),
+        #     LearningItem.created_at,
+        #     func.now()
+        # ).label("hours_ago")
+        
+        func.floor(
+            extract("epoch", func.now() - LearningItem.created_at) / 3600
         ).label("hours_ago"),
 
         LearningItem.theory,
@@ -634,21 +697,104 @@ def get_learning_item(
 
 
 
-@router.post(
-    "/generate"
-)
-async def generate_revision(
-    request: GenerateRevisionRequest
-):
-    result = await generate_revision_content(
-        title=request.title,
-        description=request.description
-    )
+# @router.post(
+#     "/generate"
+# )
+# async def generate_revision(
+#     request: GenerateRevisionRequest
+# ):
+#     result = await generate_revision_content(
+#         title=request.title,
+#         description=request.description
+#     )
 
+#     print(type(result))
     
-    print(result["theory"])
-    for point in result["key_points"]:
-        print(point)
+#     return result
 
-    # return {"result":result}
-    return result
+
+
+
+@router.post("/generate")
+async def generate_revision(
+    request: GenerateRevisionRequest,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Generate AI content
+        result = await generate_revision_content(
+            title=request.title,
+            description=request.description
+        )
+
+        # Fetch learning item
+        learning_item = (
+            db.query(LearningItem)
+            .filter(LearningItem.id == request.learning_item_id)
+            .first()
+        )
+
+        if learning_item is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Learning item not found."
+            )
+
+        # Save theory
+        learning_item.theory = result["theory"]
+
+        # Save key points
+        for point in result["key_points"]:
+            db.add(
+                LearningItemKeyPoint(
+                    learning_item_id=request.learning_item_id,
+                    key_point=point
+                )
+            )
+
+        for question_data in result["questions"]:
+
+            options = question_data["options"]
+            
+
+            correct_option = question_data["correct_answer"]
+
+            db.add(
+                Question(
+                    learning_item_id=request.learning_item_id,
+
+                    question_text=question_data["question"],
+
+                    option_a=options[0],
+                    option_b=options[1],
+                    option_c=options[2],
+                    option_d=options[3],
+
+                    correct_option=correct_option,
+
+                    explanation=question_data["explanation"],
+
+                    difficulty=question_data["difficulty_level"],
+
+                    expected_time_seconds=question_data["expected_time"],
+
+                    source="future-ai"
+                )
+            )
+
+        db.commit()
+
+        return {
+            "message": "Revision content generated successfully."
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

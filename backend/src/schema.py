@@ -68,17 +68,21 @@ class LearningItemViewResponse(BaseModel):
 
 
 class GenerateRevisionRequest(BaseModel):
+    learning_item_id: int
     title: str
     description: str
 
 
-class MCQ(BaseModel):
+class GeneratedQuestion(BaseModel):
     question: str
     options: list[str]
-    description: str
     correct_answer: str
+    explanation: str
+    expected_time: int
+    difficulty_level: int
 
 
-class GenerateRevisionResponse(BaseModel):
+class GeneratedRevisionResponse(BaseModel):
     theory: str
-    questions: list[MCQ]
+    key_points: list[str]
+    questions: list[GeneratedQuestion]

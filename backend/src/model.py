@@ -114,7 +114,7 @@ class Question(Base):
     option_d = Column(String(255), nullable=False)
 
     correct_option = Column(
-        Enum("A", "B", "C", "D"),
+        String(1),
         nullable=False
     )
 
@@ -131,8 +131,7 @@ class Question(Base):
     )
 
     source = Column(
-        Enum("manual", "future-ai"),
-        default="manual"
+        String(20)
     )
 
     created_at = Column(

@@ -20,9 +20,10 @@ Tasks:
 4. Each MCQ must have:
    - question
    - 4 options
-   - correct_answer
+   - correct_option in single character
    - explanation of correct_answer
    - expected time to solve the question in seconds
+   - difficulty level in number 1 for easy , 2 for medium, 3 for hard
 
 Return ONLY  JSON value strictly remove any text before or after JSON value.
 
@@ -42,7 +43,8 @@ Expected Format:
       ],
       "correct_answer": "string",
       "explanation": "string",
-      "expected_time: "number"
+      "expected_time": "number",
+      "difficulty_level: "number"
     }}
   ]
 }}
