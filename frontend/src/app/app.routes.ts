@@ -6,6 +6,8 @@ import { NewItem } from './pages/new-item/new-item';
 import { Labels } from './pages/labels/labels';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { LearningItemView } from './pages/learning-item-view/learning-item-view';
+import { Playground } from './pages/playground/playground';
+import { Canvas } from './pages/canvas/canvas';
 
 export const routes: Routes = [
     {
@@ -36,6 +38,14 @@ export const routes: Routes = [
         {
             path: 'learning-items/:id',
             component: LearningItemView
+        },
+        {
+            path: 'playground',
+            component: Playground
+        },
+        {
+            path: 'canvas',
+            component: Canvas
         }
 
         ]

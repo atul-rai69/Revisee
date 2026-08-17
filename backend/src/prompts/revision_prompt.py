@@ -20,7 +20,7 @@ Tasks:
 4. Each MCQ must have:
    - question
    - 4 options
-   - correct_option in single character
+   - index of the correct option in the options list
    - explanation of correct_answer
    - expected time to solve the question in seconds
    - difficulty level in number 1 for easy , 2 for medium, 3 for hard
@@ -41,7 +41,7 @@ Expected Format:
         "option3",
         "option4"
       ],
-      "correct_answer": "string",
+      "correct_answer": "number",
       "explanation": "string",
       "expected_time": "number",
       "difficulty_level: "number"

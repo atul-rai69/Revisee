@@ -1,0 +1,438 @@
+.hero {
+
+    width: 100%;
+
+    min-height: 100vh;
+
+    position: relative;
+
+    overflow: hidden;
+
+}
+
+.background {
+
+    position: absolute;
+    inset: 0;
+    background-color: #084f8e;
+    background-image: url(https://static.typingclub.com/m/tpmedia/img/sky2.png), linear-gradient(0deg,
+    #000000 0%,
+    #050914 30%,
+    #0b1830 65%,
+    #143c69 100%);
+    width: 100%;
+    height: 100%;
+}
+
+
+
+/* ==========================================================
+STARS LAYER
+----------------------------------------------------------
+Responsibilities:
+- Covers the entire hero
+- Paints a simple star field
+- Decorative only
+- Doesn't capture mouse events
+========================================================== */
+
+.stars {
+    position: absolute;
+    inset: 0;
+
+    z-index: 1;
+
+    pointer-events: none;
+
+    background-image:
+        radial-gradient(circle at 15% 20%, rgba(255,255,255,0.9) 1px, transparent 2px),
+        radial-gradient(circle at 75% 30%, rgba(255,255,255,1) 1.5px, transparent 2.5px),
+        radial-gradient(circle at 40% 70%, rgba(255,255,255,0.7) 1px, transparent 2px),
+        radial-gradient(circle at 90% 80%, rgba(255,255,255,0.9) 2px, transparent 3px),
+        radial-gradient(circle at 55% 45%, rgba(255,255,255,0.6) 1px, transparent 2px),
+        radial-gradient(circle at 20% 85%, rgba(255,255,255,0.8) 1.5px, transparent 2.5px),
+        radial-gradient(circle at 65% 15%, rgba(255,255,255,0.5) 1px, transparent 2px),
+        radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9) 2px, transparent 3px),
+        radial-gradient(circle at 85% 55%, rgba(255,255,255,0.7) 1px, transparent 2px),
+        radial-gradient(circle at 10% 60%, rgba(255,255,255,0.8) 1.5px, transparent 2.5px);
+}
+
+
+
+
+/* ==========================================================
+   MOON LAYER
+   ----------------------------------------------------------
+   Responsibilities:
+   - Acts as the focal decorative object
+   - Sits above the stars
+   - Static for now
+========================================================== */
+
+.moon {
+
+  border-radius: 100%;
+  position: absolute;
+  top: 15%;
+  right: 12%;
+  /* box-shadow: 0 0 80px rgba(255, 255, 255, -0.4); */
+  width: 200px;
+  transition: 1s linear all;
+  animation: moon_anim 200s infinite;
+    animation-timing-function: ease;
+  animation-timing-function: linear;
+}
+
+
+
+/* ==========================================================
+   CLOUDS LAYER
+   ----------------------------------------------------------
+   Responsibilities:
+   - Creates depth in the scene
+   - Sits above the moon
+   - Will later react to mouse movement
+   - Contains multiple cloud objects
+========================================================== */
+
+.clouds {
+    position: absolute;
+    inset: 0;
+
+    z-index: 3;
+
+    pointer-events: none;
+}
+
+
+/* ==========================================================
+   BASE CLOUD
+   ----------------------------------------------------------
+   A cloud is made from:
+   - Main body
+   - Left puff (::before)
+   - Right puff (::after)
+
+   All three together create one cloud.
+========================================================== */
+
+.cloud {
+    position: absolute;
+
+    width: 260px;
+    height: 80px;
+
+    background: rgba(255,255,255,0.16);
+
+    border-radius: 100px;
+
+    filter: blur(12px);
+
+    opacity: 0.8;
+
+    transition: transform 0.3s ease;
+}
+
+
+/* ==========================================================
+   LEFT PUFF
+========================================================== */
+
+.cloud::before {
+
+    content: "";
+
+    position: absolute;
+
+    width: 90px;
+    height: 90px;
+
+    left: 30px;
+    top: -35px;
+
+    border-radius: 50%;
+
+    background: inherit;
+}
+
+
+/* ==========================================================
+   RIGHT PUFF
+========================================================== */
+
+.cloud::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 120px;
+    height: 120px;
+
+    right: 35px;
+    top: -50px;
+
+    border-radius: 50%;
+
+    background: inherit;
+}
+
+
+/* ==========================================================
+   CLOUD 1
+========================================================== */
+
+.cloud-1 {
+
+    top: 120px;
+    left: 8%;
+
+    transform: scale(1);
+}
+
+
+/* ==========================================================
+   CLOUD 2
+========================================================== */
+
+.cloud-2 {
+
+    top: 250px;
+    right: 12%;
+
+    transform: scale(0.8);
+}
+
+
+/* ==========================================================
+   CLOUD 3
+========================================================== */
+
+.cloud-3 {
+
+    bottom: 100px;
+    left: 35%;
+
+    transform: scale(1.25);
+}
+
+
+
+
+/* ==========================================================
+   CONTENT LAYER
+   ----------------------------------------------------------
+   Responsibilities:
+   - Displays the hero's information
+   - Always stays above decorative layers
+   - Centers the hero message
+========================================================== */
+
+.content {
+
+    position: relative;
+    z-index: 10;
+
+    width: 100%;
+    max-width: 800px;
+
+    margin: 0 auto;
+
+    min-height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    text-align: center;
+
+    padding: 2rem;
+
+    color: white;
+}
+
+
+/* ==========================================================
+   EYEBROW
+========================================================== */
+
+.eyebrow {
+
+    display: inline-block;
+
+    margin-bottom: 1rem;
+
+    padding: .45rem 1rem;
+
+    border-radius: 999px;
+
+    background: rgba(255,255,255,.08);
+
+    border: 1px solid rgba(255,255,255,.12);
+
+    backdrop-filter: blur(10px);
+
+    font-size: .9rem;
+
+    letter-spacing: .08em;
+
+    text-transform: uppercase;
+}
+
+
+/* ==========================================================
+   HEADING
+========================================================== */
+
+.content h1 {
+
+    margin: 0;
+
+    font-size: clamp(3rem, 8vw, 5.5rem);
+
+    font-weight: 700;
+
+    line-height: 1.1;
+}
+
+
+/* ==========================================================
+   PARAGRAPH
+========================================================== */
+
+.content p {
+
+    max-width: 650px;
+
+    margin: 1.75rem 0;
+
+    font-size: 1.15rem;
+
+    line-height: 1.8;
+
+    color: rgba(255,255,255,.78);
+}
+
+
+/* ==========================================================
+   BUTTON CONTAINER
+========================================================== */
+
+.actions {
+
+    display: flex;
+
+    gap: 1rem;
+
+    flex-wrap: wrap;
+
+    justify-content: center;
+
+    margin-top: 1rem;
+}
+
+
+/* ==========================================================
+   COMMON BUTTON STYLES
+========================================================== */
+
+.actions button {
+
+    border: none;
+
+    padding: 1rem 2rem;
+
+    border-radius: 999px;
+
+    cursor: pointer;
+
+    font-size: 1rem;
+
+    transition:
+        transform .25s ease,
+        box-shadow .25s ease,
+        background .25s ease;
+}
+
+
+/* ==========================================================
+   PRIMARY BUTTON
+========================================================== */
+
+.primary-btn {
+
+    background: white;
+
+    color: #0b1f3a;
+
+    box-shadow:
+        0 10px 30px rgba(255,255,255,.15);
+}
+
+.primary-btn:hover {
+
+    transform: translateY(-4px);
+
+    box-shadow:
+        0 18px 45px rgba(255,255,255,.22);
+}
+
+
+/* ==========================================================
+   SECONDARY BUTTON
+========================================================== */
+
+.secondary-btn {
+
+    background: rgba(255,255,255,.08);
+
+    color: white;
+
+    border: 1px solid rgba(255,255,255,.15);
+
+    backdrop-filter: blur(12px);
+}
+
+.secondary-btn:hover {
+
+    transform: translateY(-4px);
+
+    background: rgba(255,255,255,.15);
+}
+
+
+/* ==========================================================
+   GLOW LAYER
+========================================================== */
+
+.glow {
+
+    position: absolute;
+
+    transform:translate(-50%, -50%);
+
+    width: 100px;
+    height: 100px;
+    overflow: hidden;
+
+    border-radius: 50%;
+
+    pointer-events: none;
+
+    z-index: 5;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(255,255,255,.18) 0%,
+            rgba(180,220,255,.12) 35%,
+            rgba(120,180,255,.06) 60%,
+            transparent 80%
+        );
+
+    filter: blur(0);
+
+    will-change: transform;
+
+}

@@ -1,0 +1,61 @@
+<section  #hero class="hero" (mousemove)="onMouseMove($event)">
+
+    <div class="background"></div>
+
+    <div class="stars">
+    </div>
+
+    <img src="https://static.typingclub.com/m/tpmedia/img/moon.png" #moon class="moon" [style.transform]="'scale(' + moonScale + ')'" [style.boxShadow]="moonBoxShadow"/>
+
+    <div class="clouds">
+
+        <div class="cloud cloud-1"></div>
+
+        <div class="cloud cloud-2"></div>
+
+        <div class="cloud cloud-3"></div>
+
+    </div>
+
+    <div
+        class="glow"
+        [style.transform]="'translate(' + glowX + 'px,' + glowY + 'px)'"
+        [style.width.px]="glowSize"
+        [style.height.px]="glowSize">
+    </div>
+
+    <div class="content">
+
+        <span class="eyebrow">
+            ✨ Welcome to the Playground
+        </span>
+
+        <h1>
+            Build Beautiful Interfaces
+        </h1>
+
+        <p>
+            Learn how premium websites create depth, motion and atmosphere
+            using layered architecture, CSS, and JavaScript.
+        </p>
+
+        <div class="actions">
+
+            <button class="primary-btn">
+                Get Started
+            </button>
+
+            <button class="secondary-btn">
+                Learn More
+            </button>
+
+        </div>
+
+
+        <div class="d-flex justify-content-center align-items-center svg-wrapper mt-5">
+            <img #arrow src="/space.svg" style="height: 60px; width: auto;" alt="" class="img-fluid" [style.transform]="'rotate(' + arrowRotation + 'deg)'">
+        </div>
+
+    </div>
+
+</section>

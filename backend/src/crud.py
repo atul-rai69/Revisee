@@ -10,7 +10,7 @@ import json
 
 from sqlalchemy.orm import Session
 from src.db import get_db
-from src.model import User, UserSession
+from src.model import User, UserSession, LearningItem, LearningItemKeyPoint, Question
 from src.schema import GeneratedRevisionResponse, GeneratedQuestion
 import cloudinary.uploader
 
@@ -169,3 +169,51 @@ async def generate_revision_content(
     data = json.loads(response.text)
     print(data)
     return data
+
+
+
+
+
+
+
+# function to generate ai based theory and questions
+async def generate_revision_for_learning_item(
+    db: Session,
+    learning_item: LearningItem
+):
+    result = await generate_revision_content(
+        title=learning_item.title,
+        description=learning_item.description_text
+    )
+
+    learning_item.theory = result["theory"]
+
+    for point in result["key_points"]:
+        db.add(
+            LearningItemKeyPoint(
+                learning_item_id=learning_item.id,
+                key_point=point
+            )
+        )
+
+    for question_data in result["questions"]:
+        options = question_data["options"]
+
+        db.add(
+            Question(
+                learning_item_id=learning_item.id,
+                question_text=question_data["question"],
+                option_a=options[0],
+                option_b=options[1],
+                option_c=options[2],
+                option_d=options[3],
+                correct_option=question_data["correct_answer"],
+                explanation=question_data["explanation"],
+                difficulty=question_data["difficulty_level"],
+                expected_time_seconds=question_data["expected_time"],
+                source="future-ai"
+            )
+        )
+
+    db.commit()
+    db.refresh(learning_item)

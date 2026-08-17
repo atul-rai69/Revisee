@@ -39,6 +39,21 @@ class LearningItemSummary(BaseModel):
     hours_ago: int
 
 
+class QuestionOptionResponse(BaseModel):
+    label: str
+    text: str
+    isCorrect: bool
+
+
+class QuestionResponse(BaseModel):
+    number: int
+    question: str
+    options: list[QuestionOptionResponse]
+    explanation: Optional[str]
+    difficulty: int
+    expected_time_seconds: int
+
+
 class LearningItemView(BaseModel):
     id: int
     title: str
@@ -51,9 +66,13 @@ class LearningItemView(BaseModel):
     pdf_count: int
     hours_ago: int
     theory:  Optional[str] = None
+    key_points: Optional[list[str]] = []
+    questions: list[QuestionResponse] = []
     created_at: datetime
     updated_at: datetime
     
+
+
 
 
 class LearningItemsSummaryResponse(BaseModel):

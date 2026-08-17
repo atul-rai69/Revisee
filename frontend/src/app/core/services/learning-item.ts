@@ -16,6 +16,8 @@ export interface LearningItem {
   image_count: number;
   pdf_count: number;
   theory: string | null;
+  key_points: string[];
+  questions: any[];
   first_image_url: string;
   hours_ago: number;
 }

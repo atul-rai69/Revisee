@@ -25,7 +25,7 @@ import uuid
 
 
 # Auth
-from src.crud import create_access_token, upload_file, get_current_user, generate_revision_content
+from src.crud import create_access_token, upload_file, get_current_user, generate_revision_content, generate_revision_for_learning_item
 
 router = APIRouter()
 
@@ -335,6 +335,11 @@ async def create_learning_item(
 
     db.commit()
 
+    await generate_revision_for_learning_item(
+        db,
+        learning_item
+    )
+
     return {
         "message": "Learning item created"
     }
@@ -554,56 +559,85 @@ def get_learning_items_summary(
 )
 def get_learning_item(
     item_id: int,
-    # current_user_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+
+
+    questions = (
+        db.query(Question)
+        .filter(Question.learning_item_id == item_id)
+        .order_by(Question.id)
+        .all()
+    )
+
+    formatted_questions = []
+
+    for index, question in enumerate(questions, start=1):
+        formatted_questions.append({
+            "number": index,
+            "question": question.question_text,
+            "options": [
+                {
+                    "label": "A",
+                    "text": question.option_a,
+                    "isCorrect": question.correct_option == '0'
+                },
+                {
+                    "label": "B",
+                    "text": question.option_b,
+                    "isCorrect": question.correct_option == '1'
+                },
+                {
+                    "label": "C",
+                    "text": question.option_c,
+                    "isCorrect": question.correct_option == '2'
+                },
+                {
+                    "label": "D",
+                    "text": question.option_d,
+                    "isCorrect": question.correct_option == '3'
+                }
+            ],
+            "explanation": question.explanation,
+            "difficulty": question.difficulty,
+            "expected_time_seconds": question.expected_time_seconds
+        })
+
+
+
     learning_item = db.query(
 
         LearningItem.id,
         LearningItem.title,
         LearningItem.description_text,
-
-        # func.group_concat(
-        #     distinct(Label.label_name)
-        # ).label("labels")
+        LearningItem.theory,
         
         func.string_agg(
             distinct(Label.label_name),
             ", "
         ).label("labels"),
 
-        # func.group_concat(
-        #     case(
-        #         (
-        #             Media.type == "image",
-        #             Media.url
-        #         ),
-        #         else_=None
-        #     )
-        # ).label("image_urls")
-        
+
+        func.array_agg(
+            distinct(LearningItemKeyPoint.key_point)
+        ).label("key_points"),
+
         
         func.string_agg(
-            case(
-                (
-                    Media.type == "image",
-                    Media.url
-                ),
-                else_=None
+            distinct(
+                case(
+                    (
+                        Media.type == "image",
+                        Media.url
+                    ),
+                    else_=None
+                )
             ),
             ","
         ).label("image_urls"),
 
-        # func.group_concat(
-        #     case(
-        #         (
-        #             Media.type == "pdf",
-        #             Media.url
-        #         ),
-        #         else_=None
-        #     )
-        # ).label("pdf_urls")
+        
         
         
         func.string_agg(
@@ -654,11 +688,7 @@ def get_learning_item(
         ).label("pdf_count"),
 
 
-        # func.timestampdiff(
-        #     text("HOUR"),
-        #     LearningItem.created_at,
-        #     func.now()
-        # ).label("hours_ago")
+        
         
         func.floor(
             extract("epoch", func.now() - LearningItem.created_at) / 3600
@@ -679,6 +709,9 @@ def get_learning_item(
 
         Media,
         LearningItem.id == Media.learning_item_id
+    ).outerjoin(
+        LearningItemKeyPoint,
+        LearningItem.id == LearningItemKeyPoint.learning_item_id
     ).filter(
         LearningItem.user_id == current_user.id,
         # LearningItem.user_id == current_user_id,
@@ -691,26 +724,15 @@ def get_learning_item(
 
     return {
         "message": "Learning item data fetched successfully",
-        "data": learning_item
+        "data": {
+            **learning_item._mapping,
+            "questions": formatted_questions
+        }
     }
     
 
 
 
-# @router.post(
-#     "/generate"
-# )
-# async def generate_revision(
-#     request: GenerateRevisionRequest
-# ):
-#     result = await generate_revision_content(
-#         title=request.title,
-#         description=request.description
-#     )
-
-#     print(type(result))
-    
-#     return result
 
 
 
@@ -726,6 +748,7 @@ async def generate_revision(
             title=request.title,
             description=request.description
         )
+        print(result)
 
         # Fetch learning item
         learning_item = (

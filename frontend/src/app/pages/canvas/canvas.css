@@ -1,0 +1,10 @@
+.canvas-container {
+    width: 800px;
+    height: 500px;
+    margin: auto;
+}
+
+canvas {
+    
+    display: block;
+}

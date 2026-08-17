@@ -59,15 +59,7 @@ export class LearningItemView implements OnInit {
   ];
 
 
-  keyPoints = [
-    'Cell Membrane: Protects the cell and controls the movement of substances in and out.',
-    'Nucleus: Contains genetic material and controls cell activities.',
-    'Mitochondria: Produces energy for the cell through cellular respiration.',
-    'Ribosomes: Responsible for protein synthesis.',
-    'Endoplasmic Reticulum: Transports proteins and lipids within the cell.',
-    'Golgi Apparatus: Modifies, sorts, and packages proteins for transport.',
-    'Lysosomes: Contain enzymes that break down waste and cellular debris.',
-  ];
+  keyPoints: string[] = [];
 
   resources: LearningItemResource[] = [
     {
@@ -137,7 +129,10 @@ export class LearningItemView implements OnInit {
         this.updated_at = response.data.updated_at
         this.imageCount = response.data.image_count
         this.pdfCount = response.data.pdf_count
+        this.theory = response.data.theory?? ""
         this.img_url = response.data.first_image_url
+        this.keyPoints = response.data.key_points
+        this.questions = response.data.questions
         this.labels = response.data.labels? response.data.labels.split(',').map((label: string) => label.trim()): []
         this.img_urls = response.data.image_urls? response.data.image_urls.split(',').map((url: string) => url.trim()): []
         this.cdr.detectChanges()
