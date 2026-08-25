@@ -1,0 +1,512 @@
+# Revisee backend refactor learning guide
+
+This guide is for Atul. It explains not only where the code moved, but why the
+new boundaries exist, how a request travels through them, and how to extend the
+backend without rebuilding another `routes.py` monolith.
+
+## 1. Starting point
+
+Before the refactor, `src/routes.py` held all 12 API operations. A route could
+decode JWTs, query SQLAlchemy, check ownership, upload Cloudinary files, call
+Gemini, commit several times, and manually assemble its response. `src/crud.py`
+mixed token helpers, request authentication, Cloudinary uploads, Gemini calls,
+and revision persistence. All 13 SQLAlchemy models lived in `src/model.py`, and
+all request/provider/response schemas lived in `src/schema.py`.
+
+Large files were a symptom, not the root problem. The important issue was
+coupling: changing Gemini could affect authentication imports, a commit in the
+authentication dependency could commit feature work, and a route could forget
+an ownership filter. Testing a single business rule required importing real
+provider clients and database configuration.
+
+Representative risks were:
+
+- `register` and `login` stored and compared plaintext passwords.
+- `delete_learning_item` selected only by item ID, not owner.
+- `generate_revision` was unauthenticated and duplicated revision persistence.
+- `create_learning_item` committed partial state before external work finished.
+- label IDs were trusted without proving that they belonged to the user.
+- raw Gemini JSON was indexed without validating its structure.
+- provider output was printed and raw exception text could reach clients.
+- synchronous SDK work ran inside `async def`, blocking the event loop.
+- configuration depended on the process working directory and import side effects.
+
+The Angular application also established compatibility constraints. It calls
+root URLs such as `/login`, `/labels`, `/learning-items`, and the singular
+`/learning-item/{id}`. It expects comma-separated labels/media, `isCorrect`, a
+DELETE body containing `id`, and the existing message wrappers. Those shapes are
+preserved even where a new API would normally be designed differently.
+
+## 2. Final architecture
+
+```text
+backend/
+├── alembic/                 # reviewed schema history
+├── docs/                    # this architectural record
+├── scripts/                 # explicit operational commands
+├── tests/                   # unit and PostgreSQL integration tests
+└── src/
+    ├── api/                 # central router and FastAPI dependencies
+    ├── core/                # validated config, security, app errors
+    ├── db/                  # Base, session factory, model registry
+    ├── integrations/        # Gemini and Cloudinary adapters
+    ├── modules/
+    │   ├── auth/
+    │   ├── labels/
+    │   ├── learning_items/
+    │   ├── revisions/
+    │   ├── dashboard/
+    │   └── mastery/
+    └── main.py              # app construction and middleware
+```
+
+Each active feature owns its router, schemas, service, repository, and models
+when those layers solve a real problem. Dashboard has no models because it is a
+read view over other features. Mastery currently has only models because the
+tables exist but the behavior has not been implemented. No placeholder services
+or routers were created.
+
+The dependency direction is:
+
+```text
+HTTP → router → service → repository → SQLAlchemy/database
+                     └──→ provider protocol → Gemini/Cloudinary adapter
+```
+
+This is a modular monolith: one deployable FastAPI process and one database,
+with internal feature boundaries. It fits Revisee because the features share
+users, learning items, questions, labels, and transactions. Microservices would
+add network failures, distributed transactions, multiple deployments, tracing,
+and contract coordination before the product needs independent scaling.
+
+## 3. Decision log
+
+| Decision | Problem | Alternatives | Choice and reason | Trade-off/reconsider when |
+|---|---|---|---|---|
+| Feature-first modules | Global layer folders become new mega-folders | Layer-first or microservices | Keep each feature's HTTP, behavior, and persistence code together | Cross-feature reads require disciplined imports; reconsider only if a domain becomes independently deployable |
+| Thin routers | Routes contained business and SQL logic | Keep smart controllers | Routers parse HTTP and delegate | More files, but tests and ownership rules become explicit |
+| Service-owned transactions | Repository/route commits produced partial state | Repository commits or a DI unit-of-work framework | Services call commit/rollback; repositories only stage/query data | Services must be reviewed for transaction boundaries |
+| Small repository functions | Raw queries obscured ownership and PostgreSQL SQL | Generic `BaseRepository` | Explicit functions such as `find_owned` | Some repetition is intentional; introduce shared abstractions only after repeated real behavior appears |
+| Split models with a registry | One 405-line file hid domain ownership | Keep one model file | Feature model files plus `src.db.models` registration | Alembic must import every module; registry tests guard this |
+| Named PostgreSQL enums | Unnamed existing enums could not create a blank PostgreSQL schema | VARCHAR/check constraints | Stable `media_type_enum` and `answer_option_enum` names | Existing databases must be compared before stamping |
+| Root API paths | Angular depends on legacy URLs and bodies | `/api/v1` now or aliases | Preserve exact roots during this refactor | REST cleanup/versioning remains future work |
+| Argon2id with temporary plaintext upgrade | Existing registrations wrote plaintext; Passlib/bcrypt versions were incompatible | bcrypt direct or forced reset | `pwdlib[argon2]`, upgrade plaintext after a valid login | Compatibility branch is temporary and must be removed after migration verification |
+| Concealed ownership failures | `403` can reveal that another user's ID exists | Differentiate 403/404 | Return 404 for foreign and missing owned resources | Operators use logs/tests, not public distinction, for diagnosis |
+| Sync SQLAlchemy/provider boundary | Current SDKs and ORM are synchronous | Convert the project to async | Use synchronous route functions so FastAPI uses its thread pool | Introduce async only when the whole call chain supports it and measurement justifies it |
+| No queue/status columns | Structural cleanup should not add infrastructure/schema state | Celery/Redis now | Isolate generation behind a protocol/service | Requests still wait for Gemini; queue when latency/volume requires it |
+| Provider calls outside DB write transactions | Slow external calls held or fragmented database work | One long transaction | Validate/generate/upload first, persist once | External work cannot be rolled back; Cloudinary needs compensation |
+| Dedicated PostgreSQL tests | SQLite cannot execute `string_agg`, `array_agg`, or PostgreSQL epoch expressions | SQLite or normal development DB | Require `TEST_DATABASE_URL`, never fall back | Developer must provision a disposable PostgreSQL database |
+| Alembic baseline without automatic stamping | Existing DB has no trusted migration history | Assume metadata matches | Baseline blank databases; inspect before stamping existing databases | Adoption is a manual operational step |
+
+## 4. Old-to-new mapping
+
+| Original | Original element | New location/responsibility | Behavior change |
+|---|---|---|---|
+| `routes.py` | register/login/logout | `modules/auth/router.py` → `AuthService` | Secure hash, atomic user/session, uniform 401 |
+| `crud.py` | token helpers | `core/security.py` | Central JWT policy |
+| `crud.py` | `get_current_user` | `api/dependencies.py` and auth service/repository | Session is bound to JWT user |
+| `routes.py` | label operations | labels router/service/repository | Explicit owner queries |
+| `routes.py` | learning-item creation | learning-item service/repositories | One DB commit and upload compensation |
+| `routes.py` | item detail/delete | learning-item service/repository | Foreign/missing IDs return 404; delete cleans storage best-effort |
+| `routes.py` | dashboard queries | dashboard repository/service | Same public shape; SQL is isolated |
+| `crud.py`/`routes.py` | duplicate generation | revision service/repository | One validation/persistence path |
+| `crud.py` | Cloudinary upload | storage protocol and adapter | Explicit configuration, mockable cleanup |
+| `google_config.py`/`crud.py` | Gemini client/call | AI protocol and Gemini adapter | Lazy client, provider errors sanitized |
+| `prompts/revision_prompt.py` | prompt | `modules/revisions/prompt.py` | Malformed `difficulty_level` example fixed |
+| `schema.py` | API/provider DTOs | feature `schemas.py` files | AI constraints and safe list defaults |
+| `model.py` | ORM tables | feature `models.py` files | Same table/column names; PostgreSQL enums receive names |
+| `settings.py` | environment reads | `core/config.py` | Typed, validated, cwd-independent settings |
+| `db.py` | Base/session | `db/base.py`, `db/session.py` | Test URL is selected only in test mode |
+
+## 5. Function and module reference
+
+| Element | Caller/dependencies | Result/errors/I/O | Why it belongs there |
+|---|---|---|---|
+| `get_settings` | app, DB, provider factories | Cached validated settings; configuration error; file/env I/O | Core application policy |
+| `hash_password`/`verify_password` | auth service and migration | Argon2 hash or verification result; CPU work | Security policy independent of HTTP/DB |
+| `create_access_token`/`decode_access_token` | auth service | JWT or `AuthenticationError`; no external I/O | Central cryptographic boundary |
+| `get_auth_context` | protected routers | Authenticated user/session; DB I/O via auth service | FastAPI-specific dependency composition |
+| `AuthService.register` | auth router | token response; conflict/DB error; controls transaction | User/session workflow |
+| `AuthService.login` | auth router | token response; 401; upgrades legacy password and controls transaction | Authentication business rule |
+| `AuthService.authenticate` | auth dependency | `AuthContext`; 401; session/user DB I/O | Authentication plus session validity |
+| `LabelService` methods | labels router | labels/mutation wrappers; 404; DB transaction for writes | Label ownership and workflows |
+| `LearningItemService.create` | learning router | legacy message; provider/domain/DB errors; provider and DB I/O | Cross-repository/provider workflow and compensation |
+| `LearningItemService.get_detail` | learning router | compatibility response; 404; DB reads | Response composition is application behavior, not HTTP parsing |
+| `LearningItemService.delete` | learning router | `None`; 404/DB error; DB transaction and storage cleanup | Ownership and mixed-side-effect decision |
+| `RevisionService.generate_content` | learning and revision services | validated DTO; 502; Gemini I/O | Canonical provider validation seam |
+| `RevisionService.generate_for_owned_item` | `/generate` router | legacy message; 404/502/DB error; DB/provider I/O | Authorization and generation workflow |
+| Feature repositories | their services | ORM rows/counts; DB I/O; no commits | Query/persistence composition |
+| `GeminiAIProvider.generate` | revision service | raw text; provider unavailable; network I/O | Provider-specific SDK behavior |
+| `CloudinaryStorageProvider` | learning service | asset/delete; provider error; network I/O | Provider-specific storage behavior |
+| `migrate_plaintext_passwords` | operator only | count-only report; explicit DB I/O and commits | Operational action must not run at startup |
+
+Repositories never control transactions. Routers never perform database or
+provider work. Services own commits because only the service knows whether the
+whole business operation succeeded.
+
+## 6. Request-flow walkthroughs
+
+### Registration
+
+```text
+POST /register query parameters
+→ auth router
+→ AuthService.register
+→ auth repository checks username/email
+→ core security hashes password
+→ user and session are flushed/committed together
+→ JWT returned with legacy response fields
+```
+
+If either insert fails, both are rolled back. The query-parameter contract is
+kept only for compatibility and should be replaced with JSON in a versioned API.
+
+### Login
+
+```text
+POST /login JSON
+→ auth router
+→ AuthService.login
+→ repository loads user
+→ Argon2 verification OR temporary constant-time plaintext check
+→ plaintext value is immediately upgraded when valid
+→ new session committed
+→ JWT response
+```
+
+Wrong password and unknown user both produce the same 401 response.
+
+### Authenticated request
+
+```text
+Authorization: Bearer token
+→ HTTPBearer dependency
+→ JWT decode
+→ session lookup constrained by session_id + user_id + active
+→ expiry and user lookup
+→ last_used_at commit
+→ AuthContext/current user
+→ feature router
+```
+
+A JWT proves possession of a signed token; it does not by itself prove ownership
+of a requested learning item. Feature repositories still filter by user ID.
+
+### Creating a learning item, labels, media, and revision
+
+```text
+multipart request
+→ router parses JSON label IDs
+→ auth dependency
+→ LearningItemService
+→ label repository verifies every owner ID
+→ read transaction ends
+→ RevisionService → Gemini adapter → Pydantic validation
+→ Cloudinary adapter uploads media, tracking public IDs
+→ one DB transaction inserts item/labels/media/revision content
+→ success message
+```
+
+Gemini and uploads occur outside the DB write transaction. If an upload or DB
+write fails, uploaded assets from this request are deleted in reverse order.
+Compensation is best effort because PostgreSQL cannot roll back Cloudinary.
+
+### Retrieving learning-item and dashboard data
+
+```text
+GET request
+→ auth dependency
+→ thin feature router
+→ service
+→ ownership-aware or user-scoped repository queries
+→ service maps compatibility response
+→ Pydantic response validation
+```
+
+The dashboard repository deliberately contains PostgreSQL-specific aggregation.
+The learning-item detail response keeps comma-separated labels/media because the
+current Angular code splits those strings.
+
+### Generating revisions
+
+```text
+POST /generate
+→ auth dependency
+→ RevisionService verifies owned item before provider cost
+→ Gemini adapter
+→ JSON + Pydantic validation
+→ generated records staged by revision repository
+→ service commit
+→ legacy message response
+```
+
+Invalid JSON or invalid fields cause a sanitized 502 and no persistence. Repeated
+generation currently appends key points/questions because replacement semantics
+were intentionally deferred.
+
+### Deleting a learning item
+
+```text
+DELETE /learning-items with {id}
+→ auth dependency
+→ service loads owned item and media IDs
+→ related key points/item are deleted and DB commit succeeds
+→ Cloudinary assets are deleted best-effort
+→ legacy 200/null response
+```
+
+The database is authoritative. If cleanup fails after commit, the deletion is
+not falsely reported as failed; a warning records only the failure count.
+
+## 7. Concepts used
+
+Each row answers: what it means, where Revisee uses it, why it helps, when it is
+too much, and the mistake to avoid.
+
+| Concept | Meaning and Revisee use | Why useful | Overengineering point | Mistake to avoid |
+|---|---|---|---|---|
+| Separation of concerns | HTTP, workflows, SQL, and providers have separate modules | A provider or query can change independently | Splitting every one-line function | Moving code without changing dependency direction |
+| Single Responsibility | A router translates HTTP; a repository composes SQL | Smaller reasons to change | Treating “one class” as automatically SRP | A service becoming a new `crud.py` |
+| Dependency direction | Outer HTTP code depends inward on application behavior | Prevents FastAPI from infecting domain/persistence code | Complex clean-architecture rings for a small app | Repositories importing routers |
+| Dependency inversion | Services use `AIProvider`/`StorageProvider` protocols | Tests replace paid services and Gemini can be swapped | Interface for a value with no alternate behavior | Importing concrete Gemini in the service |
+| Repository pattern | Named functions contain SQLAlchemy queries | Ownership filters and PostgreSQL SQL become reviewable | Generic base repository/ORM wrapper | Hiding commits inside repositories |
+| Service layer | Coordinates a complete use case | Correct transaction and compensation decisions | Service for a read that is already trivial and stable | Putting request parsing or HTTP exceptions in services |
+| Dependency injection | FastAPI supplies DB/auth/provider dependencies | Request scoping and test overrides | Adding a second DI framework | Constructing real providers inside route bodies |
+| Modular monolith | One deployable app with feature boundaries | Low operational cost with scalable code ownership | Premature network services | Assuming folders enforce boundaries without import rules |
+| Feature-first architecture | Auth/labels/items/revisions own their layers | New features do not congest global folders | A feature package for a single unrelated helper | Global `services/` and `repositories/` mega-folders |
+| API versioning | New incompatible contracts get a versioned surface | Allows later cleanup without silent Angular breakage | Versioning unchanged internal refactors | Adding `/api/v1` and breaking existing clients |
+| DTO/schema | Pydantic types validate API/provider data | ORM stays private; Gemini output is checked | A DTO for every internal scalar | Returning SQLAlchemy models as the long-term public contract |
+| Authentication | Establishes who sent the request | JWT/session dependency provides current user | Custom auth framework before requirements demand it | Treating a valid JWT as resource authorization |
+| Authorization/ownership | Checks what that user may access | `find_owned(id, user_id)` isolates learning items | Role engine for simple owner-only access | Querying only by resource ID |
+| Unit of work/transaction | One business operation commits atomically | Registration and item persistence commit as units | A framework around one SQLAlchemy session | Multiple unexplained commits across layers |
+| Rollback | Discards uncommitted DB work | Service catches persistence failure and rolls back | Catching every exception at every layer | Returning success before commit finishes |
+| Compensation | Reverses external side effects best-effort | Failed creation deletes uploaded Cloudinary assets | Distributed saga infrastructure at current scale | Assuming DB rollback deletes cloud files |
+| Idempotency | Repeating an operation has a controlled result | Password migration skips approved hashes | Idempotency keys for every local read | A migration that hashes a hash again |
+| Configuration management | Typed settings validate environment input | Test DB and secrets are selected explicitly | Remote config service for local app | Repeated `load_dotenv` and cwd-dependent behavior |
+| Migrations | Versioned database DDL | Alembic baseline creates clean test/new DBs | Auto-running migrations at import | Stamping an unverified existing schema |
+| Background jobs | Work continues outside request lifecycle | Future Gemini generation queue | Celery/Redis before measured need | Holding HTTP/DB transactions open for long AI calls |
+| Sync versus async | Async helps only when the full I/O chain is async | Sync providers/routes run in FastAPI thread pool | Converting SQLAlchemy only for style | Calling blocking SDKs directly in `async def` |
+| Test doubles/overrides | Fakes replace external boundaries | Tests make no paid Gemini/Cloudinary calls | Mocking every internal function | Mocking SQLAlchemy in integration tests instead of using PostgreSQL |
+
+## 8. Adding future features
+
+### Spaced repetition
+
+Create a `spaced_repetition` module when scheduling behavior exists. Its router
+accepts review actions; service calculates next-review state; repository reads
+questions/mastery and persists schedules; schemas define review DTOs. Add an
+Alembic migration for scheduling fields/tables and test interval rules, ownership,
+and transaction rollback. It needs no integration unless notifications are sent.
+
+### Mastery tracking
+
+Expand the existing `mastery` module. Add schemas/service/repository only when
+attempt recording is implemented. The service updates label and item mastery in
+the same transaction as an attempt. Test repeated attempts, score bounds,
+cross-user isolation, and concurrent-update behavior. Existing mastery tables may
+need constraints or numeric precision migrations after real scoring rules exist.
+
+### Weak-area analysis
+
+Prefer a read-oriented analytics service over adding logic to dashboard routes.
+It can query mastery/attempt tables through a repository and expose response-only
+schemas. Create a separate module if weak-area endpoints/rules grow independently;
+otherwise begin inside mastery. Test ranking, ties, empty users, and user scoping.
+
+### Notifications
+
+Create a `notifications` module for preferences, notification records, and
+delivery orchestration. Provider-specific email/push code belongs under
+`integrations`. Database migrations store preferences and delivery state. Unit
+tests fake the provider; integration tests verify preferences and ownership.
+Queue/retry infrastructure is justified once delivery is asynchronous.
+
+### Sharing
+
+Create a `sharing` module because access rules differ from ownership. Its service
+must define owner, recipient, public-link, expiry, and revocation rules. Repository
+queries must never bypass those rules. Add share tables via Alembic and tests for
+revoked/expired links, foreign users, guessing tokens, and item deletion.
+
+### Analytics
+
+Keep product analytics separate from learning dashboard summaries. Define the
+events and privacy policy first. A service records allowed events; repositories
+aggregate only necessary data; third-party analytics SDKs live in integrations.
+Test consent, data minimization, failure isolation, and never include secrets or
+study content in event payloads.
+
+## 9. Security lessons
+
+Plaintext passwords let anyone with a database copy immediately impersonate every
+user. Password hashing is deliberately slow and salted. Revisee uses Argon2id, so
+two users with the same password receive different hashes and verification does
+not reveal the original password.
+
+The temporary legacy branch compares plaintext with a constant-time function and
+immediately upgrades a successful login. It is not a permanent supported format.
+Run the reviewed migration, confirm zero plaintext candidates, then remove and test
+the branch.
+
+Authentication answers “who are you?” Ownership answers “may you access this
+specific item?” Every item repository lookup includes both item and user ID.
+Checking only `LearningItem.id` allowed one authenticated user to delete another
+user's data.
+
+JWTs carry signed claims; they do not encrypt those claims, revoke themselves, or
+replace database authorization. Revisee binds `sub` to the stored session user,
+checks activity/expiry, and still performs owner-scoped resource queries.
+
+Secrets live only in ignored `.env` or deployment environment variables. The
+tracked example contains placeholders. Never log tokens, passwords, database
+URLs, API keys, full Gemini study output, or Cloudinary secrets.
+
+## 10. Testing lessons
+
+Characterization tests protect existing URLs and wire shapes during movement.
+They are not permission to preserve vulnerabilities. Security tests instead state
+the corrected behavior: hashes, 401s, 404 ownership concealment, validated AI, and
+rollback.
+
+Unit tests exercise security and revision validation without a database or
+network. Integration tests use real SQLAlchemy and PostgreSQL because the queries
+depend on PostgreSQL semantics. They override only Gemini, Cloudinary, and the
+request-scoped DB session.
+
+`TEST_DATABASE_URL` is mandatory. Tests refuse a URL without `test` in the
+database name and never substitute `DATABASE_URL`. Per-test outer transactions
+and savepoints make application commits reversible. Alembic prepares the dedicated
+schema. Tests must never point at development or production data.
+
+Mock provider boundaries because they cost money, depend on networks, and return
+nondeterministic results. Do not mock Pydantic validation, password hashing, JWT
+logic, repository SQL, or PostgreSQL in the integration suite.
+
+## 11. Mistakes and lessons
+
+- Importing the old app from the repository root failed because `load_dotenv()`
+  depended on the working directory. Explicit backend-relative settings fixed it.
+- The machine had a generic `DEBUG=release` environment variable. A settings field
+  named `DEBUG` collided with it and prevented startup. Revisee now accepts the
+  scoped `REVISEE_DEBUG`/`APP_DEBUG` names.
+- The installed Passlib and bcrypt versions failed a real hashing smoke test.
+  Argon2id through `pwdlib` replaced that incompatible combination.
+- The original unnamed SQLAlchemy enums could not compile PostgreSQL `CREATE TYPE`
+  statements. Stable enum names were added and the discovery is documented for
+  existing-schema comparison.
+- `/generate` was assumed to be frontend-compatible during early analysis. Source
+  inspection showed the Angular request lacks `learning_item_id` and expects a
+  different response. No unsafe title-based lookup was added.
+- A test PostgreSQL URL was not available during implementation. Unit/static and
+  offline-Alembic checks ran; online integration/Alembic verification remains an
+  explicit environment-dependent step.
+
+Future failures belong in this section with the observed symptom, root cause,
+diagnostic method, correction, and lesson. Hiding a failed approach removes useful
+engineering knowledge.
+
+## 12. Interview-ready explanations
+
+**Why restructure the backend?**  The problem was mixed responsibilities, not
+line count. Routes controlled HTTP, authorization, SQL, transactions, and external
+providers, making ownership mistakes and isolated tests likely.
+
+**Why a modular monolith?**  Revisee's features share users, items, labels, and
+transactions. A modular monolith provides clear code ownership without distributed
+systems overhead. Provider and feature boundaries can later become service seams
+if measured scaling needs justify it.
+
+**Why a service layer?**  A use case such as item creation spans ownership checks,
+AI validation, uploads, compensation, and one DB commit. That workflow belongs in
+one application-level place rather than a route or repository.
+
+**Why not SQLAlchemy in routes?**  Owner filters and database-specific aggregation
+are persistence concerns. Repositories make them reusable, testable, and easy to
+review for missing user constraints.
+
+**How is ownership enforced?**  Authentication supplies the current user, then
+repository functions such as `find_owned` query by resource ID and user ID. Missing
+and foreign resources both return 404.
+
+**How are transactions handled?**  Repositories stage work; services commit or
+roll back the entire database portion of a use case. Slow provider calls occur
+outside the DB write transaction.
+
+**What if PostgreSQL succeeds but Cloudinary fails during deletion?**  The database
+is authoritative and deletion remains successful. Cleanup is best effort and an
+orphan warning is recorded. A retry/outbox is the later robust solution.
+
+**What if Cloudinary succeeds but item persistence fails?**  The service tracks
+uploads and compensates by deleting them. Compensation can also fail, so it logs a
+sanitized count while preserving the original error.
+
+**How is Gemini isolated?**  The service depends on an `AIProvider` protocol. Only
+the adapter imports Google's SDK. Tests supply deterministic fakes, and another
+provider can implement the same interface.
+
+**How would AI generation scale?**  Add persisted generation states and enqueue the
+service operation. A worker performs Gemini work and transitions to READY/FAILED;
+the HTTP request returns 202 and the UI polls or receives events.
+
+**How do tests make the architecture safer?**  Contract tests protect Angular
+compatibility, security tests protect isolation, unit tests cover validation and
+compensation, and PostgreSQL tests protect real query behavior.
+
+## 13. Revision checklist
+
+### Key concepts
+
+- Router parses HTTP; service owns rules/transactions; repository owns SQL.
+- Authentication never replaces resource ownership.
+- Database rollback cannot undo external provider work.
+- Async syntax does not make synchronous I/O non-blocking.
+- Migrations are reviewed history, not automatic schema guessing.
+
+### Important files to revisit
+
+- `src/api/router.py` for the public endpoint assembly.
+- `src/api/dependencies.py` for request-scoped auth/provider dependencies.
+- `src/core/security.py` for password/JWT policy.
+- Learning-item and revision services for the main workflows.
+- `alembic/env.py` and the baseline before any schema change.
+- This decision log before adding new architecture.
+
+### Common mistakes to avoid
+
+- Adding a query or commit to a router.
+- Adding a generic `utils.py` instead of naming a responsibility.
+- Querying an owned resource by ID alone.
+- Returning ORM models as an uncontrolled public contract.
+- Calling real Gemini/Cloudinary in tests.
+- Pointing tests or migrations at an unconfirmed database.
+- Logging provider payloads or secrets.
+
+### Self-testing questions
+
+1. Why does `find_owned` take both item ID and user ID?
+2. Which layer decides when item creation commits?
+3. Why is Cloudinary cleanup compensation rather than rollback?
+4. Why does a valid JWT not authorize access to every item?
+5. What evidence would justify adding a queue or microservice?
+
+### Small exercises
+
+- Add a label-delete use case with ownership and tests without touching another
+  module's router.
+- Add a fake AI response with an invalid correct-answer index and trace the error.
+- Draw the transaction/external-side-effect timeline for item creation.
+- Write a true consecutive-streak algorithm as a unit-tested service function.
+- Draft—but do not apply—an Alembic migration for a revision status column.
+
+### Future-feature review checklist
+
+- Is this behavior part of an existing feature or a genuinely new module?
+- Are HTTP, business, SQL, and provider responsibilities separated?
+- Does every owned query include user scope?
+- Is the public request/response schema explicit and compatible?
+- Who owns commit and rollback?
+- Are slow external calls outside DB write transactions?
+- Is compensation/retry behavior defined?
+- Does a schema change have a reviewed Alembic migration?
+- Do tests use `TEST_DATABASE_URL` and provider fakes?
+- Are secrets and user content excluded from logs?

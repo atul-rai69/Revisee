@@ -1,15 +1,39 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from src.routes import router
 
-app = FastAPI()
+from src.api.router import api_router
+from src.core.config import get_settings
+from src.core.exceptions import ApplicationError, AuthenticationError
+
+# Register every SQLAlchemy table in shared metadata for migrations and tests.
+import src.db.models  # noqa: F401
+
+settings = get_settings()
+app = FastAPI(debug=settings.DEBUG)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200" , "http://localhost:40211"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(router)
+@app.exception_handler(ApplicationError)
+async def application_error_handler(
+    _request: Request,
+    exc: ApplicationError,
+) -> JSONResponse:
+    headers = {"WWW-Authenticate": "Bearer"} if isinstance(
+        exc,
+        AuthenticationError,
+    ) else None
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
+
+
+app.include_router(api_router)
