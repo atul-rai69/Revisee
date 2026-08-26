@@ -510,3 +510,159 @@ compensation, and PostgreSQL tests protect real query behavior.
 - Does a schema change have a reviewed Alembic migration?
 - Do tests use `TEST_DATABASE_URL` and provider fakes?
 - Are secrets and user content excluded from logs?
+
+## 14. Revision-session Phase 1: stored-question quizzes
+
+Phase 1 adds the foundation for taking a quiz without implementing submission,
+mastery, weak-area analysis, or AI shortage generation. A user can create a
+RANDOM or LABEL session from questions that already exist, then retrieve that
+session later with exactly the same questions in exactly the same order.
+
+### Why selected questions are persisted
+
+Selecting questions only when the HTTP response is built would make a quiz
+unstable. Refreshing the page could return a different sample, and there would be
+no authoritative list against which a future submission could be validated.
+`revision_session_questions` therefore records every selection and its unique
+`question_order` before the API returns `201`.
+
+The public `session_question_id` identifies this occurrence of a question inside
+a session. The live question-bank ID is deliberately not part of the pre-submit
+DTO. A later submission feature can validate answers against session membership
+rather than trusting arbitrary question IDs supplied by the browser.
+
+### Live bank records versus immutable history
+
+`questions` and `learning_item` are editable product data. A revision session is
+historical evidence: it must continue to mean what the user actually saw. Each
+session-question row therefore snapshots:
+
+- learning-item title;
+- question text and all four options;
+- internal correct option and explanation;
+- difficulty and expected time; and
+- source classification.
+
+Application repositories create these fields once and provide no operation that
+updates them from later bank edits. Source question, item, and label references
+are nullable and use `ON DELETE SET NULL`. Removing live content can remove the
+link but does not cascade-delete the snapshot. Account deletion may still remove
+the user's sessions through the user/session ownership cascade; that is a
+separate data-retention policy.
+
+The correct option and explanation must exist internally so a future server-side
+submission can grade the exact historical question. They are intentionally absent
+from `RevisionSessionQuestionResponse`. Separate pre-submit and future result DTOs
+prevent accidental answer leakage.
+
+### RANDOM selection
+
+The repository retrieves only structurally usable questions joined through
+learning items owned by the authenticated user. `select_random_question_ids`
+deduplicates IDs and samples without replacement. It accepts a randomizer so
+production receives normal randomness while tests can supply a seeded
+`random.Random` and reproduce the result. A shortage returns `409` before any
+session row is added.
+
+### LABEL quotas and maximum matching
+
+A LABEL request supplies `questions_per_label`; its total is derived as:
+
+```text
+number of selected labels x questions_per_label
+```
+
+Every label must fill its exact quota with unique questions. A question from an
+item carrying two selected labels is eligible for both quotas, but may occupy only
+one session position. A naive greedy algorithm can consume a shared question for
+a rich label and leave a scarce label short even when a complete assignment
+exists.
+
+`selection.py` models quota slots and candidate questions as a bipartite graph and
+uses augmenting-path maximum matching. Scarcer labels are considered first, while
+augmenting paths can reassign earlier matches when that enables another slot.
+Final display order is round-robin in the original label request order. Shortage
+counts represent the maximum assignable unique set rather than misleading raw
+candidate-pool sizes.
+
+### Create request flow
+
+```text
+POST /revision-sessions
+-> authentication dependency
+-> discriminated RANDOM/LABEL request schema
+-> RevisionSessionService.create
+-> ownership-aware repository candidate queries
+-> pure RANDOM or LABEL selector
+-> service creates session + label snapshots + question snapshots
+-> repository flushes IDs (never commits)
+-> service commits once
+-> safe RevisionSessionResponse
+```
+
+The request models use `extra="forbid"`. RANDOM accepts `question_count` and
+rejects label fields. LABEL accepts `label_ids` and `questions_per_label` and
+rejects `question_count`. `allow_ai_generation` is stored for forward
+compatibility but never calls Gemini in Phase 1.
+
+If selection, snapshot construction, flushing, or committing fails, the service
+rolls back the complete operation. On shortage, matching finishes before any
+session persistence and the structured `409` reports total and per-label gaps.
+
+### Resume request flow
+
+```text
+GET /revision-sessions/{session_id}
+-> authentication dependency
+-> repository query constrained by session ID + user ID
+-> label snapshots ordered by original request order
+-> question snapshots ordered by persisted question_order
+-> same safe RevisionSessionResponse
+```
+
+Resume never queries live question content and never resamples. Missing and
+foreign-owned sessions share the concealed `404` policy.
+
+### Phase 1 module and function mapping
+
+| Module or function | Responsibility |
+|---|---|
+| `revisions.schemas.RandomRevisionSessionRequest` | RANDOM-only fields and bounds |
+| `revisions.schemas.LabelRevisionSessionRequest` | Unique labels, per-label quota, derived total |
+| `revisions.schemas.RevisionSessionResponse` | Stable answer-safe create/resume contract |
+| `revisions.selection.select_random_question_ids` | Seedable selection without replacement |
+| `revisions.selection.select_label_questions` | Quota-aware unique maximum matching and round-robin order |
+| `revisions.repository` session functions | Owned candidate SQL, snapshot staging, ordered reads; no commits |
+| `RevisionSessionService.create` | Selection orchestration and one transaction boundary |
+| `RevisionSessionService.resume` | Owned historical-session retrieval |
+| `RevisionSession`, `RevisionSessionLabel`, `RevisionSessionQuestion` | Session metadata, selected-label snapshots, immutable ordered question snapshots |
+
+### Unit and integration testing
+
+Pure selection, schema, and service-rollback tests do not need configuration or a
+database. `tests/conftest.py` only reads `TEST_DATABASE_URL` when integration
+execution is explicitly requested. Normal pytest discovery marks PostgreSQL tests
+as skipped with a clear reason. `--run-integration` makes a missing, non-PostgreSQL,
+normal-database-equivalent, or non-test-named URL a hard error.
+
+PostgreSQL integration tests cover real ownership joins, constraints, atomic
+persistence, resume ordering, and `ON DELETE SET NULL`. SQLite is not a substitute
+for these semantics. At this checkpoint the unit suite and offline checks pass,
+but PostgreSQL verification remains pending because a dedicated
+`TEST_DATABASE_URL` has not been supplied.
+
+### What this foundation enables without implementing it
+
+- Phase 2 can calculate a precise total or per-label shortage before asking an AI
+  provider for only the missing questions.
+- Phase 3 can validate submitted `session_question_id` values against the immutable
+  session and grade from the hidden snapshot answer.
+- Attempts and mastery can reference what the user actually saw rather than a
+  mutable or deleted bank record.
+
+Those behaviors are deliberately absent from Phase 1. The deprecated
+`revision_sessions.quiz_type` column also remains until a separately approved
+cleanup migration is safe against real PostgreSQL data. The Phase 1 downgrade
+refuses to discard LABEL history, deleted source references, or snapshots that
+have diverged from live content because the older schema cannot represent that
+history faithfully.

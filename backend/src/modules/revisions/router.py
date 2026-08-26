@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.api.dependencies import get_ai_provider, get_current_user
@@ -7,9 +7,16 @@ from src.integrations.ai.base import AIProvider
 from src.modules.auth.models import User
 from src.modules.revisions.schemas import (
     GenerateRevisionRequest,
+    RevisionSessionRequest,
+    RevisionSessionResponse,
+    RevisionSessionShortageResponse,
     RevisionGenerationResponse,
 )
-from src.modules.revisions.service import RevisionService
+from src.modules.revisions.service import (
+    InsufficientQuestionBankError,
+    RevisionService,
+    RevisionSessionService,
+)
 
 
 router = APIRouter(tags=["revisions"])
@@ -28,3 +35,37 @@ def generate_revision(
         request.title,
         request.description,
     )
+
+
+@router.post(
+    "/revision-sessions",
+    response_model=RevisionSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_409_CONFLICT: {"model": RevisionSessionShortageResponse},
+    },
+)
+def create_revision_session(
+    request: RevisionSessionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RevisionSessionResponse:
+    try:
+        return RevisionSessionService(db).create(current_user.id, request)
+    except InsufficientQuestionBankError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=exc.detail,
+        ) from exc
+
+
+@router.get(
+    "/revision-sessions/{session_id}",
+    response_model=RevisionSessionResponse,
+)
+def resume_revision_session(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RevisionSessionResponse:
+    return RevisionSessionService(db).resume(current_user.id, session_id)

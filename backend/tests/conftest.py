@@ -2,31 +2,100 @@ import json
 import os
 from collections.abc import Generator
 from pathlib import Path
-from urllib.parse import urlsplit
-
 import pytest
 from dotenv import dotenv_values
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 
 
-TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
-if not TEST_DATABASE_URL:
-    raise pytest.UsageError("TEST_DATABASE_URL is required; no database fallback is allowed")
+INTEGRATION_SKIP_REASON = (
+    "integration tests require --run-integration and a safe TEST_DATABASE_URL"
+)
 
-database_name = urlsplit(TEST_DATABASE_URL).path.rsplit("/", 1)[-1]
-if "test" not in database_name.lower():
-    raise pytest.UsageError("TEST_DATABASE_URL database name must contain 'test'")
 
-backend_env = dotenv_values(Path(__file__).resolve().parents[1] / ".env")
-normal_database_url = os.environ.get("DATABASE_URL") or backend_env.get("DATABASE_URL")
-if normal_database_url and TEST_DATABASE_URL == normal_database_url:
-    raise pytest.UsageError("TEST_DATABASE_URL must not equal DATABASE_URL")
+def pytest_addoption(parser) -> None:
+    parser.addoption(
+        "--run-integration",
+        action="store_true",
+        default=False,
+        help="run tests that require the dedicated PostgreSQL test database",
+    )
 
-os.environ["ENVIRONMENT"] = "test"
-os.environ["SECRET_KEY"] = "test-only-secret-key-that-is-never-used-outside-tests"
-os.environ["GOOGLE_API_KEY"] = "test-google-key"
-os.environ["CLOUDINARY_CLOUD_NAME"] = "test-cloud"
-os.environ["CLOUDINARY_API_KEY"] = "test-cloudinary-key"
-os.environ["CLOUDINARY_API_SECRET"] = "test-cloudinary-secret"
+
+def pytest_configure(config) -> None:
+    config.addinivalue_line("markers", "unit: database-independent unit test")
+    config.addinivalue_line(
+        "markers",
+        "integration: requires the dedicated PostgreSQL test database",
+    )
+    if config.getoption("--run-integration"):
+        _configure_integration_environment()
+
+
+def pytest_collection_modifyitems(config, items) -> None:
+    run_integration = config.getoption("--run-integration")
+    skip_integration = pytest.mark.skip(reason=INTEGRATION_SKIP_REASON)
+    for item in items:
+        if "integration" in Path(str(item.path)).parts:
+            item.add_marker(pytest.mark.integration)
+            if not run_integration:
+                item.add_marker(skip_integration)
+        else:
+            item.add_marker(pytest.mark.unit)
+
+
+def _validated_test_database_url() -> str:
+    test_database_url = os.environ.get("TEST_DATABASE_URL")
+    if not test_database_url:
+        raise pytest.UsageError(
+            "--run-integration requires TEST_DATABASE_URL; no fallback is allowed"
+        )
+
+    try:
+        parsed_test_url = make_url(test_database_url)
+    except ArgumentError as exc:
+        raise pytest.UsageError("TEST_DATABASE_URL is not a valid database URL") from exc
+    if not parsed_test_url.drivername.startswith("postgresql"):
+        raise pytest.UsageError("TEST_DATABASE_URL must use PostgreSQL")
+    database_name = parsed_test_url.database or ""
+    if not database_name or "test" not in database_name.lower():
+        raise pytest.UsageError(
+            "TEST_DATABASE_URL database name must clearly contain 'test'"
+        )
+
+    backend_env = dotenv_values(Path(__file__).resolve().parents[1] / ".env")
+    normal_database_url = os.environ.get("DATABASE_URL") or backend_env.get(
+        "DATABASE_URL"
+    )
+    if normal_database_url:
+        try:
+            parsed_normal_url = make_url(str(normal_database_url))
+            same_as_normal = (
+                parsed_test_url.drivername.split("+", 1)[0],
+                parsed_test_url.host,
+                parsed_test_url.port or 5432,
+                parsed_test_url.database,
+            ) == (
+                parsed_normal_url.drivername.split("+", 1)[0],
+                parsed_normal_url.host,
+                parsed_normal_url.port or 5432,
+                parsed_normal_url.database,
+            )
+        except ArgumentError:
+            same_as_normal = test_database_url == normal_database_url
+        if same_as_normal:
+            raise pytest.UsageError("TEST_DATABASE_URL must not equal DATABASE_URL")
+    return test_database_url
+
+
+def _configure_integration_environment() -> None:
+    _validated_test_database_url()
+    os.environ["ENVIRONMENT"] = "test"
+    os.environ["SECRET_KEY"] = "test-only-secret-key-that-is-never-used-outside-tests"
+    os.environ["GOOGLE_API_KEY"] = "test-google-key"
+    os.environ["CLOUDINARY_CLOUD_NAME"] = "test-cloud"
+    os.environ["CLOUDINARY_API_KEY"] = "test-cloudinary-key"
+    os.environ["CLOUDINARY_API_SECRET"] = "test-cloudinary-secret"
 
 
 class FakeAIProvider:
@@ -80,7 +149,12 @@ class FakeStorageProvider:
 
 
 @pytest.fixture(scope="session")
-def migrated_database() -> Generator[None, None, None]:
+def test_database_url() -> str:
+    return _validated_test_database_url()
+
+
+@pytest.fixture(scope="session")
+def migrated_database(test_database_url: str) -> Generator[None, None, None]:
     from alembic import command
     from alembic.config import Config
 

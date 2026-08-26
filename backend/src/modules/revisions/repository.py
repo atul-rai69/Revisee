@@ -1,8 +1,32 @@
+from collections.abc import Sequence
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from src.modules.labels.models import Label
 from src.modules.learning_items.models import LearningItem, LearningItemKeyPoint
-from src.modules.revisions.models import Question
+from src.modules.learning_items.models import LearningItemLabel
+from src.modules.revisions.models import (
+    Question,
+    RevisionSession,
+    RevisionSessionLabel,
+    RevisionSessionQuestion,
+)
 from src.modules.revisions.schemas import GeneratedRevisionResponse
+from src.modules.revisions.selection import QuestionCandidate
+
+
+def _eligible_question_filters():
+    return (
+        func.length(func.trim(Question.question_text)) > 0,
+        func.length(func.trim(Question.option_a)) > 0,
+        func.length(func.trim(Question.option_b)) > 0,
+        func.length(func.trim(Question.option_c)) > 0,
+        func.length(func.trim(Question.option_d)) > 0,
+        Question.correct_option.in_(("0", "1", "2", "3", "A", "B", "C", "D")),
+        Question.difficulty.between(1, 3),
+        Question.expected_time_seconds > 0,
+    )
 
 
 def add_generated_content(
@@ -36,3 +60,143 @@ def add_generated_content(
                 source="future-ai",
             )
         )
+
+
+def list_owned_eligible_candidates(
+    db: Session,
+    user_id: int,
+) -> list[QuestionCandidate]:
+    rows = (
+        db.query(Question.id)
+        .join(LearningItem, LearningItem.id == Question.learning_item_id)
+        .filter(
+            LearningItem.user_id == user_id,
+            *_eligible_question_filters(),
+        )
+        .order_by(Question.id)
+        .all()
+    )
+    return [QuestionCandidate(question_id=row.id) for row in rows]
+
+
+def list_owned_eligible_label_candidates(
+    db: Session,
+    user_id: int,
+    label_ids: Sequence[int],
+) -> list[QuestionCandidate]:
+    if not label_ids:
+        return []
+    rows = (
+        db.query(Question.id, LearningItemLabel.label_id)
+        .join(LearningItem, LearningItem.id == Question.learning_item_id)
+        .join(
+            LearningItemLabel,
+            LearningItemLabel.learning_item_id == LearningItem.id,
+        )
+        .filter(
+            LearningItem.user_id == user_id,
+            LearningItemLabel.label_id.in_(label_ids),
+            *_eligible_question_filters(),
+        )
+        .order_by(Question.id, LearningItemLabel.label_id)
+        .all()
+    )
+    labels_by_question: dict[int, set[int]] = {}
+    for row in rows:
+        labels_by_question.setdefault(row.id, set()).add(row.label_id)
+    return [
+        QuestionCandidate(question_id=question_id, label_ids=frozenset(labels))
+        for question_id, labels in labels_by_question.items()
+    ]
+
+
+def find_owned_labels(
+    db: Session,
+    user_id: int,
+    label_ids: Sequence[int],
+) -> list[Label]:
+    if not label_ids:
+        return []
+    return (
+        db.query(Label)
+        .filter(Label.user_id == user_id, Label.id.in_(label_ids))
+        .all()
+    )
+
+
+def find_owned_questions_by_ids(
+    db: Session,
+    user_id: int,
+    question_ids: Sequence[int],
+) -> dict[int, tuple[Question, LearningItem]]:
+    if not question_ids:
+        return {}
+    rows = (
+        db.query(Question, LearningItem)
+        .join(LearningItem, LearningItem.id == Question.learning_item_id)
+        .filter(
+            LearningItem.user_id == user_id,
+            Question.id.in_(question_ids),
+            *_eligible_question_filters(),
+        )
+        .all()
+    )
+    return {question.id: (question, item) for question, item in rows}
+
+
+def add_session(db: Session, session: RevisionSession) -> None:
+    db.add(session)
+
+
+def add_session_label(db: Session, session_label: RevisionSessionLabel) -> None:
+    db.add(session_label)
+
+
+def add_session_question(
+    db: Session,
+    session_question: RevisionSessionQuestion,
+) -> None:
+    db.add(session_question)
+
+
+def flush(db: Session) -> None:
+    db.flush()
+
+
+def find_owned_session(
+    db: Session,
+    session_id: int,
+    user_id: int,
+) -> RevisionSession | None:
+    return (
+        db.query(RevisionSession)
+        .filter(
+            RevisionSession.id == session_id,
+            RevisionSession.user_id == user_id,
+        )
+        .first()
+    )
+
+
+def list_session_labels(
+    db: Session,
+    session_id: int,
+) -> list[RevisionSessionLabel]:
+    return (
+        db.query(RevisionSessionLabel)
+        .filter(RevisionSessionLabel.session_id == session_id)
+        .order_by(RevisionSessionLabel.label_order)
+        .all()
+    )
+
+
+def list_session_questions(
+    db: Session,
+    session_id: int,
+) -> list[RevisionSessionQuestion]:
+    return (
+        db.query(RevisionSessionQuestion)
+        .filter(RevisionSessionQuestion.session_id == session_id)
+        .order_by(RevisionSessionQuestion.question_order)
+        .all()
+    )
