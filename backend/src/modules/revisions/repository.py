@@ -1,6 +1,8 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 
 from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from src.modules.labels.models import Label
@@ -14,6 +16,13 @@ from src.modules.revisions.models import (
 )
 from src.modules.revisions.schemas import GeneratedRevisionResponse
 from src.modules.revisions.selection import QuestionCandidate
+
+
+@dataclass(frozen=True, slots=True)
+class QuestionFingerprintInput:
+    question_text: str
+    options: tuple[str, str, str, str]
+    stored_fingerprint: str | None
 
 
 def _eligible_question_filters():
@@ -43,6 +52,55 @@ def add_generated_content(
                 key_point=point,
             )
         )
+
+
+def list_question_fingerprint_inputs(
+    db: Session,
+    learning_item_id: int,
+) -> list[QuestionFingerprintInput]:
+    rows = (
+        db.query(
+            Question.question_text,
+            Question.option_a,
+            Question.option_b,
+            Question.option_c,
+            Question.option_d,
+            Question.content_fingerprint,
+        )
+        .filter(Question.learning_item_id == learning_item_id)
+        .all()
+    )
+    return [
+        QuestionFingerprintInput(
+            question_text=row.question_text,
+            options=(row.option_a, row.option_b, row.option_c, row.option_d),
+            stored_fingerprint=row.content_fingerprint,
+        )
+        for row in rows
+    ]
+
+
+def insert_generated_questions_conflict_safe(
+    db: Session,
+    values: Sequence[Mapping[str, object]],
+) -> dict[str, int]:
+    if not values:
+        return {}
+    statement = (
+        insert(Question)
+        .values(list(values))
+        .on_conflict_do_nothing(
+            index_elements=["learning_item_id", "content_fingerprint"],
+            index_where=Question.content_fingerprint.is_not(None),
+        )
+        .returning(Question.id, Question.content_fingerprint)
+    )
+    rows = db.execute(statement).all()
+    return {
+        row.content_fingerprint: row.id
+        for row in rows
+        if row.content_fingerprint is not None
+    }
 
     for generated in content.questions:
         db.add(

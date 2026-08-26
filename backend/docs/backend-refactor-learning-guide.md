@@ -666,3 +666,149 @@ cleanup migration is safe against real PostgreSQL data. The Phase 1 downgrade
 refuses to discard LABEL history, deleted source references, or snapshots that
 have diverged from live content because the older schema cannot represent that
 history faithfully.
+
+## 15. AI-generation Phase 2A: safe question-only foundation
+
+Phase 2A introduces the internal foundation for creating additional bank
+questions without activating session-shortage generation or adding a public AI
+endpoint. Existing learning-item creation and `/generate` continue to use the
+legacy full-revision operation and keep their existing successful contracts.
+
+### Why question-only generation is separate
+
+Full revision generation creates theory, key points, and five questions as one
+product workflow. A future quiz shortage has a narrower requirement: request an
+exact number of questions grounded in one owned item. Reusing the full prompt
+would regenerate unrelated theory, waste provider tokens, and make partial
+question validation difficult.
+
+`revisions/generation` therefore provides a question-only operation. It can be
+called later by a session-shortage or proactive workflow without either workflow
+knowing anything about Gemini. Phase 2A deliberately leaves it disconnected from
+public routers so enabling the foundation cannot unexpectedly spend provider
+credits.
+
+### Provider abstraction and token metadata
+
+`AIProvider.generate` remains for compatibility. The new
+`generate_structured` method accepts a provider-neutral `StructuredAIRequest`
+and returns `StructuredAIResult`. Only the Gemini adapter knows the Gemini SDK.
+The application receives text, provider/model identifiers, a response ID, and
+optional token counts through its own types.
+
+Provider-reported input, output, total, cached, thought, and tool-token counts are
+stored as actual values when available. Missing provider metadata remains null.
+The application may store `ceil(prompt characters / 4)` in the separately named
+estimated-input field, with an explicit boolean flag. An estimate is never copied
+into an actual token column.
+
+### Source safety and prompt-injection boundary
+
+One call uses one authenticated user's learning item. Source preparation prefers
+the title, generated theory, and ordered key points. Raw editor notes are used
+only as a fallback. The standard-library HTML parser removes script and style
+content, decodes entities, preserves useful block boundaries, and collapses
+whitespace before deterministic truncation.
+
+A title without theory, key points, or cleaned notes is rejected as insufficient
+source material. This prevents a broad title from silently turning the operation
+into unrelated general-knowledge generation.
+
+Media bytes, file contents, URLs, other learning items, secrets, and internal
+metadata are never included. The prompt places prepared text inside explicit
+`UNTRUSTED_LEARNING_ITEM_SOURCE` delimiters and instructs the provider to treat
+embedded commands as data. Angle brackets in source text are escaped so the
+source cannot close or reopen the structural delimiter. This reduces
+prompt-injection risk, but it is not a perfect security boundary; output
+validation and ownership checks remain mandatory.
+
+The per-call source identifier is a SHA-256 digest of prepared source text. It is
+used only for internal correlation and change detection. It is not authentication,
+encryption, or proof that private content cannot be guessed. No additional secret
+is required at application startup for this internal identifier.
+
+### Per-entry validation and partial results
+
+The parser rejects oversized, malformed, or incorrectly shaped top-level JSON.
+Inside a valid `questions` list, each entry is validated independently. One bad
+question increments the rejected count without discarding valid siblings.
+Question models forbid extra fields, require four distinct nonblank options,
+normalize an index or A-D answer to `"0"`-`"3"`, constrain difficulty to 1-3,
+bound expected time, and require nonblank question/explanation text. Entries past
+the requested count are ignored and counted as excess.
+
+Only validated questions proceed to fingerprinting. This makes malformed output
+observable without allowing it into the bank and avoids storing the complete raw
+provider response.
+
+### Fingerprinting and its limits
+
+A question fingerprint normalizes question and option text with Unicode NFKC,
+case folding, and whitespace collapse. It preserves punctuation, sorts the four
+normalized options, serializes deterministic compact JSON, and computes SHA-256.
+The database has a partial unique index on learning-item ID plus non-null
+fingerprint. Existing questions stay unchanged with null fingerprints; the
+service calculates comparable fingerprints in Python while checking legacy rows.
+
+This detects formatting, casing, Unicode, whitespace, and option-order variants.
+It does not prove semantic uniqueness: substantially reworded questions can still
+express the same concept. Conversely, punctuation is retained to reduce overly
+aggressive false matches. PostgreSQL `ON CONFLICT DO NOTHING` handles concurrent
+duplicates without aborting the complete generated batch.
+
+### Transaction boundaries and operational records
+
+The canonical internal flow is:
+
+```text
+internal application operation
+-> ownership-aware source query
+-> prepare source and prompt
+-> end the read transaction
+-> create generation event + call in a short transaction
+-> mark processing in a short transaction
+-> provider call with no database transaction open
+-> validate and fingerprint response
+-> recheck source ownership
+-> conflict-safe question insert + event/call finalization
+-> one final commit
+```
+
+Events and calls record only operational facts: ownership, operation, status,
+safe counts, template version, provider/model identifiers, optional usage,
+response ID, source digest, and safe error code. They never store prompts, raw
+notes, complete responses, provider exceptions, keys, tokens, passwords, or
+provider URLs. Repositories never commit; the service owns each transaction.
+
+If the provider fails, the event records a sanitized failure code. If final
+persistence fails, the question insert and successful finalization roll back
+together before the event is marked failed in a separate short transaction.
+
+### Phase 2A module and function mapping
+
+| Module or symbol | Responsibility |
+|---|---|
+| `integrations.ai.base` | Provider-neutral request, result, usage, and operation types |
+| `GeminiAIProvider.generate_structured` | Gemini call and provider-metadata translation |
+| `generation.source.prepare_question_source` | Safe one-item source selection and cleaning |
+| `generation.prompt.build_question_prompt` | Versioned, count-aware question-only prompt |
+| `generation.schemas.parse_question_response` | Bounded JSON parsing and independent entry validation |
+| `generation.fingerprint.question_fingerprint` | Deterministic per-item deduplication identity |
+| `QuestionGenerationService.generate_for_owned_item` | Ownership, provider, validation, persistence, and transaction orchestration |
+| `ai_generation.repository` | Source/event/call persistence operations without commits |
+| `revisions.repository.insert_generated_questions_conflict_safe` | PostgreSQL conflict-safe bank insertion |
+| `AIGenerationEvent`, `AIGenerationCall` | Safe operation-level and provider-call-level history |
+
+### Testing and verification boundary
+
+HTML cleanup, budgeting, prompting, parsing, fingerprinting, provider mapping,
+and legacy-contract tests run without PostgreSQL or Gemini. Integration tests are
+authored for the partial unique index, `ON CONFLICT`, foreign keys, migration
+shape, and rollback, but remain behind the existing safe `TEST_DATABASE_URL`
+guard. Offline Alembic SQL can verify the intended PostgreSQL statements without
+opening a database connection.
+
+Phase 2A prepares later session-shortage generation by returning accepted,
+deduplicated question IDs and safe counts. It does not yet call this operation
+from revision-session creation, impose quotas, expose usage, generate proactively,
+or accept feedback. Those changes require their own reviewed phases.

@@ -34,6 +34,21 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = Field(min_length=1)
     GEMINI_MODEL: str = "gemini-2.5-flash"
 
+    AI_GENERATION_ENABLED: bool = True
+    AI_MAX_SOURCE_CHARACTERS: int = Field(default=8_000, gt=0)
+    AI_MAX_THEORY_CHARACTERS: int = Field(default=6_000, gt=0)
+    AI_MAX_KEY_POINT_CHARACTERS: int = Field(default=2_000, gt=0)
+    AI_MAX_NOTES_CHARACTERS: int = Field(default=8_000, gt=0)
+    AI_MAX_PROMPT_CHARACTERS: int = Field(default=12_000, gt=0)
+    AI_MAX_RAW_RESPONSE_CHARACTERS: int = Field(default=40_000, gt=0)
+    AI_MAX_OUTPUT_TOKENS: int = Field(default=4_800, gt=0)
+    AI_MAX_QUESTIONS_PER_CALL: int = Field(default=10, ge=1, le=50)
+    AI_MAX_SOURCE_ITEMS_PER_OPERATION: int = Field(default=5, ge=1, le=50)
+    AI_PROVIDER_TIMEOUT_SECONDS: int = Field(default=20, gt=0)
+    AI_OPERATION_DEADLINE_SECONDS: int = Field(default=120, gt=0)
+    AI_PROVIDER_ATTEMPTS: int = Field(default=2, ge=1, le=5)
+    AI_MAX_EXPECTED_TIME_SECONDS: int = Field(default=3_600, gt=0)
+
     CLOUDINARY_CLOUD_NAME: str = Field(min_length=1)
     CLOUDINARY_API_KEY: str = Field(min_length=1)
     CLOUDINARY_API_SECRET: str = Field(min_length=1)
@@ -59,6 +74,34 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_test_database(self) -> "Settings":
+        if self.AI_MAX_THEORY_CHARACTERS > self.AI_MAX_SOURCE_CHARACTERS:
+            raise ValueError(
+                "AI_MAX_THEORY_CHARACTERS must not exceed "
+                "AI_MAX_SOURCE_CHARACTERS"
+            )
+        if self.AI_MAX_KEY_POINT_CHARACTERS > self.AI_MAX_SOURCE_CHARACTERS:
+            raise ValueError(
+                "AI_MAX_KEY_POINT_CHARACTERS must not exceed "
+                "AI_MAX_SOURCE_CHARACTERS"
+            )
+        if self.AI_MAX_NOTES_CHARACTERS > self.AI_MAX_SOURCE_CHARACTERS:
+            raise ValueError(
+                "AI_MAX_NOTES_CHARACTERS must not exceed "
+                "AI_MAX_SOURCE_CHARACTERS"
+            )
+        if (
+            self.AI_MAX_PROMPT_CHARACTERS - self.AI_MAX_SOURCE_CHARACTERS
+            < 1_500
+        ):
+            raise ValueError(
+                "AI_MAX_PROMPT_CHARACTERS must leave at least 1500 characters "
+                "for question-generation instructions"
+            )
+        if self.AI_PROVIDER_TIMEOUT_SECONDS > self.AI_OPERATION_DEADLINE_SECONDS:
+            raise ValueError(
+                "AI_PROVIDER_TIMEOUT_SECONDS must not exceed "
+                "AI_OPERATION_DEADLINE_SECONDS"
+            )
         if self.ENVIRONMENT != "test":
             if not self.DATABASE_URL:
                 raise ValueError("DATABASE_URL is required outside test mode")

@@ -1,6 +1,7 @@
 """Import every model module so SQLAlchemy and Alembic see complete metadata."""
 
 from src.modules.auth.models import User, UserSession
+from src.modules.ai_generation.models import AIGenerationCall, AIGenerationEvent
 from src.modules.labels.models import Label
 from src.modules.learning_items.models import (
     LearningItem,
@@ -19,6 +20,8 @@ from src.modules.revisions.models import (
 
 
 __all__ = [
+    "AIGenerationCall",
+    "AIGenerationEvent",
     "Label",
     "LearningItem",
     "LearningItemKeyPoint",

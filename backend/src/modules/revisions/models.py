@@ -12,6 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.sql import func
+from sqlalchemy.sql import expression
 
 from src.db.base import Base
 
@@ -35,7 +36,24 @@ class Question(Base):
     difficulty = Column(Integer, nullable=False)
     expected_time_seconds = Column(Integer, nullable=False)
     source = Column(String(20))
+    content_fingerprint = Column(String(64), nullable=True)
+    generation_event_id = Column(
+        Integer,
+        ForeignKey("ai_generation_events.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at = Column(TIMESTAMP, server_default=func.now())
+
+    __table_args__ = (
+        Index(
+            "uq_questions_learning_item_fingerprint",
+            "learning_item_id",
+            "content_fingerprint",
+            unique=True,
+            postgresql_where=expression.column("content_fingerprint").isnot(None),
+        ),
+        Index("ix_questions_generation_event_id", "generation_event_id"),
+    )
 
 
 class RevisionSession(Base):
