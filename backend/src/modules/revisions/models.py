@@ -1,11 +1,14 @@
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Column,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     TIMESTAMP,
@@ -102,6 +105,11 @@ class RevisionSession(Base):
             "generated_question_count BETWEEN 0 AND requested_question_count",
             name="ck_revision_session_generated_count",
         ),
+        CheckConstraint(
+            "(status = 'IN_PROGRESS' AND ended_at IS NULL) OR "
+            "(status = 'COMPLETED' AND ended_at IS NOT NULL)",
+            name="ck_revision_session_lifecycle",
+        ),
         Index(
             "ix_revision_sessions_user_status_started",
             "user_id",
@@ -162,20 +170,46 @@ class UserAttempt(Base):
     )
     question_id = Column(
         Integer,
-        ForeignKey("questions.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("questions.id", ondelete="SET NULL"),
+        nullable=True,
     )
     session_id = Column(
         Integer,
         ForeignKey("revision_sessions.id", ondelete="CASCADE"),
         nullable=False,
     )
+    session_question_id = Column(Integer, nullable=False)
     selected_option = Column(
         Enum("A", "B", "C", "D", name="answer_option_enum"),
         nullable=False,
     )
     is_correct = Column(Boolean, nullable=False)
-    attempted_at = Column(TIMESTAMP, server_default=func.now())
+    time_taken_seconds = Column(Integer, nullable=False)
+    mastery_delta = Column(Numeric(6, 2), nullable=False)
+    attempted_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint(
+            "session_question_id",
+            name="uq_user_attempt_session_question",
+        ),
+        ForeignKeyConstraint(
+            ["session_question_id", "session_id"],
+            [
+                "revision_session_questions.id",
+                "revision_session_questions.session_id",
+            ],
+            ondelete="CASCADE",
+            name="fk_user_attempt_session_question_membership",
+        ),
+        CheckConstraint(
+            "time_taken_seconds BETWEEN 0 AND 3600",
+            name="ck_user_attempt_time_taken",
+        ),
+        Index("ix_user_attempts_session_attempted", "session_id", "attempted_at"),
+        Index("ix_user_attempts_user_attempted", "user_id", "attempted_at"),
+        Index("ix_user_attempts_question_attempted", "question_id", "attempted_at"),
+    )
 
 
 class RevisionSessionQuestion(Base):
@@ -218,6 +252,11 @@ class RevisionSessionQuestion(Base):
 
     __table_args__ = (
         UniqueConstraint(
+            "id",
+            "session_id",
+            name="uq_revision_session_question_id_session",
+        ),
+        UniqueConstraint(
             "session_id",
             "question_id",
             name="uq_revision_session_question",
@@ -239,4 +278,44 @@ class RevisionSessionQuestion(Base):
             "expected_time_seconds_snapshot > 0",
             name="ck_revision_session_question_expected_time",
         ),
+    )
+
+
+class QuestionStatistics(Base):
+    __tablename__ = "question_statistics"
+
+    question_id = Column(
+        Integer,
+        ForeignKey("questions.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    total_attempt_count = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    correct_attempt_count = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    total_time_seconds = Column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
+    average_time_seconds = Column(
+        Numeric(10, 2), nullable=False, default=0, server_default="0.00"
+    )
+    last_attempted_at = Column(TIMESTAMP, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "total_attempt_count >= 0 AND correct_attempt_count >= 0 "
+            "AND correct_attempt_count <= total_attempt_count",
+            name="ck_question_statistics_counts",
+        ),
+        CheckConstraint(
+            "total_time_seconds >= 0",
+            name="ck_question_statistics_total_time",
+        ),
+        CheckConstraint(
+            "average_time_seconds BETWEEN 0 AND 3600",
+            name="ck_question_statistics_average_time",
+        ),
+        Index("ix_question_statistics_last_attempted", "last_attempted_at"),
     )

@@ -1,4 +1,13 @@
-from sqlalchemy import Column, ForeignKey, Integer, TIMESTAMP, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    TIMESTAMP,
+    UniqueConstraint,
+)
 
 from src.db.base import Base
 
@@ -17,15 +26,31 @@ class UserLabelMastery(Base):
         ForeignKey("label.id", ondelete="CASCADE"),
         nullable=False,
     )
-    mastery_score = Column(Integer, default=50)
-    total_attempts = Column(Integer, default=0)
-    correct_attempts = Column(Integer, default=0)
+    mastery_score = Column(
+        Numeric(5, 2), nullable=False, default=50, server_default="50.00"
+    )
+    total_attempts = Column(Integer, nullable=False, default=0, server_default="0")
+    correct_attempts = Column(Integer, nullable=False, default=0, server_default="0")
     last_attempt_at = Column(TIMESTAMP)
     last_reviewed_at = Column(TIMESTAMP)
     next_review_at = Column(TIMESTAMP)
 
     __table_args__ = (
         UniqueConstraint("user_id", "label_id", name="uq_user_label_mastery"),
+        CheckConstraint(
+            "mastery_score BETWEEN 0 AND 100",
+            name="ck_user_label_mastery_score",
+        ),
+        CheckConstraint(
+            "total_attempts >= 0 AND correct_attempts >= 0 "
+            "AND correct_attempts <= total_attempts",
+            name="ck_user_label_mastery_counts",
+        ),
+        Index(
+            "ix_user_label_mastery_user_next_review",
+            "user_id",
+            "next_review_at",
+        ),
     )
 
 
@@ -43,9 +68,11 @@ class UserLearningItemMastery(Base):
         ForeignKey("learning_item.id", ondelete="CASCADE"),
         nullable=False,
     )
-    mastery_score = Column(Integer, default=50)
-    total_attempts = Column(Integer, default=0)
-    correct_attempts = Column(Integer, default=0)
+    mastery_score = Column(
+        Numeric(5, 2), nullable=False, default=50, server_default="50.00"
+    )
+    total_attempts = Column(Integer, nullable=False, default=0, server_default="0")
+    correct_attempts = Column(Integer, nullable=False, default=0, server_default="0")
     last_attempt_at = Column(TIMESTAMP)
     last_reviewed_at = Column(TIMESTAMP)
     next_review_at = Column(TIMESTAMP)
@@ -55,5 +82,19 @@ class UserLearningItemMastery(Base):
             "user_id",
             "learning_item_id",
             name="uq_user_learning_item_mastery",
+        ),
+        CheckConstraint(
+            "mastery_score BETWEEN 0 AND 100",
+            name="ck_user_learning_item_mastery_score",
+        ),
+        CheckConstraint(
+            "total_attempts >= 0 AND correct_attempts >= 0 "
+            "AND correct_attempts <= total_attempts",
+            name="ck_user_learning_item_mastery_counts",
+        ),
+        Index(
+            "ix_user_learning_item_mastery_user_next_review",
+            "user_id",
+            "next_review_at",
         ),
     )

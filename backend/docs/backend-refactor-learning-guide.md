@@ -812,3 +812,171 @@ Phase 2A prepares later session-shortage generation by returning accepted,
 deduplicated question IDs and safe counts. It does not yet call this operation
 from revision-session creation, impose quotas, expose usage, generate proactively,
 or accept feedback. Those changes require their own reviewed phases.
+
+## 16. Quiz submission and mastery: completing the V1 revision lifecycle
+
+Phase 3 turns an immutable `IN_PROGRESS` quiz into an atomic, durable result. It
+adds complete-session submission, snapshot-based grading, attempts, live-question
+statistics, item and label mastery, and completed-result retrieval. Partial
+answers, autosave, weak-area ranking, and SMART selection remain separate work.
+
+### Snapshot-based grading and answer secrecy
+
+The question bank describes what can be selected for a future quiz. A session
+snapshot describes exactly what one user saw in one historical quiz. They must
+not be treated as the same record: a bank question can be edited or deleted
+after the session begins.
+
+Submission therefore grades only `RevisionSessionQuestion` fields. It does not
+read the current `Question.correct_option`, explanation, difficulty, or expected
+time. Attempts retain a strong reference to the session question and only a
+nullable reference to the live question. A deleted source sets that reference to
+null while the attempt and result remain meaningful.
+
+The create/resume DTO stays unchanged and never contains answers or explanations.
+Only `RevisionSessionResultResponse`, returned after successful completion, owns
+answer-bearing fields. Keeping these schemas separate prevents a later refactor
+from accidentally exposing an internal snapshot answer through OpenAPI.
+
+### Submission request flow
+
+```text
+POST /revision-sessions/{session_id}/submit
+-> authentication dependency
+-> strict complete-answer request validation
+-> owned session SELECT FOR UPDATE
+-> immutable session questions in persisted order
+-> exact session-question ID set comparison
+-> snapshot grading and Decimal delta calculation
+-> lock surviving items, questions, and current labels in ID order
+-> materialize and lock mastery rows
+-> insert attempts
+-> atomically upsert live-question statistics
+-> update item and label mastery
+-> mark session COMPLETED
+-> one service-owned commit
+-> completed result DTO
+```
+
+The submitted IDs must exactly equal the persisted session-question IDs. Missing,
+unexpected, and foreign IDs share `ANSWER_SET_MISMATCH`; the error does not reveal
+which resource exists. Duplicate IDs are rejected by the Pydantic request model.
+The server calculates correctness, so a client cannot submit its own `is_correct`
+value.
+
+The owned session row is locked first. Two simultaneous submissions serialize:
+the winner commits, and the second sees `COMPLETED` and receives the stable `409`
+`REVISION_SESSION_ALREADY_COMPLETED`. A unique attempt per session question and a
+composite membership foreign key reinforce this rule in PostgreSQL.
+
+### Result request flow
+
+```text
+GET /revision-sessions/{session_id}/result
+-> authentication dependency
+-> query by session ID + user ID
+-> require COMPLETED
+-> ordered immutable snapshots + immutable attempts
+-> verify complete one-to-one history
+-> stable answer-bearing result DTO
+```
+
+Results are derived from snapshots and attempts rather than mutable live questions
+or current mastery. This means deleting an original learning item cannot change
+the question, options, correct answer, explanation, score, or order shown in an
+old result. Current mastery is intentionally absent because later practice would
+make an old result response change over time.
+
+### Attempts and question statistics
+
+An attempt is immutable evidence of one answer to one persisted session question.
+It stores the chosen option, server-calculated correctness, bounded reported time,
+the exact mastery delta, and a single UTC submission timestamp. V1 exposes no
+attempt edit or delete operation.
+
+`QuestionStatistics` is different: it is a replaceable aggregate for a surviving
+live bank question. Its PostgreSQL upsert atomically increments total/correct
+counts and exact total seconds. Average time is recalculated from total seconds
+and count, avoiding cumulative rounding drift. Deleting the live question removes
+this aggregate, but does not remove attempts or historical results.
+
+### Decimal mastery and entity attribution
+
+`calculate_mastery_delta` is pure and uses `Decimal`. Correct hard answers reward
+more than correct easy answers; wrong easy answers penalize more than wrong hard
+answers. Time changes the strength of the result through bounded multipliers.
+Every question delta is rounded to `0.01` with `ROUND_HALF_UP`.
+
+For one submitted session, individually rounded deltas are grouped by entity and
+summed. The entity score is then updated and clamped once to `0.00`-`100.00`.
+This makes the outcome independent of iteration order. Counters are updated with
+the batch totals.
+
+Each answer affects its surviving owned learning item once. Every current,
+surviving, user-owned label attached to that item receives the same contribution.
+The label used to satisfy a LABEL-session quota is selection metadata, not a claim
+that learning happened only in that category. Deleted/detached labels are not
+updated; newly attached current labels are.
+
+Review scheduling uses the final entity score and all answers affecting that
+entity in the session. Any incorrect answer schedules one day. Otherwise the
+intervals are one day below 40, three days from 40, seven days from 60, and
+fourteen days from 80. `last_attempt_at`, `last_reviewed_at`, `next_review_at`,
+attempt timestamps, and `ended_at` all derive from the same server-side UTC time.
+
+Client-reported time is restricted to 0-3600 seconds but is still untrusted. It
+can influence only the authenticated user's own mastery. Trusted active-timer
+telemetry would be a later product/security improvement.
+
+### Transaction ownership and locking order
+
+`RevisionSubmissionService` owns one transaction and one commit. Repositories
+query, add, execute, lock, and flush, but never commit. An exception at any point
+rolls back attempts, statistics, both mastery types, session status, and end time.
+No provider or storage call occurs inside this transaction.
+
+All submissions acquire locks in the same order: owned session, learning items,
+live questions, current labels, item mastery, then label mastery; IDs are ascending
+within each group. Consistent ordering reduces deadlocks when separate sessions
+touch the same learning material. Database constraints remain the final defense
+against duplicate attempts and cross-session membership mistakes.
+
+### Phase 3 module and function mapping
+
+| Module or symbol | Responsibility |
+|---|---|
+| `revisions.submission_schemas` | Strict complete-answer request and isolated completed-result DTO |
+| `RevisionSubmissionService.submit` | Locking, grading, orchestration, one commit, and rollback |
+| `RevisionSubmissionService.result` | Owned reconstruction of stable completed results |
+| `revisions.submission_repository` | Owned locks, attempt persistence, statistics UPSERTs, ordered reads |
+| `mastery.calculation.calculate_mastery_delta` | Pure Decimal difficulty/time policy |
+| `mastery.calculation.aggregate_contributions` | Order-independent per-entity batch totals |
+| `mastery.service.apply_mastery_batches` | Clamp, counters, timestamps, and review scheduling |
+| `mastery.repository` | Conflict-safe materialization and deterministic mastery-row locks |
+| `UserAttempt` | Immutable submitted-answer evidence tied to a session snapshot |
+| `QuestionStatistics` | Disposable aggregate for a surviving live bank question |
+
+### Migration reconciliation and verification boundary
+
+Migration `0004` refuses to invent missing history. Legacy attempts lack elapsed
+time, mastery delta, and a strong session-question identity; completed legacy
+sessions may not have a truthful complete answer set. If either exists, upgrade
+stops before structural changes and requires a separately reviewed reconciliation.
+Existing mastery values are also validated rather than silently clamped.
+
+Downgrade refuses once a Phase 3 completed session, attempt, or statistics row
+exists, or Decimal mastery cannot be restored losslessly to the older integer
+schema. This is safer than silently destroying quiz history even if someone has
+manually removed only part of the submission evidence.
+
+Pure grading, schema, formula, aggregation, rollback, and secrecy tests run without
+a database. PostgreSQL tests cover row locks, concurrent submission, composite
+foreign keys, UPSERT arithmetic, deletion behavior, and the migration guards.
+They remain unavailable until a dedicated safe `TEST_DATABASE_URL` is supplied;
+SQLite cannot validate these PostgreSQL semantics.
+
+Phase 3 creates the evidence needed for future weak-area detection and SMART
+quizzes: immutable attempts, accurate counts, Decimal mastery, and review dates.
+It deliberately does not choose evidence thresholds, weakness weights, or SMART
+selection policies before real behavior and PostgreSQL execution have been
+reviewed.

@@ -53,6 +53,23 @@ def add_generated_content(
             )
         )
 
+    for generated in content.questions:
+        db.add(
+            Question(
+                learning_item_id=learning_item.id,
+                question_text=generated.question,
+                option_a=generated.options[0],
+                option_b=generated.options[1],
+                option_c=generated.options[2],
+                option_d=generated.options[3],
+                correct_option=generated.correct_answer,
+                explanation=generated.explanation,
+                difficulty=generated.difficulty_level,
+                expected_time_seconds=generated.expected_time,
+                source="future-ai",
+            )
+        )
+
 
 def list_question_fingerprint_inputs(
     db: Session,
@@ -101,23 +118,6 @@ def insert_generated_questions_conflict_safe(
         for row in rows
         if row.content_fingerprint is not None
     }
-
-    for generated in content.questions:
-        db.add(
-            Question(
-                learning_item_id=learning_item.id,
-                question_text=generated.question,
-                option_a=generated.options[0],
-                option_b=generated.options[1],
-                option_c=generated.options[2],
-                option_d=generated.options[3],
-                correct_option=generated.correct_answer,
-                explanation=generated.explanation,
-                difficulty=generated.difficulty_level,
-                expected_time_seconds=generated.expected_time,
-                source="future-ai",
-            )
-        )
 
 
 def list_owned_eligible_candidates(

@@ -12,6 +12,7 @@ from src.modules.learning_items.models import (
 from src.modules.mastery.models import UserLabelMastery, UserLearningItemMastery
 from src.modules.revisions.models import (
     Question,
+    QuestionStatistics,
     RevisionSession,
     RevisionSessionLabel,
     RevisionSessionQuestion,
@@ -28,6 +29,7 @@ __all__ = [
     "LearningItemLabel",
     "Media",
     "Question",
+    "QuestionStatistics",
     "RevisionSession",
     "RevisionSessionLabel",
     "RevisionSessionQuestion",

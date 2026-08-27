@@ -17,6 +17,15 @@ from src.modules.revisions.service import (
     RevisionService,
     RevisionSessionService,
 )
+from src.modules.revisions.submission_schemas import (
+    RevisionSessionErrorResponse,
+    RevisionSessionResultResponse,
+    RevisionSessionSubmitRequest,
+)
+from src.modules.revisions.submission_service import (
+    RevisionSubmissionError,
+    RevisionSubmissionService,
+)
 
 
 router = APIRouter(tags=["revisions"])
@@ -69,3 +78,67 @@ def resume_revision_session(
     db: Session = Depends(get_db),
 ) -> RevisionSessionResponse:
     return RevisionSessionService(db).resume(current_user.id, session_id)
+
+
+@router.post(
+    "/revision-sessions/{session_id}/submit",
+    response_model=RevisionSessionResultResponse,
+    responses={
+        status.HTTP_409_CONFLICT: {"model": RevisionSessionErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "description": "Request validation error or answer-set mismatch",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/HTTPValidationError"
+                            },
+                            {
+                                "$ref": "#/components/schemas/RevisionSessionErrorResponse"
+                            },
+                        ]
+                    }
+                }
+            },
+        },
+    },
+)
+def submit_revision_session(
+    session_id: int,
+    request: RevisionSessionSubmitRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RevisionSessionResultResponse:
+    try:
+        return RevisionSubmissionService(db).submit(
+            current_user.id,
+            session_id,
+            request,
+        )
+    except RevisionSubmissionError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"code": exc.code, "message": exc.message},
+        ) from exc
+
+
+@router.get(
+    "/revision-sessions/{session_id}/result",
+    response_model=RevisionSessionResultResponse,
+    responses={
+        status.HTTP_409_CONFLICT: {"model": RevisionSessionErrorResponse},
+    },
+)
+def get_revision_session_result(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RevisionSessionResultResponse:
+    try:
+        return RevisionSubmissionService(db).result(current_user.id, session_id)
+    except RevisionSubmissionError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"code": exc.code, "message": exc.message},
+        ) from exc
