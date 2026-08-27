@@ -5,6 +5,7 @@ from src.modules.revisions.schemas import (
     LabelRevisionSessionRequest,
     RevisionSessionRequest,
     RevisionSessionResponse,
+    SmartRevisionSessionRequest,
 )
 
 
@@ -87,6 +88,31 @@ def test_label_rejects_nonpositive_label_id() -> None:
                 "questions_per_label": 1,
             }
         )
+
+
+def test_smart_request_is_strict_and_bounded() -> None:
+    request = adapter.validate_python(
+        {
+            "quiz_type": "SMART",
+            "question_count": 10,
+            "allow_ai_generation": True,
+        }
+    )
+    assert isinstance(request, SmartRevisionSessionRequest)
+    assert request.allow_ai_generation is True
+
+    for invalid in (
+        {"quiz_type": "SMART", "question_count": 0},
+        {"quiz_type": "SMART", "question_count": 51},
+        {"quiz_type": "SMART", "question_count": 5, "label_ids": [1]},
+        {
+            "quiz_type": "SMART",
+            "question_count": 5,
+            "questions_per_label": 2,
+        },
+    ):
+        with pytest.raises(ValidationError):
+            adapter.validate_python(invalid)
 
 
 def test_pre_submission_schema_has_no_answer_fields() -> None:

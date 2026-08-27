@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import func
+from sqlalchemy import and_, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,8 @@ from src.modules.revisions.models import (
 )
 from src.modules.revisions.schemas import GeneratedRevisionResponse
 from src.modules.revisions.selection import QuestionCandidate
+from src.modules.revisions.smart_selection import SmartQuestionCandidate
+from src.modules.mastery.models import UserLearningItemMastery
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,7 +27,7 @@ class QuestionFingerprintInput:
     stored_fingerprint: str | None
 
 
-def _eligible_question_filters():
+def eligible_question_filters():
     return (
         func.length(func.trim(Question.question_text)) > 0,
         func.length(func.trim(Question.option_a)) > 0,
@@ -129,7 +131,7 @@ def list_owned_eligible_candidates(
         .join(LearningItem, LearningItem.id == Question.learning_item_id)
         .filter(
             LearningItem.user_id == user_id,
-            *_eligible_question_filters(),
+            *eligible_question_filters(),
         )
         .order_by(Question.id)
         .all()
@@ -154,7 +156,7 @@ def list_owned_eligible_label_candidates(
         .filter(
             LearningItem.user_id == user_id,
             LearningItemLabel.label_id.in_(label_ids),
-            *_eligible_question_filters(),
+            *eligible_question_filters(),
         )
         .order_by(Question.id, LearningItemLabel.label_id)
         .all()
@@ -195,11 +197,50 @@ def find_owned_questions_by_ids(
         .filter(
             LearningItem.user_id == user_id,
             Question.id.in_(question_ids),
-            *_eligible_question_filters(),
+            *eligible_question_filters(),
         )
         .all()
     )
     return {question.id: (question, item) for question, item in rows}
+
+
+def list_owned_eligible_smart_candidates(
+    db: Session,
+    user_id: int,
+) -> list[SmartQuestionCandidate]:
+    rows = (
+        db.query(
+            Question.id.label("question_id"),
+            LearningItem.id.label("learning_item_id"),
+            UserLearningItemMastery.mastery_score,
+            UserLearningItemMastery.total_attempts,
+            UserLearningItemMastery.next_review_at,
+        )
+        .join(LearningItem, LearningItem.id == Question.learning_item_id)
+        .outerjoin(
+            UserLearningItemMastery,
+            and_(
+                UserLearningItemMastery.learning_item_id == LearningItem.id,
+                UserLearningItemMastery.user_id == user_id,
+            ),
+        )
+        .filter(
+            LearningItem.user_id == user_id,
+            *eligible_question_filters(),
+        )
+        .order_by(Question.id)
+        .all()
+    )
+    return [
+        SmartQuestionCandidate(
+            question_id=row.question_id,
+            learning_item_id=row.learning_item_id,
+            mastery_score=row.mastery_score,
+            total_attempts=row.total_attempts or 0,
+            next_review_at=row.next_review_at,
+        )
+        for row in rows
+    ]
 
 
 def add_session(db: Session, session: RevisionSession) -> None:

@@ -1,5 +1,6 @@
 import json
 import random
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import ValidationError
@@ -25,6 +26,7 @@ from src.modules.revisions.schemas import (
     RevisionSessionQuestionResponse,
     RevisionSessionRequest,
     RevisionSessionResponse,
+    SmartRevisionSessionRequest,
 )
 from src.modules.revisions.selection import (
     LabelShortage,
@@ -32,6 +34,7 @@ from src.modules.revisions.selection import (
     select_label_questions,
     select_random_question_ids,
 )
+from src.modules.revisions.smart_selection import select_smart_question_ids
 
 
 class RevisionService:
@@ -107,8 +110,12 @@ class RevisionSessionService:
         try:
             if isinstance(request, RandomRevisionSessionRequest):
                 response = self._create_random(user_id, request)
-            else:
+            elif isinstance(request, LabelRevisionSessionRequest):
                 response = self._create_label(user_id, request)
+            elif isinstance(request, SmartRevisionSessionRequest):
+                response = self._create_smart(user_id, request)
+            else:
+                raise TypeError("Unsupported revision-session request")
             self.db.commit()
             return response
         except Exception:
@@ -200,6 +207,46 @@ class RevisionSessionService:
             labels=ordered_labels,
         )
 
+    def _create_smart(
+        self,
+        user_id: int,
+        request: SmartRevisionSessionRequest,
+    ) -> RevisionSessionResponse:
+        as_of = datetime.now(timezone.utc).replace(tzinfo=None)
+        candidates = repository.list_owned_eligible_smart_candidates(
+            self.db,
+            user_id,
+        )
+        selection = select_smart_question_ids(
+            candidates,
+            request.question_count,
+            as_of,
+            self.randomizer,
+        )
+        if selection.shortage:
+            raise InsufficientQuestionBankError(
+                {
+                    "code": "INSUFFICIENT_QUESTION_BANK",
+                    "requested_question_count": request.question_count,
+                    "assignable_question_count": selection.assignable_question_count,
+                    "total_shortage": selection.shortage,
+                    "label_shortages": None,
+                    "ai_generation_available": False,
+                }
+            )
+        return self._persist_session(
+            user_id=user_id,
+            requested_strategy="SMART",
+            strategy_used=selection.strategy_used,
+            question_count=request.question_count,
+            questions_per_label=None,
+            allow_ai_generation=request.allow_ai_generation,
+            ordered_assignments=[
+                (question_id, None) for question_id in selection.question_ids
+            ],
+            labels=[],
+        )
+
     def _persist_session(
         self,
         *,
@@ -210,6 +257,7 @@ class RevisionSessionService:
         allow_ai_generation: bool,
         ordered_assignments: list[tuple[int, int | None]],
         labels: list[Label],
+        strategy_used: str | None = None,
     ) -> RevisionSessionResponse:
         question_ids = [question_id for question_id, _ in ordered_assignments]
         owned_questions = repository.find_owned_questions_by_ids(
@@ -224,7 +272,7 @@ class RevisionSessionService:
             user_id=user_id,
             quiz_type=requested_strategy,
             requested_strategy=requested_strategy,
-            strategy_used=requested_strategy,
+            strategy_used=strategy_used or requested_strategy,
             status="IN_PROGRESS",
             requested_question_count=question_count,
             questions_per_label=questions_per_label,

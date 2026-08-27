@@ -82,11 +82,11 @@ class RevisionSession(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "requested_strategy IN ('RANDOM', 'LABEL')",
+            "requested_strategy IN ('RANDOM', 'LABEL', 'SMART')",
             name="ck_revision_session_requested_strategy",
         ),
         CheckConstraint(
-            "strategy_used IN ('RANDOM', 'LABEL')",
+            "strategy_used IN ('RANDOM', 'LABEL', 'SMART')",
             name="ck_revision_session_strategy_used",
         ),
         CheckConstraint(

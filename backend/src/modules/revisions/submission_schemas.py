@@ -63,8 +63,8 @@ class CompletedRevisionLabelResponse(BaseModel):
 class RevisionSessionResultResponse(BaseModel):
     session_id: int
     status: Literal["COMPLETED"]
-    requested_strategy: Literal["RANDOM", "LABEL"]
-    strategy_used: Literal["RANDOM", "LABEL"]
+    requested_strategy: Literal["RANDOM", "LABEL", "SMART"]
+    strategy_used: Literal["RANDOM", "LABEL", "SMART"]
     started_at: datetime | None
     completed_at: datetime
     question_count: int

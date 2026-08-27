@@ -980,3 +980,124 @@ quizzes: immutable attempts, accurate counts, Decimal mastery, and review dates.
 It deliberately does not choose evidence thresholds, weakness weights, or SMART
 selection policies before real behavior and PostgreSQL execution have been
 reviewed.
+
+## 17. Weak areas and SMART revision sessions
+
+Phase 4 turns the evidence created by Phase 3 into an explainable read model and
+a personalized stored-question strategy. It does not change how mastery is
+calculated. That separation is important: reporting and selection may evolve
+without rewriting historical learning evidence.
+
+### Initial mastery is not demonstrated weakness
+
+New mastery rows start at `50.00`, and owned items or labels may not have a
+mastery row at all. Neither state proves that a learner is weak. Revisee requires
+at least three attempts before a score can be called demonstrated weakness.
+Three is a simple product heuristic, not statistical confidence: three attempts
+could all concern one question. The API therefore reports insufficient evidence
+explicitly rather than mixing it into the weak list.
+
+Classification is mutually exclusive and evaluated at one captured UTC `as_of`
+time. Missing mastery or fewer than three attempts is
+`INSUFFICIENT_EVIDENCE`. With enough attempts, a score below `60.00` is
+`DEMONSTRATED_WEAKNESS`. A score of at least `60.00` whose review time has
+arrived is `DUE_REVIEW`. Everything else is stable and excluded from the chosen
+classification page. A weak and overdue entity remains weak, while `is_due`
+still explains its urgency; an overdue strong entity is due, not weak.
+
+`GET /weak-areas` accepts entity type, classification, limit, and offset. Its
+repository uses an ownership-filtered `LEFT JOIN`, so owned entities without
+mastery remain visible as insufficient evidence. Classification predicates,
+classification-specific ordering, and count all run in PostgreSQL before
+pagination. This avoids the common bug where an arbitrary page is fetched and
+then filtered in Python. The deterministic entity-ID tie-breaker makes adjacent
+pages stable, and one joined query avoids N+1 reads.
+
+### Item-driven SMART selection
+
+SMART uses learning-item mastery as its allocation signal. Label mastery remains
+valuable explanatory data in `/weak-areas`, but combining item and label scores
+would count the same submitted answers twice. Candidate questions use the same
+eligibility predicate as RANDOM and LABEL: they must belong to an authenticated
+user's item and contain a complete, safe four-option question.
+
+Eligible candidates are grouped by item. Tier 1 contains demonstrated-weakness
+items, Tier 2 contains sufficiently evidenced items due for review, and Tier 3
+contains exploration/fill material. Questions inside each item are shuffled
+through an injectable randomizer. Tier 1 and then Tier 2 are selected in ranked
+round-robin order. A soft per-item cap of half the requested quiz prevents one
+large item from dominating while alternatives exist. Remaining places go to the
+least-selected eligible item; the cap relaxes only after alternatives are
+exhausted. The final question order is shuffled once and persisted as immutable
+session snapshots, so resume never resamples.
+
+If no Tier 1 or Tier 2 item has an eligible question, SMART delegates to the
+existing RANDOM selection and records `requested_strategy=SMART` with
+`strategy_used=RANDOM`. If even one actionable priority question is included,
+the session records SMART/SMART, even when exploration questions fill the rest.
+This makes partial personalization unambiguous. If the entire eligible bank is
+too small, creation returns the existing shortage response and persists nothing.
+`allow_ai_generation=true` remains request-compatible but does not invoke AI in
+this phase.
+
+### Phase 4 request flows
+
+```text
+GET /weak-areas
+→ authentication dependency
+→ thin mastery router
+→ WeakAreaService captures one UTC as_of
+→ repository applies ownership + classification + ordering + pagination in SQL
+→ service maps evidence reasons and Decimal accuracy
+→ answer-free response
+```
+
+```text
+POST /revision-sessions { quiz_type: SMART }
+→ authentication dependency
+→ existing revision router
+→ RevisionSessionService dispatches SMART
+→ repository loads owned eligible candidates and item mastery in one query
+→ pure SMART selector prioritizes, balances, deduplicates, and shuffles
+→ existing owned-question revalidation and immutable snapshot persistence
+→ one service-owned commit
+→ answer-safe session response
+```
+
+### Phase 4 module and function mapping
+
+| Module or symbol | Responsibility |
+|---|---|
+| `mastery.weak_areas.classify_weak_area` | Pure evidence precedence and reason selection |
+| `mastery.repository.list_owned_weak_areas` | SQL ownership, LEFT JOIN, filtering, ordering, count, and pagination |
+| `WeakAreaService.list` | One request timestamp, mapping, accuracy, and response metadata |
+| `mastery.router` | Authenticated `/weak-areas` HTTP contract |
+| `revisions.repository.eligible_question_filters` | Shared RANDOM/LABEL/SMART bank eligibility |
+| `revisions.repository.list_owned_eligible_smart_candidates` | Owned candidates plus optional item mastery in one query |
+| `smart_selection.candidate_tier` | Pure item-evidence tier assignment |
+| `smart_selection.select_smart_question_ids` | Balanced selection, cap behavior, fallback, and final shuffle |
+| `RevisionSessionService._create_smart` | Shortage handling and reuse of snapshot transaction workflow |
+
+### Deliberate limits and verification boundary
+
+Phase 4 does not avoid recently seen questions, scope SMART by labels, decay
+scores, generate a shortage with AI, or change mastery. Those policies need
+separate evidence and approval. Label mastery remains explanatory rather than an
+allocation input.
+
+Pure classification, balancing, fallback, validation, and secrecy tests run
+offline. PostgreSQL tests cover the actual LEFT JOIN predicates, SQL ordering and
+pagination, ownership isolation, new strategy constraints, persistence, resume,
+submission, and result behavior. They remain pending until a safe dedicated
+`TEST_DATABASE_URL` is available. Migration `0005` changes only the two strategy
+checks and refuses downgrade when SMART history exists; it must still be tested
+against PostgreSQL before deployment.
+
+Two offline-verification mistakes were caught and corrected. The first unit and
+integration weak-area test files had the same basename, so pytest imported one
+as the other; the integration file was renamed to keep test-module identities
+unique. A PowerShell one-line schema check also expanded `$defs` as a shell
+variable and produced a false `KeyError`; the corrected check reads the OpenAPI
+components directly. The lesson is to distinguish test-harness failures from
+application defects, then rerun the final checks rather than relying on stale
+results.

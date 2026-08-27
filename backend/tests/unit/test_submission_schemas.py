@@ -5,8 +5,15 @@ from pydantic import ValidationError
 
 from src.modules.revisions.submission_schemas import (
     RevisionSessionResultResponse,
+    RevisionSessionResultResponse,
     RevisionSessionSubmitRequest,
 )
+
+
+def test_completed_result_schema_accepts_smart_strategy() -> None:
+    schema = RevisionSessionResultResponse.model_json_schema()
+    assert "SMART" in schema["properties"]["requested_strategy"]["enum"]
+    assert "SMART" in schema["properties"]["strategy_used"]["enum"]
 
 
 def test_submission_schema_is_strict_and_forbids_duplicates() -> None:

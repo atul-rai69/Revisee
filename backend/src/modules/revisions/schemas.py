@@ -51,6 +51,14 @@ class RandomRevisionSessionRequest(BaseModel):
     allow_ai_generation: bool = False
 
 
+class SmartRevisionSessionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    quiz_type: Literal["SMART"]
+    question_count: int = Field(ge=1, le=50)
+    allow_ai_generation: bool = False
+
+
 class LabelRevisionSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -78,7 +86,9 @@ class LabelRevisionSessionRequest(BaseModel):
 
 
 RevisionSessionRequest = Annotated[
-    RandomRevisionSessionRequest | LabelRevisionSessionRequest,
+    RandomRevisionSessionRequest
+    | LabelRevisionSessionRequest
+    | SmartRevisionSessionRequest,
     Field(discriminator="quiz_type"),
 ]
 
@@ -105,8 +115,8 @@ class RevisionSessionLabelResponse(BaseModel):
 
 class RevisionSessionResponse(BaseModel):
     session_id: int
-    requested_strategy: Literal["RANDOM", "LABEL"]
-    strategy_used: Literal["RANDOM", "LABEL"]
+    requested_strategy: Literal["RANDOM", "LABEL", "SMART"]
+    strategy_used: Literal["RANDOM", "LABEL", "SMART"]
     question_count: int
     questions_per_label: int | None
     generated_question_count: int
