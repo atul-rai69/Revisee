@@ -165,6 +165,86 @@ def test_label_session_uses_strict_unique_quota_matching(
     ]
 
 
+def test_label_create_resume_submit_and_result_lifecycle(
+    client,
+    registered_user,
+    fake_ai,
+    db_session,
+) -> None:
+    user_id = _registered_user_id(db_session)
+    label = _create_label(db_session, user_id, "Lifecycle")
+    _create_item_with_questions(
+        db_session,
+        user_id,
+        "Label lifecycle",
+        2,
+        [label.id],
+    )
+    db_session.commit()
+
+    created_response = client.post(
+        "/revision-sessions",
+        json={
+            "quiz_type": "LABEL",
+            "label_ids": [label.id],
+            "questions_per_label": 2,
+            "allow_ai_generation": True,
+        },
+        headers=registered_user["headers"],
+    )
+    assert created_response.status_code == 201
+    created = created_response.json()
+    assert created["requested_strategy"] == "LABEL"
+    assert created["strategy_used"] == "LABEL"
+    assert created["labels"] == [
+        {
+            "label_id": label.id,
+            "label_name": "Lifecycle",
+            "question_quota": 2,
+        }
+    ]
+    assert all("correct_option" not in row for row in created["questions"])
+    assert all("explanation" not in row for row in created["questions"])
+    assert fake_ai.calls == 0
+
+    resumed = client.get(
+        f"/revision-sessions/{created['session_id']}",
+        headers=registered_user["headers"],
+    )
+    assert resumed.status_code == 200
+    assert resumed.json() == created
+
+    submitted = client.post(
+        f"/revision-sessions/{created['session_id']}/submit",
+        json={
+            "answers": [
+                {
+                    "session_question_id": row["session_question_id"],
+                    "selected_option": "B",
+                    "time_taken_seconds": 10,
+                }
+                for row in created["questions"]
+            ]
+        },
+        headers=registered_user["headers"],
+    )
+    assert submitted.status_code == 200
+    result = submitted.json()
+    assert result["requested_strategy"] == "LABEL"
+    assert result["strategy_used"] == "LABEL"
+    assert result["correct_count"] == 2
+    assert result["question_count"] == 2
+    assert all("correct_option" in row for row in result["questions"])
+    assert all("explanation" in row for row in result["questions"])
+
+    retrieved = client.get(
+        f"/revision-sessions/{created['session_id']}/result",
+        headers=registered_user["headers"],
+    )
+    assert retrieved.status_code == 200
+    assert retrieved.json() == result
+
+
 def test_label_shortage_persists_no_session_rows(
     client,
     registered_user,

@@ -11,6 +11,10 @@ from sqlalchemy.exc import ArgumentError
 INTEGRATION_SKIP_REASON = (
     "integration tests require --run-integration and a safe TEST_DATABASE_URL"
 )
+MIGRATION_SKIP_REASON = (
+    "migration tests additionally require --run-migration-tests and a safe "
+    "MIGRATION_TEST_DATABASE_URL"
+)
 
 
 def pytest_addoption(parser) -> None:
@@ -20,6 +24,12 @@ def pytest_addoption(parser) -> None:
         default=False,
         help="run tests that require the dedicated PostgreSQL test database",
     )
+    parser.addoption(
+        "--run-migration-tests",
+        action="store_true",
+        default=False,
+        help="run destructive tests against the separate migration-test database",
+    )
 
 
 def pytest_configure(config) -> None:
@@ -28,17 +38,34 @@ def pytest_configure(config) -> None:
         "markers",
         "integration: requires the dedicated PostgreSQL test database",
     )
+    config.addinivalue_line(
+        "markers",
+        "migration: destructively exercises the separate migration-test database",
+    )
+    if config.getoption("--run-migration-tests") and not config.getoption(
+        "--run-integration"
+    ):
+        raise pytest.UsageError(
+            "--run-migration-tests also requires --run-integration"
+        )
     if config.getoption("--run-integration"):
         _configure_integration_environment()
+    if config.getoption("--run-migration-tests"):
+        _validated_migration_test_database_url()
 
 
 def pytest_collection_modifyitems(config, items) -> None:
     run_integration = config.getoption("--run-integration")
+    run_migration = config.getoption("--run-migration-tests")
     skip_integration = pytest.mark.skip(reason=INTEGRATION_SKIP_REASON)
+    skip_migration = pytest.mark.skip(reason=MIGRATION_SKIP_REASON)
     for item in items:
+        is_migration = "migration" in item.keywords
         if "integration" in Path(str(item.path)).parts:
             item.add_marker(pytest.mark.integration)
-            if not run_integration:
+            if is_migration and not run_migration:
+                item.add_marker(skip_migration)
+            elif not run_integration:
                 item.add_marker(skip_integration)
         else:
             item.add_marker(pytest.mark.unit)
@@ -51,16 +78,50 @@ def _validated_test_database_url() -> str:
             "--run-integration requires TEST_DATABASE_URL; no fallback is allowed"
         )
 
-    try:
-        parsed_test_url = make_url(test_database_url)
-    except ArgumentError as exc:
-        raise pytest.UsageError("TEST_DATABASE_URL is not a valid database URL") from exc
-    if not parsed_test_url.drivername.startswith("postgresql"):
-        raise pytest.UsageError("TEST_DATABASE_URL must use PostgreSQL")
-    database_name = parsed_test_url.database or ""
-    if not database_name or "test" not in database_name.lower():
+    parsed_test_url = _validated_postgresql_url(
+        test_database_url,
+        variable_name="TEST_DATABASE_URL",
+        required_name_parts=("test",),
+    )
+
+    backend_env = dotenv_values(Path(__file__).resolve().parents[1] / ".env")
+    normal_database_url = os.environ.get("DATABASE_URL") or backend_env.get(
+        "DATABASE_URL"
+    )
+    if normal_database_url:
+        try:
+            parsed_normal_url = make_url(str(normal_database_url))
+            same_as_normal = _database_identity(parsed_test_url) == (
+                _database_identity(parsed_normal_url)
+            )
+        except ArgumentError:
+            same_as_normal = test_database_url == normal_database_url
+        if same_as_normal:
+            raise pytest.UsageError("TEST_DATABASE_URL must not equal DATABASE_URL")
+    return test_database_url
+
+
+def _validated_migration_test_database_url() -> str:
+    migration_database_url = os.environ.get("MIGRATION_TEST_DATABASE_URL")
+    if not migration_database_url:
         raise pytest.UsageError(
-            "TEST_DATABASE_URL database name must clearly contain 'test'"
+            "--run-migration-tests requires MIGRATION_TEST_DATABASE_URL; "
+            "no fallback is allowed"
+        )
+
+    parsed_migration_url = _validated_postgresql_url(
+        migration_database_url,
+        variable_name="MIGRATION_TEST_DATABASE_URL",
+        required_name_parts=("test", "migration"),
+    )
+    integration_database_url = _validated_test_database_url()
+    parsed_integration_url = make_url(integration_database_url)
+    if _database_identity(parsed_migration_url) == _database_identity(
+        parsed_integration_url
+    ):
+        raise pytest.UsageError(
+            "MIGRATION_TEST_DATABASE_URL must target a different database "
+            "from TEST_DATABASE_URL"
         )
 
     backend_env = dotenv_values(Path(__file__).resolve().parents[1] / ".env")
@@ -70,22 +131,48 @@ def _validated_test_database_url() -> str:
     if normal_database_url:
         try:
             parsed_normal_url = make_url(str(normal_database_url))
-            same_as_normal = (
-                parsed_test_url.drivername.split("+", 1)[0],
-                parsed_test_url.host,
-                parsed_test_url.port or 5432,
-                parsed_test_url.database,
-            ) == (
-                parsed_normal_url.drivername.split("+", 1)[0],
-                parsed_normal_url.host,
-                parsed_normal_url.port or 5432,
-                parsed_normal_url.database,
+            same_as_normal = _database_identity(parsed_migration_url) == (
+                _database_identity(parsed_normal_url)
             )
         except ArgumentError:
-            same_as_normal = test_database_url == normal_database_url
+            same_as_normal = migration_database_url == normal_database_url
         if same_as_normal:
-            raise pytest.UsageError("TEST_DATABASE_URL must not equal DATABASE_URL")
-    return test_database_url
+            raise pytest.UsageError(
+                "MIGRATION_TEST_DATABASE_URL must not equal DATABASE_URL"
+            )
+    return migration_database_url
+
+
+def _validated_postgresql_url(
+    value: str,
+    *,
+    variable_name: str,
+    required_name_parts: tuple[str, ...],
+):
+    try:
+        parsed = make_url(value)
+    except ArgumentError as exc:
+        raise pytest.UsageError(f"{variable_name} is not a valid database URL") from exc
+    if not parsed.drivername.startswith("postgresql"):
+        raise pytest.UsageError(f"{variable_name} must use PostgreSQL")
+    database_name = (parsed.database or "").casefold()
+    if not database_name or any(part not in database_name for part in required_name_parts):
+        expected = " and ".join(repr(part) for part in required_name_parts)
+        raise pytest.UsageError(
+            f"{variable_name} database name must clearly contain {expected}"
+        )
+    return parsed
+
+
+def _database_identity(parsed_url) -> tuple[str, int, str]:
+    host = (parsed_url.host or "").casefold().rstrip(".")
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        host = "loopback"
+    return (
+        host,
+        parsed_url.port or 5432,
+        (parsed_url.database or "").casefold(),
+    )
 
 
 def _configure_integration_environment() -> None:
@@ -151,6 +238,11 @@ class FakeStorageProvider:
 @pytest.fixture(scope="session")
 def test_database_url() -> str:
     return _validated_test_database_url()
+
+
+@pytest.fixture(scope="session")
+def migration_test_database_url() -> str:
+    return _validated_migration_test_database_url()
 
 
 @pytest.fixture(scope="session")
