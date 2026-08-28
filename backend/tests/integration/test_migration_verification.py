@@ -431,7 +431,7 @@ def _assert_orm_schema_consistency(engine: Engine) -> None:
     assert actual_tables == expected_tables
     for table_name, table in Base.metadata.tables.items():
         actual_columns = {column["name"] for column in inspector.get_columns(table_name)}
-        assert actual_columns == set(table.columns)
+        assert actual_columns == {column.name for column in table.columns}
 
 
 def _seed_user(connection: Connection) -> int:

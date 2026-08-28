@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import inspect, select
 
 from src.core.config import get_settings
 from src.core.exceptions import ApplicationError
@@ -160,7 +160,9 @@ def test_generation_foreign_keys_preserve_event_and_remove_calls_correctly(
 
     db_session.delete(db_session.get(AIGenerationEvent, event.id))
     db_session.flush()
-    assert db_session.get(AIGenerationCall, call_id) is None
+    assert db_session.scalar(
+        select(AIGenerationCall.id).where(AIGenerationCall.id == call_id)
+    ) is None
 
 
 def test_final_persistence_failure_rolls_back_questions_and_marks_event_failed(
