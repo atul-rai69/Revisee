@@ -1101,3 +1101,49 @@ variable and produced a false `KeyError`; the corrected check reads the OpenAPI
 components directly. The lesson is to distinguish test-harness failures from
 application defects, then rerun the final checks rather than relying on stale
 results.
+
+## 18. Database-protection follow-up and legacy adoption
+
+Migration `0006` makes four existing database protections explicit in both the
+current ORM and the versioned schema. A key point must belong to a learning item,
+deleting that item cascades to its key points, deleting a user cascades to that
+user's authentication sessions, and direct SQL session inserts default
+`is_active` to true. The Python default remains for ORM-created sessions, while
+the column deliberately remains nullable so an explicit `NULL` is not silently
+rewritten.
+
+These rules belong in PostgreSQL as well as service code. The learning-item
+service currently deletes key points explicitly, but a database cascade also
+protects direct SQL, maintenance commands, and future deletion paths. User
+sessions have no useful lifetime after their owning user disappears, so their
+foreign key follows the same ownership rule.
+
+The upgrade refuses before mutation when a key point has no parent reference,
+when a key-point or user-session reference is orphaned, or when the expected
+`0005` foreign keys are missing or structurally different. It does not delete an
+invalid row or invent a parent. The downgrade only removes these protections: it
+restores nullable key-point references, `NO ACTION` foreign keys, and no
+server-side active default without deleting rows or changing IDs.
+
+### Adoption sequence and transaction boundary
+
+The existing development database predates Alembic. To adopt it safely, a
+restored rehearsal copy is reconciled to the exact `0001` schema, verified, and
+then stamped. That exact baseline temporarily has weaker key-point/session
+protections. Application writers must remain disabled while the rehearsal or
+eventual development target advances through `0002`–`0005` and immediately to
+`0006`. Writes resume only after nullability, both cascade actions, the active
+default, retained IDs, and aggregate row counts are verified.
+
+This sequence is not one transaction. Reconciliation, stamping, and each
+stepwise Alembic command are separate recovery boundaries. PostgreSQL can roll
+back the currently failing migration, but it cannot roll back earlier commands
+that already committed. After any uncertain connection failure, inspect the
+recorded revision and schema before retrying; restore the verified backup when a
+safe forward recovery cannot be demonstrated.
+
+Destructive migration tests remain restricted to the separately guarded
+`MIGRATION_TEST_DATABASE_URL`, and application integration tests remain on
+`TEST_DATABASE_URL`. Neither suite may target the adoption-rehearsal copy. That
+copy receives read-only preservation checks plus separately reviewed smoke tests
+that create, exercise, and remove only explicitly identified rehearsal records.

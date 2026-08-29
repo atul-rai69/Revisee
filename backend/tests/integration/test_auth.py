@@ -1,3 +1,5 @@
+from sqlalchemy import text
+
 from src.core.security import is_approved_password_hash
 from src.core.security import create_access_token, decode_access_token
 from src.modules.auth.models import User
@@ -19,6 +21,15 @@ def test_registration_hashes_password_and_preserves_response(client, db_session)
     user = db_session.query(User).filter(User.username == "new-user").one()
     assert user.password_hash != "safe-password"
     assert is_approved_password_hash(user.password_hash)
+    session_user_id, is_active = db_session.execute(
+        text(
+            "SELECT user_id, is_active FROM user_sessions "
+            "WHERE user_id = :user_id"
+        ),
+        {"user_id": user.id},
+    ).one()
+    assert session_user_id == user.id
+    assert is_active is True
 
 
 def test_login_upgrades_legacy_plaintext(client, db_session) -> None:

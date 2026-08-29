@@ -1,4 +1,11 @@
-def test_learning_item_create_read_delete_contract(client, registered_user) -> None:
+from sqlalchemy import text
+
+
+def test_learning_item_create_read_delete_contract(
+    client,
+    registered_user,
+    db_session,
+) -> None:
     headers = registered_user["headers"]
     created = client.post(
         "/learning-items",
@@ -14,6 +21,13 @@ def test_learning_item_create_read_delete_contract(client, registered_user) -> N
 
     summary = client.get("/dashboard/learning-items-summary", headers=headers)
     item_id = summary.json()["data"][0]["id"]
+    assert db_session.scalar(
+        text(
+            "SELECT COUNT(*) FROM learning_item_key_points "
+            "WHERE learning_item_id = :item_id"
+        ),
+        {"item_id": item_id},
+    ) > 0
 
     detail = client.get(f"/learning-item/{item_id}", headers=headers)
     assert detail.status_code == 200
@@ -27,6 +41,13 @@ def test_learning_item_create_read_delete_contract(client, registered_user) -> N
     )
     assert deleted.status_code == 200
     assert deleted.json() is None
+    assert db_session.scalar(
+        text(
+            "SELECT COUNT(*) FROM learning_item_key_points "
+            "WHERE learning_item_id = :item_id"
+        ),
+        {"item_id": item_id},
+    ) == 0
 
 
 def test_user_cannot_read_or_delete_another_users_item(client) -> None:

@@ -37,7 +37,11 @@ class LearningItemKeyPoint(Base):
     __tablename__ = "learning_item_key_points"
 
     id = Column(Integer, primary_key=True)
-    learning_item_id = Column(Integer, ForeignKey("learning_item.id"))
+    learning_item_id = Column(
+        Integer,
+        ForeignKey("learning_item.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     key_point = Column(Text, nullable=False)
 
 

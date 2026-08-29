@@ -34,6 +34,7 @@ REVISION_0002 = "20260825_0002"
 REVISION_0003 = "20260826_0003"
 REVISION_0004 = "20260826_0004"
 REVISION_0005 = "20260827_0005"
+REVISION_0006 = "20260829_0006"
 
 
 class MigrationHarness:
@@ -118,14 +119,21 @@ def test_blank_chain_downgrade_reupgrade_and_orm_consistency(
     assert inspect(harness.engine).get_table_names() == []
 
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0005
+    assert harness.current_revision() == REVISION_0006
+    _assert_0006_protection_contract(harness.engine)
     _assert_orm_schema_consistency(harness.engine)
     harness.check()
+
+    harness.downgrade(REVISION_0005)
+    assert harness.current_revision() == REVISION_0005
+    _assert_0005_protection_contract(harness.engine)
+    harness.upgrade("head")
+    assert harness.current_revision() == REVISION_0006
 
     harness.downgrade(REVISION_0004)
     assert harness.current_revision() == REVISION_0004
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0005
+    assert harness.current_revision() == REVISION_0006
 
     # downgrade base drops every application table and is safe only here.
     harness.downgrade("base")
@@ -134,7 +142,8 @@ def test_blank_chain_downgrade_reupgrade_and_orm_consistency(
     assert harness.current_revision() is None
 
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0005
+    assert harness.current_revision() == REVISION_0006
+    _assert_0006_protection_contract(harness.engine)
     _assert_orm_schema_consistency(harness.engine)
     harness.check()
 
@@ -402,6 +411,247 @@ def test_0005_downgrade_refuses_smart_history(
     )
 
 
+def test_0006_upgrade_refuses_null_key_point_reference(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0005)
+    with harness.engine.begin() as connection:
+        key_point_id = connection.scalar(
+            text(
+                "INSERT INTO learning_item_key_points (learning_item_id, key_point) "
+                "VALUES (NULL, 'Unowned key point') RETURNING id"
+            )
+        )
+    _assert_refusal(
+        harness,
+        lambda: harness.upgrade(REVISION_0006),
+        REVISION_0005,
+        "upgrade refused: null key-point references require reconciliation",
+    )
+    with harness.engine.connect() as connection:
+        assert connection.scalar(
+            text("SELECT COUNT(*) FROM learning_item_key_points WHERE id = :id"),
+            {"id": key_point_id},
+        ) == 1
+
+
+def test_0006_upgrade_refuses_orphan_key_point_reference(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0005)
+    with harness.engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE learning_item_key_points DROP CONSTRAINT "
+                "learning_item_key_points_learning_item_id_fkey"
+            )
+        )
+        key_point_id = connection.scalar(
+            text(
+                "INSERT INTO learning_item_key_points (learning_item_id, key_point) "
+                "VALUES (999999, 'Orphan key point') RETURNING id"
+            )
+        )
+    _assert_refusal(
+        harness,
+        lambda: harness.upgrade(REVISION_0006),
+        REVISION_0005,
+        "upgrade refused: orphan key-point references require reconciliation",
+    )
+    with harness.engine.connect() as connection:
+        assert connection.scalar(
+            text("SELECT learning_item_id FROM learning_item_key_points WHERE id = :id"),
+            {"id": key_point_id},
+        ) == 999999
+
+
+def test_0006_upgrade_refuses_orphan_user_session_reference(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0005)
+    with harness.engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE user_sessions DROP CONSTRAINT "
+                "user_sessions_user_id_fkey"
+            )
+        )
+        user_session_id = connection.scalar(
+            text(
+                "INSERT INTO user_sessions (user_id, session_id, is_active) "
+                "VALUES (999999, 'orphan-session', TRUE) RETURNING id"
+            )
+        )
+    _assert_refusal(
+        harness,
+        lambda: harness.upgrade(REVISION_0006),
+        REVISION_0005,
+        "upgrade refused: orphan user-session references require reconciliation",
+    )
+    with harness.engine.connect() as connection:
+        assert connection.scalar(
+            text("SELECT user_id FROM user_sessions WHERE id = :id"),
+            {"id": user_session_id},
+        ) == 999999
+
+
+def test_0006_upgrade_refuses_missing_expected_foreign_key(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0005)
+    with harness.engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE learning_item_key_points DROP CONSTRAINT "
+                "learning_item_key_points_learning_item_id_fkey"
+            )
+        )
+    _assert_refusal(
+        harness,
+        lambda: harness.upgrade(REVISION_0006),
+        REVISION_0005,
+        "upgrade refused: expected 0005 foreign-key definitions are missing "
+        "or incompatible",
+    )
+
+
+def test_0006_upgrade_refuses_wrong_expected_foreign_key_definition(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0005)
+    with harness.engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE user_sessions DROP CONSTRAINT "
+                "user_sessions_user_id_fkey"
+            )
+        )
+        connection.execute(
+            text(
+                "ALTER TABLE user_sessions ADD CONSTRAINT user_sessions_user_id_fkey "
+                "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+            )
+        )
+    _assert_refusal(
+        harness,
+        lambda: harness.upgrade(REVISION_0006),
+        REVISION_0005,
+        "upgrade refused: expected 0005 foreign-key definitions are missing "
+        "or incompatible",
+    )
+
+
+def test_0006_database_cascades_and_server_default(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0006)
+    _assert_0006_protection_contract(harness.engine)
+
+    with harness.engine.begin() as connection:
+        key_point_user_id = _seed_user(connection, suffix="key-point-cascade")
+        item_id = _seed_item(connection, key_point_user_id)
+        key_point_id = connection.scalar(
+            text(
+                "INSERT INTO learning_item_key_points (learning_item_id, key_point) "
+                "VALUES (:item_id, 'Cascade key point') RETURNING id"
+            ),
+            {"item_id": item_id},
+        )
+        connection.execute(
+            text("DELETE FROM learning_item WHERE id = :item_id"),
+            {"item_id": item_id},
+        )
+        assert connection.scalar(
+            text("SELECT COUNT(*) FROM learning_item_key_points WHERE id = :id"),
+            {"id": key_point_id},
+        ) == 0
+
+        session_user_id = _seed_user(connection, suffix="session-cascade")
+        defaulted_session_id = connection.scalar(
+            text(
+                "INSERT INTO user_sessions (user_id, session_id) "
+                "VALUES (:user_id, 'defaulted-session') RETURNING id"
+            ),
+            {"user_id": session_user_id},
+        )
+        assert connection.scalar(
+            text("SELECT is_active FROM user_sessions WHERE id = :id"),
+            {"id": defaulted_session_id},
+        ) is True
+
+        nullable_session_id = connection.scalar(
+            text(
+                "INSERT INTO user_sessions (user_id, session_id, is_active) "
+                "VALUES (:user_id, 'nullable-session', NULL) RETURNING id"
+            ),
+            {"user_id": session_user_id},
+        )
+        assert connection.scalar(
+            text("SELECT is_active FROM user_sessions WHERE id = :id"),
+            {"id": nullable_session_id},
+        ) is None
+
+        connection.execute(
+            text("DELETE FROM users WHERE id = :user_id"),
+            {"user_id": session_user_id},
+        )
+        assert connection.scalar(
+            text("SELECT COUNT(*) FROM user_sessions WHERE id = :id"),
+            {"id": defaulted_session_id},
+        ) == 0
+        assert connection.scalar(
+            text("SELECT COUNT(*) FROM user_sessions WHERE id = :id"),
+            {"id": nullable_session_id},
+        ) == 0
+
+
+def test_0006_downgrade_restores_0005_contract_without_losing_rows(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0006)
+    with harness.engine.begin() as connection:
+        user_id = _seed_user(connection, suffix="downgrade")
+        item_id = _seed_item(connection, user_id)
+        key_point_id = connection.scalar(
+            text(
+                "INSERT INTO learning_item_key_points (learning_item_id, key_point) "
+                "VALUES (:item_id, 'Retained key point') RETURNING id"
+            ),
+            {"item_id": item_id},
+        )
+        user_session_id = connection.scalar(
+            text(
+                "INSERT INTO user_sessions (user_id, session_id) "
+                "VALUES (:user_id, 'retained-session') RETURNING id"
+            ),
+            {"user_id": user_id},
+        )
+
+    harness.downgrade(REVISION_0005)
+    assert harness.current_revision() == REVISION_0005
+    _assert_0005_protection_contract(harness.engine)
+    with harness.engine.connect() as connection:
+        assert connection.scalar(
+            text("SELECT learning_item_id FROM learning_item_key_points WHERE id = :id"),
+            {"id": key_point_id},
+        ) == item_id
+        assert connection.scalar(
+            text("SELECT user_id FROM user_sessions WHERE id = :id"),
+            {"id": user_session_id},
+        ) == user_id
+
+    harness.upgrade(REVISION_0006)
+    assert harness.current_revision() == REVISION_0006
+    _assert_0006_protection_contract(harness.engine)
+
+
 def _assert_refusal(
     harness: MigrationHarness,
     operation: Callable[[], None],
@@ -434,13 +684,82 @@ def _assert_orm_schema_consistency(engine: Engine) -> None:
         assert actual_columns == {column.name for column in table.columns}
 
 
-def _seed_user(connection: Connection) -> int:
+def _assert_0005_protection_contract(engine: Engine) -> None:
+    inspector = inspect(engine)
+    key_point_column = _column(inspector, "learning_item_key_points", "learning_item_id")
+    session_active_column = _column(inspector, "user_sessions", "is_active")
+
+    assert key_point_column["nullable"] is True
+    assert session_active_column["nullable"] is True
+    assert session_active_column["default"] is None
+    assert _foreign_key_ondelete(
+        inspector,
+        "learning_item_key_points",
+        ["learning_item_id"],
+    ) == "NO ACTION"
+    assert _foreign_key_ondelete(
+        inspector,
+        "user_sessions",
+        ["user_id"],
+    ) == "NO ACTION"
+
+
+def _assert_0006_protection_contract(engine: Engine) -> None:
+    inspector = inspect(engine)
+    key_point_column = _column(inspector, "learning_item_key_points", "learning_item_id")
+    session_active_column = _column(inspector, "user_sessions", "is_active")
+
+    assert key_point_column["nullable"] is False
+    assert session_active_column["nullable"] is True
+    assert str(session_active_column["default"]).casefold() in {
+        "true",
+        "true::boolean",
+    }
+    assert _foreign_key_ondelete(
+        inspector,
+        "learning_item_key_points",
+        ["learning_item_id"],
+    ) == "CASCADE"
+    assert _foreign_key_ondelete(
+        inspector,
+        "user_sessions",
+        ["user_id"],
+    ) == "CASCADE"
+
+
+def _column(inspector, table_name: str, column_name: str) -> dict[str, object]:
+    return next(
+        column
+        for column in inspector.get_columns(table_name)
+        if column["name"] == column_name
+    )
+
+
+def _foreign_key_ondelete(
+    inspector,
+    table_name: str,
+    constrained_columns: list[str],
+) -> str:
+    foreign_key = next(
+        candidate
+        for candidate in inspector.get_foreign_keys(table_name)
+        if candidate["constrained_columns"] == constrained_columns
+    )
+    ondelete = foreign_key.get("options", {}).get("ondelete")
+    return str(ondelete or "NO ACTION").upper()
+
+
+def _seed_user(connection: Connection, *, suffix: str = "default") -> int:
     return connection.scalar(
         text(
             "INSERT INTO users (username, email, password_hash) "
-            "VALUES ('migration-user', 'migration-user@example.test', 'test-only') "
+            "VALUES (:username, :email, 'test-only') "
             "RETURNING id"
-        )
+        ),
+        {
+            "username": f"migration-user-{suffix}",
+            "email": f"migration-user-{suffix}@example.test",
+        },
     )
 
 

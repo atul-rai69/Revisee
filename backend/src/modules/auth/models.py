@@ -1,4 +1,13 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, TIMESTAMP
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    TIMESTAMP,
+    true,
+)
 from sqlalchemy.sql import func
 
 from src.db.base import Base
@@ -18,9 +27,18 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     session_id = Column(String(255), unique=True, nullable=False)
-    is_active = Column(Boolean, default=True)
+    is_active = Column(
+        Boolean,
+        nullable=True,
+        default=True,
+        server_default=true(),
+    )
     created_at = Column(TIMESTAMP, server_default=func.now())
     expires_at = Column(TIMESTAMP, nullable=True)
     last_used_at = Column(
