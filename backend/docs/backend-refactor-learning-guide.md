@@ -1147,3 +1147,63 @@ Destructive migration tests remain restricted to the separately guarded
 `TEST_DATABASE_URL`. Neither suite may target the adoption-rehearsal copy. That
 copy receives read-only preservation checks plus separately reviewed smoke tests
 that create, exercise, and remove only explicitly identified rehearsal records.
+
+## 19. One-time legacy-schema reconciliation tooling
+
+The development schema was created before Alembic and is close to, but not
+identical to, migration `0001`. It must not be stamped merely because its table
+names look familiar. The rehearsal-only command
+`scripts/reconcile_legacy_schema_to_0001.py` accepts only
+`ADOPTION_REHEARSAL_DATABASE_URL`; it never selects the application or either
+automated-test database as a fallback. It also refuses Neon pooler hosts because
+session-level advisory locks and transaction state must remain on one direct
+PostgreSQL connection for the complete operation.
+
+The workflow has three explicit stages:
+
+1. `--dry-run` opens a read-only repeatable-read transaction, obtains the
+   adoption advisory lock, verifies the exact 13-table legacy shape and all 35
+   reviewed differences, and writes a local preservation snapshot. The snapshot
+   contains aggregate row counts, hashes of ordered primary-key IDs, and sequence
+   ownership/state. It contains no records, credentials, hostname, or database
+   name.
+2. `--apply --confirm-rehearsal-reconciliation` is schema-destructive and is
+   permitted only for the isolated rehearsal branch during exclusive write
+   downtime. It locks all 13 tables, reruns every schema/data/orphan/duplicate
+   guard, verifies the dry-run snapshot is still current, and applies the exact
+   reconciliation in one PostgreSQL transaction. It does not stamp Alembic or
+   run a migration.
+3. `scripts/verify_legacy_schema_reconciliation.py` independently reads the
+   reconciled rehearsal schema. It requires zero structural and naming
+   differences from `0001`, no upgrade-name blockers, no `alembic_version`
+   table, and preservation of row counts, ordered-ID signatures, sequence
+   ownership, and sequence state.
+
+The reconciliation temporarily adopts the weaker historical `0001` definition:
+key-point ownership becomes nullable, the key-point and user-session foreign
+keys become `NO ACTION`, and the session active server default is removed. It
+also performs only the reported mechanical changes: two enum conversions, the
+question answer type normalization, removal of two empty attempt columns and one
+extra uniqueness constraint, removal of six mastery defaults, creation of the
+12 baseline ID indexes, and three constraint renames. It never deletes retained
+rows, recreates application tables, or changes primary-key IDs. Migration
+`0006` restores the four approved protections after the rehearsal has advanced
+through `0002`-`0005`.
+
+### Recovery and approval boundaries
+
+The reconciliation DDL is atomic by itself: an exception inside its transaction
+rolls back every reconciliation statement. The broader adoption is not atomic.
+Reconciliation, verification, stamping `0001`, and each later Alembic upgrade
+are separate committed boundaries. Keep the verified database backup and the
+isolated branch until retained-data checks and the final `0006` protections have
+all passed. If reconciliation fails, inspect the sanitized stage/code and rerun
+the read-only preflight after correcting the cause. If a later stamp or migration
+fails, inspect the actual revision and schema before deciding whether to resume
+forward or restore the rehearsal copy.
+
+No application writer may run between the temporary `0001` reconciliation and
+verification of `0006`. Destructive pytest fixtures remain limited to their two
+dedicated test databases; they must never be pointed at the preservation
+rehearsal. Running the dry-run, apply, verifier, stamp, or migrations requires a
+separate operational approval after the commands and target are reviewed.

@@ -313,6 +313,51 @@ def _configured_database_url() -> str | None:
     return str(configured) if configured else None
 
 
+def schema_metadata(connection):
+    tables = {
+        row[0]
+        for row in connection.execute(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_type = 'BASE TABLE'
+            ORDER BY table_name
+            """
+        ).fetchall()
+    }
+    columns: dict[str, dict[str, object]] = {table: {} for table in tables}
+    for row in connection.execute(
+        """
+        SELECT
+            table_name,
+            column_name,
+            data_type,
+            udt_name,
+            character_maximum_length,
+            numeric_precision,
+            numeric_scale,
+            is_nullable,
+            column_default,
+            is_identity
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        ORDER BY table_name, ordinal_position
+        """
+    ).fetchall():
+        columns[row[0]][row[1]] = {
+            "data_type": row[2],
+            "udt_name": row[3],
+            "length": row[4],
+            "precision": row[5],
+            "scale": row[6],
+            "nullable": row[7] == "YES",
+            "default": row[8],
+            "identity": row[9] == "YES",
+        }
+    return tables, columns
+
+
 def _run_inspection(database_url: str) -> None:
     stage = URL_PARSING
     connection = None
@@ -343,47 +388,7 @@ def _run_inspection(database_url: str) -> None:
             raise RuntimeError("read-only transaction could not be verified")
 
         stage = INSPECTION
-        tables = {
-            row[0]
-            for row in connection.execute(
-                """
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema = 'public'
-                  AND table_type = 'BASE TABLE'
-                ORDER BY table_name
-                """
-            ).fetchall()
-        }
-        columns: dict[str, dict[str, object]] = {table: {} for table in tables}
-        for row in connection.execute(
-            """
-            SELECT
-                table_name,
-                column_name,
-                data_type,
-                udt_name,
-                character_maximum_length,
-                numeric_precision,
-                numeric_scale,
-                is_nullable,
-                column_default,
-                is_identity
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-            ORDER BY table_name, ordinal_position
-            """
-        ).fetchall():
-            columns[row[0]][row[1]] = {
-                "data_type": row[2],
-                "udt_name": row[3],
-                "length": row[4],
-                "precision": row[5],
-                "scale": row[6],
-                "nullable": row[7] == "YES",
-                "default": row[8],
-                "identity": row[9] == "YES",
-            }
+        tables, columns = schema_metadata(connection)
 
         print("TRANSACTION_READ_ONLY=on")
         print(f"PUBLIC_TABLE_COUNT={len(tables)}")
@@ -574,7 +579,7 @@ def _enum_metadata(connection) -> dict[str, tuple[str, ...]]:
     return {name: tuple(labels) for name, labels in result.items()}
 
 
-def _print_baseline_schema_comparison(connection, tables, columns) -> None:
+def baseline_schema_comparison(connection, tables, columns):
     structural: list[str] = []
     naming_only: list[str] = []
     upgrade_name_blockers: list[str] = []
@@ -617,7 +622,11 @@ def _print_baseline_schema_comparison(connection, tables, columns) -> None:
                     f"expected={expected_default},actual={actual_default}"
                 )
 
-    constraints = _constraint_metadata(connection)
+    constraints = [
+        row
+        for row in _constraint_metadata(connection)
+        if row["table"] in actual_tables
+    ]
     primary_keys = [row for row in constraints if row["kind"] == "p"]
     unique_constraints = [row for row in constraints if row["kind"] == "u"]
     foreign_keys = [row for row in constraints if row["kind"] == "f"]
@@ -714,7 +723,11 @@ def _print_baseline_schema_comparison(connection, tables, columns) -> None:
     for row in check_constraints:
         structural.append(f"extra check constraint {row['table']}.{row['name']}")
 
-    actual_indexes = _index_metadata(connection)
+    actual_indexes = [
+        row
+        for row in _index_metadata(connection)
+        if row["table"] in actual_tables
+    ]
     expected_index_structures = {
         (table_name, columns, unique, None)
         for table_name, (_name, columns, unique) in BASELINE_INDEXES.items()
@@ -760,6 +773,15 @@ def _print_baseline_schema_comparison(connection, tables, columns) -> None:
     for enum_name in sorted(set(actual_enums) - set(BASELINE_ENUMS)):
         structural.append(f"extra enum {enum_name}")
 
+    return structural, naming_only, upgrade_name_blockers
+
+
+def _print_baseline_schema_comparison(connection, tables, columns) -> None:
+    structural, naming_only, upgrade_name_blockers = baseline_schema_comparison(
+        connection,
+        tables,
+        columns,
+    )
     for index, difference in enumerate(structural, start=1):
         print(f"BASELINE_STRUCTURAL_DIFFERENCE[{index}]={difference}")
     for index, difference in enumerate(naming_only, start=1):
