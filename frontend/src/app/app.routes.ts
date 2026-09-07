@@ -36,8 +36,24 @@ export const routes: Routes = [
             component: Labels
         },
         {
+            path: 'learning-items/:id/questions',
+            loadComponent: () => import('./pages/learning-item-questions/learning-item-questions').then((module) => module.LearningItemQuestions)
+        },
+        {
             path: 'learning-items/:id',
             component: LearningItemView
+        },
+        {
+            path: 'revise',
+            loadComponent: () => import('./pages/revise/revise').then((module) => module.Revise)
+        },
+        {
+            path: 'revision-sessions/:sessionId',
+            loadComponent: () => import('./pages/revision-session/revision-session').then((module) => module.RevisionSession)
+        },
+        {
+            path: 'revision-sessions/:sessionId/result',
+            loadComponent: () => import('./pages/revision-result/revision-result').then((module) => module.RevisionResult)
         },
         {
             path: 'playground',

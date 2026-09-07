@@ -38,4 +38,12 @@ export class ToastContainer {
 
     return titles[toast.type];
   }
+
+  getRole(type: Toast['type']): 'alert' | 'status' {
+    return type === 'error' ? 'alert' : 'status';
+  }
+
+  getAriaLive(type: Toast['type']): 'assertive' | 'polite' {
+    return type === 'error' ? 'assertive' : 'polite';
+  }
 }

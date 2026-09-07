@@ -22,6 +22,7 @@ export interface Toast {
 })
 export class ToasterService {
   private readonly defaultDuration = 4000;
+  private readonly importantErrorDuration = 8000;
   private readonly activeToasts = signal<Toast[]>([]);
   private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
 
@@ -64,7 +65,10 @@ export class ToasterService {
   }
 
   error(message: string, options?: ToastOptions): number {
-    return this.show('error', message, options);
+    return this.show('error', message, {
+      duration: this.importantErrorDuration,
+      ...options,
+    });
   }
 
   warning(message: string, options?: ToastOptions): number {

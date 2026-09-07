@@ -1,0 +1,52 @@
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg);
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(3px);
+}
+
+.dialog-card {
+  width: min(28rem, 100%);
+  padding: var(--space-2xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: white;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.dialog-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--teal-100);
+  color: var(--teal-700);
+  font-size: 1.5rem;
+}
+
+.dialog-icon.warning { background: #fff1df; color: #c96a14; }
+h2 { margin: var(--space-lg) 0 var(--space-sm); color: var(--slate-900); }
+p { margin: 0; color: var(--slate-600); line-height: 1.6; }
+.dialog-actions { display: flex; justify-content: center; gap: var(--space-md); margin-top: var(--space-xl); }
+
+.button-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  margin-right: var(--space-sm);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: dialog-spin 0.7s linear infinite;
+}
+
+@keyframes dialog-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .button-spinner { animation: none; } }
+@media (max-width: 480px) { .dialog-actions { flex-direction: column-reverse; } }
+

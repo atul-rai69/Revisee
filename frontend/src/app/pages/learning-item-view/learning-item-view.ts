@@ -1,269 +1,223 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, signal, HostListener, ChangeDetectorRef } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, computed, HostListener, OnDestroy, OnInit, signal } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { LearningItem } from '../../core/services/learning-item';
+import { finalize } from 'rxjs';
+import {
+  LearningItem,
+  LearningItemDetail,
+  LearningItemQuestion,
+} from '../../core/services/learning-item';
 import { ToasterService } from '../../core/services/toaster.service';
 
-
-interface LearningItemResource {
+interface PdfResource {
   name: string;
-  size: string;
-}
-
-interface LearningItemNote {
-  title: string;
-  meta: string;
-  preview: string;
-}
-
-interface LearningItemQuestionOption {
-  label: string;
-  text: string;
-  isCorrect: boolean;
-}
-
-interface LearningItemQuestion {
-  number: number;
-  question: string;
-  options: LearningItemQuestionOption[];
+  url: string;
+  safeUrl: SafeResourceUrl;
 }
 
 @Component({
   selector: 'app-learning-item-view',
-  imports: [
-    CommonModule,
-    RouterLink
-  ],
+  imports: [CommonModule, RouterLink],
   templateUrl: './learning-item-view.html',
-  styleUrl: './learning-item-view.css',
+  styleUrls: ['./learning-item-view.css', './learning-item-view-media.css'],
 })
-export class LearningItemView implements OnInit {
-  learningItemId = signal<string | null>(null);
+export class LearningItemView implements OnInit, OnDestroy {
+  itemId = 0;
+  readonly item = signal<LearningItemDetail | null>(null);
+  readonly loading = signal(true);
+  readonly generating = signal(false);
+  readonly loadError = signal<string | null>(null);
 
-  isLoading= false;
-
-  topicTitle = "cell Structure";
-  topicDescription = "Key components of a cell and their functions with a detailed explanation."
-  imageCount = 1;
-  pdfCount= 1;
-  questionCount = 5;
-  created_at = "2026-05-26T15:36:09"
-  updated_at = "2026-05-26T15:36:09"
-  img_url = "https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&w=160&q=80"
-  theory = "..."
-
-  labels = [
-    'Biology',
-    'Cell Biology',
-    'Class 11'
-  ];
-
-
-  keyPoints: string[] = [];
-
-  resources: LearningItemResource[] = [
-    {
-      name: 'Cell Structure Notes.pdf',
-      size: '1.2 MB',
-    },
-  ];
-
-  notes: LearningItemNote[] = [
-    {
-      title: 'General Notes',
-      meta: '12 May 2024 - 245 words',
-      preview: 'The cell membrane is selectively permeable, allowing certain substances to pass while...',
-    },
-    {
-      title: 'Important Definitions',
-      meta: '18 May 2024 - 128 words',
-      preview: 'Organelles are specialized structures within a cell that perform specific functions...',
-    },
-  ];
-
-  questions: LearningItemQuestion[] = [
-    {
-      number: 1,
-      question: 'What is the powerhouse of the cell?',
-      options: [
-        {
-          label: 'A',
-          text: 'Nucleus',
-          isCorrect: false,
-        },
-        {
-          label: 'B',
-          text: 'Mitochondria',
-          isCorrect: true,
-        },
-        {
-          label: 'C',
-          text: 'Ribosome',
-          isCorrect: false,
-        },
-        {
-          label: 'D',
-          text: 'Golgi Apparatus',
-          isCorrect: false,
-        },
-      ],
-    },
-  ];
-
-  constructor(private learningItemService: LearningItem, private toaster: ToasterService, private route: ActivatedRoute,
-        private cdr: ChangeDetectorRef
-  ){}
-
-  ngOnInit(): void {
-
-    const itemId = Number(
-      this.route.snapshot.paramMap.get('id')
-    );
-
-    this.learningItemService.getLearningItem(itemId).subscribe({
-      next: (response) => {
-        console.log("response = ", response.data);
-        this.topicTitle = response.data.title
-        this.topicDescription = this.stripHtml(response.data.description_text) 
-        this.created_at = response.data.created_at
-        this.updated_at = response.data.updated_at
-        this.imageCount = response.data.image_count
-        this.pdfCount = response.data.pdf_count
-        this.theory = response.data.theory?? ""
-        this.img_url = response.data.first_image_url
-        this.keyPoints = response.data.key_points
-        this.questions = response.data.questions
-        this.labels = response.data.labels? response.data.labels.split(',').map((label: string) => label.trim()): []
-        this.img_urls = response.data.image_urls? response.data.image_urls.split(',').map((url: string) => url.trim()): []
-        this.cdr.detectChanges()
-      },
-      error: (err) => {
-        console.error(err);
-      }
-    });
-
-  }
-
-  generate(){
-    this.learningItemService.getAicontent(this.topicTitle, this.topicDescription).subscribe({
-      next: (response) => {
-        console.log("response = ", response);
-        this.theory = response.data.theory;
-      },
-      error: (err) => {
-        console.error(err);
-      }
-    });
-  }
-
-
-  check(){
-    alert('change detection fired');
-  }
-  
-  private stripHtml(html: string): string {
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || '';
-  }
-
-
-  // image gallery code
-  images = [
-    {
-      title: 'Cell Structure',
-      url: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?auto=format&fit=crop&w=160&q=80'
-    },
-    {
-      title: 'Nucleus',
-      url: 'https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&w=160&q=80'
-    },
-    {
-      title: 'Cell Membrane',
-      url: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?auto=format&fit=crop&w=160&q=80'
-    },
-    {
-      title: 'Mitochondria',
-      url: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=160&q=80'
-    },
-    {
-      title: 'Golgi Apparatus',
-      url: 'https://images.unsplash.com/photo-1607988795691-3d0147b43231?auto=format&fit=crop&w=160&q=80'
-    },
-    {
-      title: 'Lysosome',
-      url: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?auto=format&fit=crop&w=160&q=80'
-    }
-  ];
-
-  img_urls = [
-    'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?auto=format&fit=crop&w=160&q=80',
-    'https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&w=160&q=80',
-    'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?auto=format&fit=crop&w=160&q=80'
-  ]
+  readonly labels = signal<string[]>([]);
+  readonly imageUrls = signal<string[]>([]);
+  readonly pdfResources = signal<PdfResource[]>([]);
+  readonly questions = signal<LearningItemQuestion[]>([]);
+  readonly previewQuestions = computed(() => this.questions().slice(0, 3));
 
   lightboxOpen = false;
+  currentImageIndex = 0;
 
-  currentIndex = 0;
+  constructor(
+    private readonly learningItemService: LearningItem,
+    private readonly toaster: ToasterService,
+    private readonly route: ActivatedRoute,
+    private readonly sanitizer: DomSanitizer,
+  ) {}
+
+  ngOnInit(): void {
+    this.itemId = Number(this.route.snapshot.paramMap.get('id'));
+    if (!Number.isInteger(this.itemId) || this.itemId <= 0) {
+      this.loadError.set('This learning item address is invalid.');
+      this.loading.set(false);
+      return;
+    }
+    this.loadItem();
+  }
+
+  ngOnDestroy(): void {
+    if (this.lightboxOpen) document.body.style.overflow = '';
+  }
+
+  loadItem(): void {
+    if (!Number.isInteger(this.itemId) || this.itemId <= 0) {
+      this.loadError.set('This learning item address is invalid.');
+      this.loading.set(false);
+      return;
+    }
+
+    this.loading.set(true);
+    this.loadError.set(null);
+    this.learningItemService.getLearningItem(this.itemId, { localLoading: true })
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: ({ data }) => {
+          try {
+            this.applyItem(data);
+          } catch {
+            this.clearItem();
+            this.loadError.set('The learning item response could not be displayed. Try again.');
+          }
+        },
+        error: (error: HttpErrorResponse) => {
+          this.clearItem();
+          this.loadError.set(error.status === 404
+            ? 'This learning item is unavailable.'
+            : 'The learning item could not be loaded. Try again.');
+        },
+      });
+  }
+
+  generateMoreQuestions(): void {
+    const item = this.item();
+    if (!item || this.generating()) return;
+
+    this.generating.set(true);
+    this.learningItemService.generateRevisionContent(
+      item.id,
+      item.title,
+      item.description_text ?? '',
+    ).pipe(finalize(() => this.generating.set(false)))
+      .subscribe({
+        next: () => {
+          this.toaster.success('New revision questions are ready.', {
+            title: 'Questions generated',
+          });
+          this.loadItem();
+        },
+        error: (error: HttpErrorResponse) => {
+          if (this.isGloballyReported(error)) return;
+          const message = error.status === 404
+            ? 'This learning item is unavailable.'
+            : 'Questions could not be generated. Try again.';
+          this.toaster.error(message, { title: 'Generation failed' });
+        },
+      });
+  }
 
   openLightbox(index: number): void {
-    this.currentIndex = index;
+    if (!this.imageUrls()[index]) return;
+    this.currentImageIndex = index;
     this.lightboxOpen = true;
-
     document.body.style.overflow = 'hidden';
   }
 
   closeLightbox(): void {
     this.lightboxOpen = false;
-
-    document.body.style.overflow = 'auto';
+    document.body.style.overflow = '';
   }
 
   selectImage(index: number): void {
-    this.currentIndex = index;
+    this.currentImageIndex = index;
   }
 
   nextImage(): void {
-    this.currentIndex =
-      (this.currentIndex + 1) %
-      this.img_urls.length;
+    const imageCount = this.imageUrls().length;
+    if (!imageCount) return;
+    this.currentImageIndex = (this.currentImageIndex + 1) % imageCount;
   }
 
   previousImage(): void {
-    this.currentIndex =
-      (this.currentIndex - 1 + this.img_urls.length) %
-      this.img_urls.length;
-  }
-
-  downloadImage(): void {
-    const link = document.createElement('a');
-
-    link.href = this.images[this.currentIndex].url;
-
-    link.download =
-      this.images[this.currentIndex].title;
-
-    link.click();
+    const imageCount = this.imageUrls().length;
+    if (!imageCount) return;
+    this.currentImageIndex = (
+      this.currentImageIndex - 1 + imageCount
+    ) % imageCount;
   }
 
   @HostListener('document:keydown.escape')
   handleEscape(): void {
-    if (this.lightboxOpen) {
-      this.closeLightbox();
-    }
+    if (this.lightboxOpen) this.closeLightbox();
   }
 
   @HostListener('document:keydown.arrowright')
   handleRight(): void {
-    if (this.lightboxOpen) {
-      this.nextImage();
-    }
+    if (this.lightboxOpen) this.nextImage();
   }
 
   @HostListener('document:keydown.arrowleft')
   handleLeft(): void {
-    if (this.lightboxOpen) {
-      this.previousImage();
+    if (this.lightboxOpen) this.previousImage();
+  }
+
+  private applyItem(item: LearningItemDetail): void {
+    const labels = this.splitValues(item.labels);
+    const imageUrls = this.splitValues(item.image_urls)
+      .filter((url) => this.isApprovedMediaUrl(url));
+    const pdfResources = this.splitValues(item.pdf_urls)
+      .filter((url) => this.isApprovedMediaUrl(url))
+      .map((url, index) => ({
+        name: this.resourceName(url, index),
+        url,
+        safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url),
+      }));
+
+    // Publish only after URL parsing and sanitization have completed safely.
+    this.labels.set(labels);
+    this.imageUrls.set(imageUrls);
+    this.pdfResources.set(pdfResources);
+    this.questions.set(Array.isArray(item.questions) ? item.questions : []);
+    this.item.set({
+      ...item,
+      key_points: Array.isArray(item.key_points) ? item.key_points : [],
+      questions: Array.isArray(item.questions) ? item.questions : [],
+    });
+  }
+
+  private clearItem(): void {
+    this.item.set(null);
+    this.labels.set([]);
+    this.imageUrls.set([]);
+    this.pdfResources.set([]);
+    this.questions.set([]);
+  }
+
+  private splitValues(value: string | null): string[] {
+    return value
+      ? value.split(',').map((entry) => entry.trim()).filter(Boolean)
+      : [];
+  }
+
+  private isApprovedMediaUrl(value: string): boolean {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'https:' && parsed.hostname === 'res.cloudinary.com';
+    } catch {
+      return false;
     }
+  }
+
+  private resourceName(url: string, index: number): string {
+    try {
+      const filename = decodeURIComponent(new URL(url).pathname.split('/').pop() ?? '');
+      return filename || `Learning material ${index + 1}.pdf`;
+    } catch {
+      return `Learning material ${index + 1}.pdf`;
+    }
+  }
+
+  private isGloballyReported(error: HttpErrorResponse): boolean {
+    return error.status === 0 || error.status === 401 || error.status === 403 || error.status >= 500;
   }
 }

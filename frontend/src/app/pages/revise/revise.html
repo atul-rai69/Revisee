@@ -1,0 +1,119 @@
+<div class="content-card revise-page">
+  <header class="revise-header">
+    <div>
+      <span class="eyebrow">Practice from your own material</span>
+      <h1 class="page-title">Start a revision</h1>
+      <p class="page-description">Choose how you want to practice today.</p>
+    </div>
+    <div class="notebook-doodle" aria-hidden="true">
+      <span class="doodle-star">☆</span>
+      <span class="doodle-line"></span>
+    </div>
+  </header>
+
+  <form [formGroup]="form" (ngSubmit)="startRevision()" novalidate>
+    <fieldset class="strategy-fieldset">
+      <legend>Choose a revision strategy</legend>
+      <p>Each method uses questions grounded in your saved learning items.</p>
+
+      <div class="strategy-grid">
+        <article class="strategy-card quick" [class.selected]="strategy === 'RANDOM'">
+          <button type="button" class="strategy-choice" (click)="selectStrategy('RANDOM')" [attr.aria-pressed]="strategy === 'RANDOM'">
+            <span class="strategy-icon"><i class="ph ph-lightning"></i></span>
+            <span><strong>Quick revision</strong><small>A mix from across your saved material.</small></span>
+            <i class="ph" [class.ph-radio-button]="strategy !== 'RANDOM'" [class.ph-check-circle]="strategy === 'RANDOM'"></i>
+          </button>
+          @if (strategy === 'RANDOM') {
+            <div class="strategy-controls">
+              <label for="random-count">Number of questions</label>
+              <span id="random-help">Choose between 1 and 50.</span>
+              <div class="stepper">
+                <button type="button" aria-label="Decrease question count" (click)="adjustQuestionCount(-1)">−</button>
+                <input id="random-count" type="number" min="1" max="50" formControlName="questionCount" aria-describedby="random-help">
+                <button type="button" aria-label="Increase question count" (click)="adjustQuestionCount(1)">+</button>
+              </div>
+            </div>
+          }
+        </article>
+
+        <article class="strategy-card topic" [class.selected]="strategy === 'LABEL'">
+          <button type="button" class="strategy-choice" (click)="selectStrategy('LABEL')" [attr.aria-pressed]="strategy === 'LABEL'">
+            <span class="strategy-icon"><i class="ph ph-list-bullets"></i></span>
+            <span><strong>Topic revision</strong><small>Use an equal quota for selected Topics.</small></span>
+            <i class="ph" [class.ph-radio-button]="strategy !== 'LABEL'" [class.ph-check-circle]="strategy === 'LABEL'"></i>
+          </button>
+          @if (strategy === 'LABEL') {
+            <div class="strategy-controls topic-controls">
+              <label for="topic-search">Select Topics</label>
+              @if (topicsLoading()) {
+                <div class="inline-state" role="status"><span class="mini-spinner"></span> Loading Topics…</div>
+              } @else if (topicError()) {
+                <div class="inline-error" role="alert">{{ topicError() }} <button type="button" (click)="loadTopics()">Retry</button></div>
+              } @else if (topics().length === 0) {
+                <div class="inline-state">No Topics yet. Create Topics before starting a Topic revision.</div>
+              } @else {
+                <div class="topic-search"><i class="ph ph-magnifying-glass"></i><input id="topic-search" type="search" formControlName="topicSearch" placeholder="Search Topics"></div>
+                <div class="topic-list" aria-label="Available Topics">
+                  @for (topic of filteredTopics(); track topic.id) {
+                    <button type="button" class="topic-chip" [class.selected]="isTopicSelected(topic.id)" [attr.aria-pressed]="isTopicSelected(topic.id)" (click)="toggleTopic(topic.id)">
+                      {{ topic.label_name }} <i class="ph" [class.ph-plus]="!isTopicSelected(topic.id)" [class.ph-check]="isTopicSelected(topic.id)"></i>
+                    </button>
+                  }
+                </div>
+              }
+              <label for="topic-count">Questions per Topic</label>
+              <div class="stepper">
+                <button type="button" aria-label="Decrease questions per Topic" (click)="adjustQuestionsPerLabel(-1)">−</button>
+                <input id="topic-count" type="number" min="1" max="20" formControlName="questionsPerLabel">
+                <button type="button" aria-label="Increase questions per Topic" (click)="adjustQuestionsPerLabel(1)">+</button>
+              </div>
+              <small>{{ selectedTopicIds().size }} selected · {{ derivedQuestionCount }} questions total</small>
+              @if (derivedQuestionCount > 50) { <p class="field-error" role="alert">The derived total cannot exceed 50 questions.</p> }
+            </div>
+          }
+        </article>
+
+        <article class="strategy-card smart" [class.selected]="strategy === 'SMART'">
+          <button type="button" class="strategy-choice" (click)="selectStrategy('SMART')" [attr.aria-pressed]="strategy === 'SMART'">
+            <span class="strategy-icon"><i class="ph ph-target"></i></span>
+            <span><strong>Smart revision</strong><small>Focus using your learning evidence.</small></span>
+            <i class="ph" [class.ph-radio-button]="strategy !== 'SMART'" [class.ph-check-circle]="strategy === 'SMART'"></i>
+          </button>
+          @if (strategy === 'SMART') {
+            <div class="strategy-controls">
+              <p class="smart-note"><i class="ph ph-chart-bar"></i> Weak and due learning items are prioritised. Quick revision may be used when there is not enough evidence.</p>
+              <label for="smart-count">Number of questions</label>
+              <div class="stepper">
+                <button type="button" aria-label="Decrease question count" (click)="adjustQuestionCount(-1)">−</button>
+                <input id="smart-count" type="number" min="1" max="50" formControlName="questionCount">
+                <button type="button" aria-label="Increase question count" (click)="adjustQuestionCount(1)">+</button>
+              </div>
+            </div>
+          }
+        </article>
+      </div>
+    </fieldset>
+
+    <section class="session-summary" aria-labelledby="session-summary-title">
+      <span class="summary-icon"><i class="ph ph-sliders-horizontal"></i></span>
+      <div>
+        <h2 id="session-summary-title">Your revision session</h2>
+        <dl>
+          <div><dt>Strategy</dt><dd>{{ strategy === 'RANDOM' ? 'Quick revision' : strategy === 'LABEL' ? 'Topic revision' : 'Smart revision' }}</dd></div>
+          <div><dt>Questions</dt><dd>{{ strategy === 'LABEL' ? derivedQuestionCount : form.controls.questionCount.value }}</dd></div>
+          <div><dt>Topics</dt><dd>{{ strategy === 'LABEL' ? selectedTopicIds().size + ' selected' : 'All owned material' }}</dd></div>
+        </dl>
+      </div>
+      <button type="submit" class="primary-btn start-button" [disabled]="!canCreate">
+        @if (creating()) { <span class="mini-spinner light"></span> Preparing your revision… } @else { <i class="ph ph-play"></i> Start revision }
+      </button>
+    </section>
+
+    @if (createError(); as error) {
+      <section class="page-error" role="alert" aria-live="assertive">
+        <i class="ph ph-warning-circle"></i><div><strong>{{ error.title }}</strong><p>{{ error.message }}</p></div>
+      </section>
+    }
+    <p class="source-note"><i class="ph ph-info"></i> Revisions currently use the questions already prepared from your learning material.</p>
+  </form>
+</div>

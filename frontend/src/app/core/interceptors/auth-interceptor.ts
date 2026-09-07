@@ -37,12 +37,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       // Status 0 usually means the backend is unreachable.
-      if (error.status === 0) {
+      if (error.status === 0 && !isLoginRequest) {
         toaster.error('Unable to connect to the server.');
       }
 
       // 5xx errors are server-side failures.
-      if (error.status >= 500) {
+      if (error.status >= 500 && !isLoginRequest) {
         toaster.error('Something went wrong on the server.');
       }
 

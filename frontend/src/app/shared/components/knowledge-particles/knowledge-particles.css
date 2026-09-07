@@ -1,0 +1,14 @@
+:host {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  pointer-events: none;
+}

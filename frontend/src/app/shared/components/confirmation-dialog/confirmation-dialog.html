@@ -1,0 +1,31 @@
+<div class="dialog-backdrop" (click)="cancel()">
+  <section
+    #dialog
+    class="dialog-card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="confirmation-title"
+    aria-describedby="confirmation-message"
+    (click)="$event.stopPropagation()"
+  >
+    <span class="dialog-icon" [class.warning]="tone === 'warning'" aria-hidden="true">
+      <i
+        class="ph"
+        [class.ph-check-circle]="tone === 'primary'"
+        [class.ph-warning]="tone === 'warning'"
+      ></i>
+    </span>
+    <h2 id="confirmation-title">{{ title }}</h2>
+    <p id="confirmation-message">{{ message }}</p>
+    <div class="dialog-actions">
+      <button type="button" class="primary-btn-outlined" [disabled]="busy" (click)="cancel()">
+        {{ cancelLabel }}
+      </button>
+      <button type="button" class="primary-btn" [disabled]="busy" (click)="confirm()">
+        @if (busy) { <span class="button-spinner" aria-hidden="true"></span> }
+        {{ busy ? 'Please wait…' : confirmLabel }}
+      </button>
+    </div>
+  </section>
+</div>
+

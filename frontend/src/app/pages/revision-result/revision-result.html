@@ -1,0 +1,67 @@
+<main class="result-page">
+  @if (loading()) {
+    <section class="result-state" role="status" aria-live="polite">
+      <span class="result-spinner" aria-hidden="true"></span>
+      <h1>Building your results...</h1>
+      <p>Loading the completed revision from Revisee.</p>
+    </section>
+  } @else if (loadError(); as error) {
+    <section class="result-state error-state" role="alert">
+      <i class="ph ph-warning-circle"></i><h1>{{ error.title }}</h1><p>{{ error.message }}</p>
+      @if (error.retryable) {
+        <button type="button" class="primary-btn" (click)="loadResult()">Try again</button>
+      } @else {
+        <button type="button" class="primary-btn-outlined" (click)="startAnother()">Back to Revise</button>
+      }
+    </section>
+  } @else if (result(); as completed) {
+    <header class="result-header">
+      <div>
+        <span class="eyebrow">Revision complete</span>
+        <h1>Great work. Here is how you did.</h1>
+        @if (completed.requested_strategy === 'SMART' && completed.strategy_used === 'RANDOM') {
+          <p class="fallback-note"><i class="ph ph-info"></i> Smart revision used Quick revision because there was not enough actionable learning evidence.</p>
+        }
+      </div>
+      <div class="doodle" aria-hidden="true"><i class="ph ph-notebook"></i><span>practice<br>reflect<br>repeat</span></div>
+    </header>
+
+    <section class="score-grid" aria-label="Revision summary">
+      <article><span class="metric-icon correct"><i class="ph ph-check-circle"></i></span><div><strong>{{ completed.correct_count }} / {{ completed.question_count }}</strong><span>correct</span></div></article>
+      <article><span class="metric-icon score"><i class="ph ph-chart-bar"></i></span><div><strong>{{ completed.score_percentage }}%</strong><span>score</span></div></article>
+      <article><span class="metric-icon time"><i class="ph ph-clock"></i></span><div><strong>{{ formatDuration(completed.total_time_taken_seconds) }}</strong><span>answer time</span></div></article>
+      <article><span class="metric-icon strategy"><i class="ph ph-compass"></i></span><div><strong>{{ completed.strategy_used }}</strong><span>{{ completed.requested_strategy === completed.strategy_used ? 'strategy' : 'strategy used' }}</span></div></article>
+    </section>
+
+    <div class="result-actions">
+      <button type="button" class="primary-btn" (click)="scrollToReview()"><i class="ph ph-list-checks"></i> Review answers</button>
+      <button type="button" class="primary-btn-outlined" (click)="startAnother()"><i class="ph ph-arrows-clockwise"></i> Start another revision</button>
+    </div>
+
+    <section id="question-review" class="review-section" aria-labelledby="review-heading">
+      <header><div><h2 id="review-heading">Question review</h2><p>See what you got right, what to work on, and the saved explanations.</p></div><div class="review-counts"><span>{{ completed.correct_count }} correct</span><span>{{ completed.incorrect_count }} incorrect</span></div></header>
+      <div class="review-list">
+        @for (question of completed.questions; track question.session_question_id) {
+          <article class="review-card" [class.incorrect]="!question.is_correct">
+            <span class="question-number">{{ question.position }}</span>
+            <div class="question-copy"><span class="item-title">{{ question.learning_item_title }}</span><h3>{{ question.question }}</h3></div>
+            <div class="verdict" [class.incorrect]="!question.is_correct">
+              <i class="ph" [class.ph-check-circle]="question.is_correct" [class.ph-x-circle]="!question.is_correct"></i>
+              <strong>{{ question.is_correct ? 'Correct' : 'Incorrect' }}</strong>
+            </div>
+            <dl>
+              <div><dt>Your answer</dt><dd>{{ question.selected_option }}. {{ optionText(question, question.selected_option) }}</dd></div>
+              <div><dt>Correct answer</dt><dd>{{ question.correct_option }}. {{ optionText(question, question.correct_option) }}</dd></div>
+              <div><dt>Explanation</dt><dd>{{ question.explanation || 'No explanation was stored for this question.' }}</dd></div>
+            </dl>
+            <div class="mastery" [class.negative]="question.mastery_delta < 0">
+              <i class="ph" [class.ph-trend-up]="question.mastery_delta >= 0" [class.ph-trend-down]="question.mastery_delta < 0"></i>
+              <strong>{{ question.mastery_delta > 0 ? '+' : '' }}{{ question.mastery_delta }} mastery</strong>
+              <span>{{ question.time_taken_seconds }}s</span>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+  }
+</main>

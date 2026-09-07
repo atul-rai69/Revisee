@@ -1,12 +1,18 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { SKIP_GLOBAL_LOADER } from '../interceptors/loader-interceptor';
 
 export interface Label{
   id: number;
   user_id: number;
   label_name: string;
+}
+
+export interface LabelMutationResponse {
+  message: string;
+  label: Label;
 }
 
 @Injectable({
@@ -21,16 +27,21 @@ export class LabelService {
     private http: HttpClient
   ) {}
 
-  getLabels(): Observable<Label[]> {
+  getLabels(options: { localLoading?: boolean } = {}): Observable<Label[]> {
     return this.http.get<Label[]>(
-      `${this.apiUrl}/labels`
+      `${this.apiUrl}/labels`,
+      {
+        context: options.localLoading
+          ? new HttpContext().set(SKIP_GLOBAL_LOADER, true)
+          : new HttpContext(),
+      }
     );
   }
 
   createLabel(
     label_name: string
-  ): Observable<any> {
-    return this.http.post(
+  ): Observable<LabelMutationResponse> {
+    return this.http.post<LabelMutationResponse>(
       `${this.apiUrl}/labels`,
       {
         label_name
@@ -41,8 +52,8 @@ export class LabelService {
   updateLabel(
     id: number,
     label_name: string
-  ): Observable<any> {
-    return this.http.patch(
+  ): Observable<LabelMutationResponse> {
+    return this.http.patch<LabelMutationResponse>(
       `${this.apiUrl}/labels`,
       {
         id,

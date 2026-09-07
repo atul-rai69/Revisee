@@ -1,6 +1,17 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { SKIP_GLOBAL_LOADER } from '../interceptors/loader-interceptor';
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export interface LogoutResponse {
+  message: string;
+}
 
 interface JwtPayload {
   exp?: number;
@@ -16,16 +27,11 @@ export class AuthService {
 
   constructor(private http: HttpClient) {}
 
-  login(username: string, password: string) {
-
-    const data = {
-      username: username,
-      password: password
-    };
-
-    return this.http.post(
+  login(username: string, password: string): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(
       `${this.apiUrl}/login`,
-      data
+      { username, password },
+      { context: new HttpContext().set(SKIP_GLOBAL_LOADER, true) },
     );
   }
 
@@ -41,8 +47,8 @@ export class AuthService {
     localStorage.removeItem(this.tokenKey);
   }
 
-  logout(){
-    return this.http.post(
+  logout(): Observable<LogoutResponse> {
+    return this.http.post<LogoutResponse>(
       `${this.apiUrl}/logout`,
       {}
     );

@@ -1,137 +1,68 @@
-
-
-<div class="container-fluid d-none">
-
-  <div class="row">
-    <div class="col-lg-5">
-      <h2>Login</h2>
-
-      <form (ngSubmit)="onLogin()">
-
-        <input
-          type="text"
-          placeholder="Username"
-          [(ngModel)]="username"
-          name="username"
-        >
-
-        <input
-          type="password"
-          placeholder="Password"
-          [(ngModel)]="password"
-          name="password"
-        >
-
-        <button type="submit">
-          Login
-        </button>
-
-      </form>
-    </div>
-
-    <div class="col-lg-7">
-      <div class="login-right w-100 h-100">
-        <img src="/login-image.png" alt="Study Illustration" class="img-fluid">
+<main class="login-page">
+  <section class="login-card" aria-labelledby="login-title">
+    <div class="login-visual">
+      <img class="visual-background" src="/assets/login/login-panel-background.svg" alt="">
+      <app-knowledge-particles />
+      <img class="knowledge-illustration" src="/assets/login/login-knowledge-illustration.png" alt="">
+      <div class="visual-message">
+        <span>Learn. Review.</span>
+        <strong>Remember.</strong>
+        <span class="marker-line" aria-hidden="true"></span>
+        <img src="/assets/login/revisee-sparkle.svg" alt="" aria-hidden="true">
       </div>
     </div>
-  </div>
-  
 
-</div>
+    <div class="login-form-panel">
+      <div class="form-shell">
+        <img class="wordmark" src="/assets/login/revisee-logo.svg" alt="Revisee">
+        <header>
+          <h1 id="login-title">Welcome back</h1>
+          <p>Continue building stronger memories.</p>
+        </header>
 
-<div class="container-fluid login-container-wrapper">
-
-  <div class="row h-100">
-
-    <!-- Left Side -->
-    <div class="col-lg-5 login-form-section">
-
-      <div class="login-container">
-
-        <div class="logo">
-          Revisee
-        </div>
-
-        <div class="content">
-
-          <h1>
-            Holla,<br>
-            Welcome Back
-          </h1>
-
-          <p class="subtitle">
-            Hey, welcome back to your special place
-          </p>
-
-          <form (ngSubmit)="onLogin()">
-
-            <!-- Email -->
-            <div class="input-box">
-              <span class="icon"><i class="ph ph-user"></i></span>
-
-              <input
-                type="text"
-                placeholder="Username"
-                [(ngModel)]="username"
-                name="username"
-              >
+        <form [formGroup]="form" (ngSubmit)="onLogin()" novalidate>
+          <div class="field-group">
+            <label for="username">Username</label>
+            <div class="field-control" [class.invalid]="form.controls.username.touched && form.controls.username.invalid">
+              <i class="ph ph-user" aria-hidden="true"></i>
+              <input id="username" type="text" formControlName="username" autocomplete="username" placeholder="Enter your username" [attr.aria-invalid]="form.controls.username.touched && form.controls.username.invalid" [attr.aria-describedby]="form.controls.username.touched && form.controls.username.invalid ? 'username-error' : null">
             </div>
+            @if (form.controls.username.touched && form.controls.username.invalid) {
+              <small id="username-error" class="field-error">Username is required.</small>
+            }
+          </div>
 
-            <!-- Password -->
-            <div class="input-box">
-              <span class="icon"><i class="ph ph-lock"></i></span>
-
-              <input
-                type="password"
-                placeholder="Password"
-                [(ngModel)]="password"
-                name="password"
-              >
-
-              <!-- <span class="eye">👁</span> -->
+          <div class="field-group">
+            <label for="password">Password</label>
+            <div class="field-control" [class.invalid]="form.controls.password.touched && form.controls.password.invalid">
+              <i class="ph ph-lock" aria-hidden="true"></i>
+              <input id="password" [type]="passwordVisible() ? 'text' : 'password'" formControlName="password" autocomplete="current-password" placeholder="Enter your password" [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid" [attr.aria-describedby]="form.controls.password.touched && form.controls.password.invalid ? 'password-error' : null">
+              <button type="button" class="password-toggle" [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'" [disabled]="submitting()" (click)="togglePasswordVisibility()">
+                <i class="ph" [class.ph-eye]="!passwordVisible()" [class.ph-eye-slash]="passwordVisible()" aria-hidden="true"></i>
+              </button>
             </div>
+            @if (form.controls.password.touched && form.controls.password.invalid) {
+              <small id="password-error" class="field-error">Password is required.</small>
+            }
+          </div>
 
-            <!-- Options -->
-            <div class="options">
-
-              <label class="remember">
-                <input type="checkbox" checked>
-                <span>Remember me</span>
-              </label>
-
-              <a href="#">Forgot Password?</a>
-
+          @if (loginError()) {
+            <div class="login-error" role="alert" aria-live="assertive">
+              <i class="ph ph-warning-circle" aria-hidden="true"></i>
+              <span>{{ loginError() }}</span>
             </div>
+          }
 
-            <!-- Button -->
-            <button type="submit" class="cstm-primary-btn">
-              Sign In
-            </button>
-
-          </form>
-
-        </div>
-
-        <div class="signup-text">
-          Don't have an account?
-          <a href="#">Sign Up</a>
-        </div>
-
+          <button type="submit" class="login-button" [disabled]="submitting()">
+            @if (submitting()) {
+              <span class="button-spinner" aria-hidden="true"></span>
+              Logging in...
+            } @else {
+              Log in
+            }
+          </button>
+        </form>
       </div>
-
     </div>
-
-    <!-- Right Side -->
-    <div class="col-lg-7 image-section">
-
-      <img
-        src="/login-image3.png"
-        alt="Study Illustration"
-        class="login-image"
-      >
-
-    </div>
-
-  </div>
-
-</div>
+  </section>
+</main>

@@ -1,6 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NEVER } from 'rxjs';
 
 import { NewItem } from './new-item';
+import { LabelService } from '../../core/services/label-service';
+import { LearningItem } from '../../core/services/learning-item';
+
+class FakeLabelService { getLabels() { return NEVER; } }
+class FakeLearningItemService {}
 
 describe('NewItem', () => {
   let component: NewItem;
@@ -8,7 +14,11 @@ describe('NewItem', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NewItem]
+      imports: [NewItem],
+      providers: [
+        { provide: LabelService, useClass: FakeLabelService },
+        { provide: LearningItem, useClass: FakeLearningItemService },
+      ]
     })
     .compileComponents();
 

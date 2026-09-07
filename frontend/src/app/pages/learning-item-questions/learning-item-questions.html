@@ -1,0 +1,98 @@
+<main class="question-bank-page">
+  <a class="back-link" [routerLink]="['/app/learning-items', itemId]">
+    <i class="ph ph-caret-left" aria-hidden="true"></i>
+    Back to learning item
+  </a>
+
+  <section class="question-bank-state" *ngIf="loading()" role="status" aria-live="polite">
+    <span class="question-bank-spinner" aria-hidden="true"></span>
+    <p>Loading all questions…</p>
+  </section>
+
+  <section class="question-bank-state question-bank-state--error" *ngIf="!loading() && loadError()">
+    <i class="ph ph-warning-circle" aria-hidden="true"></i>
+    <h1>Question bank unavailable</h1>
+    <p>{{ loadError() }}</p>
+    <button class="primary-btn-outlined" type="button" (click)="loadQuestions()">Try again</button>
+  </section>
+
+  <ng-container *ngIf="!loading() && item() as learningItem">
+    <header class="question-bank-header">
+      <div>
+        <span class="eyebrow">Question bank</span>
+        <h1>{{ learningItem.title }}</h1>
+        <p>
+          {{ learningItem.questions.length }}
+          {{ learningItem.questions.length === 1 ? 'stored question' : 'stored questions' }}
+        </p>
+      </div>
+      <div class="question-bank-actions">
+        <button
+          class="primary-btn-outlined"
+          type="button"
+          (click)="generateMoreQuestions()"
+          [disabled]="generating()"
+        >
+          <span class="question-bank-spinner question-bank-spinner--small" *ngIf="generating()" aria-hidden="true"></span>
+          <i class="ph ph-sparkle" *ngIf="!generating()" aria-hidden="true"></i>
+          {{ generating() ? 'Generating questions…' : 'Generate more questions' }}
+        </button>
+        <a class="primary-btn" routerLink="/app/revise">Start a revision</a>
+      </div>
+    </header>
+
+    <section class="question-list" *ngIf="learningItem.questions.length; else emptyQuestionBank">
+      <article class="question-card" *ngFor="let question of learningItem.questions">
+        <div class="question-card-heading">
+          <span class="question-number">{{ question.number }}</span>
+          <div>
+            <div class="question-meta">
+              <span>{{ difficultyLabel(question.difficulty) }}</span>
+              <span>{{ question.expected_time_seconds }} seconds</span>
+            </div>
+            <h2>{{ question.question }}</h2>
+          </div>
+        </div>
+
+        <ol class="option-list">
+          <li
+            *ngFor="let option of question.options"
+            [class.option--correct]="isAnswerRevealed(question) && option.isCorrect"
+          >
+            <span>{{ option.label }}</span>
+            <strong>{{ option.text }}</strong>
+            <i
+              class="ph ph-check-circle"
+              *ngIf="isAnswerRevealed(question) && option.isCorrect"
+              aria-label="Correct answer"
+            ></i>
+          </li>
+        </ol>
+
+        <div class="answer-review">
+          <button
+            class="answer-toggle"
+            type="button"
+            (click)="toggleAnswer(question)"
+            [attr.aria-expanded]="isAnswerRevealed(question)"
+          >
+            <i [class]="isAnswerRevealed(question) ? 'ph ph-eye-slash' : 'ph ph-eye'" aria-hidden="true"></i>
+            {{ isAnswerRevealed(question) ? 'Hide answer' : 'Show answer' }}
+          </button>
+          <p *ngIf="isAnswerRevealed(question)">
+            <strong>Explanation:</strong>
+            {{ question.explanation || 'No explanation is available for this question.' }}
+          </p>
+        </div>
+      </article>
+    </section>
+
+    <ng-template #emptyQuestionBank>
+      <section class="question-bank-state question-bank-state--empty">
+        <i class="ph ph-question" aria-hidden="true"></i>
+        <h2>No stored questions yet</h2>
+        <p>Generate revision content to add questions grounded in this learning item.</p>
+      </section>
+    </ng-template>
+  </ng-container>
+</main>

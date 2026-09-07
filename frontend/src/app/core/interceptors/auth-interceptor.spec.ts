@@ -1,17 +1,49 @@
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { HttpInterceptorFn } from '@angular/common/http';
-
+import { Router } from '@angular/router';
+import { vi } from 'vitest';
+import { environment } from '../../../environments/environment';
+import { AuthService } from '../services/auth.service';
+import { ToasterService } from '../services/toaster.service';
 import { authInterceptor } from './auth-interceptor';
 
+class FakeRouter { navigate = vi.fn(); }
+
 describe('authInterceptor', () => {
-  const interceptor: HttpInterceptorFn = (req, next) => 
-    TestBed.runInInjectionContext(() => authInterceptor(req, next));
+  let auth: AuthService;
+  let http: HttpTestingController;
+  let toaster: ToasterService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+        { provide: Router, useClass: FakeRouter },
+      ],
+    });
+    auth = TestBed.inject(AuthService);
+    http = TestBed.inject(HttpTestingController);
+    toaster = TestBed.inject(ToasterService);
   });
 
-  it('should be created', () => {
-    expect(interceptor).toBeTruthy();
+  afterEach(() => http.verify());
+
+  it('preserves bearer-token attachment', () => {
+    auth.setToken('token');
+    auth.logout().subscribe({ error: () => undefined });
+    const request = http.expectOne(`${environment.apiUrl}/logout`);
+    expect(request.request.headers.get('Authorization')).toBe('Bearer token');
+    request.flush({ message: 'ok' });
+  });
+
+  it('leaves login network feedback to the login form rather than duplicating a toast', () => {
+    const errorToast = vi.spyOn(toaster, 'error');
+    auth.login('atul', 'secret').subscribe({ error: () => undefined });
+    const request = http.expectOne(`${environment.apiUrl}/login`);
+    request.error(new ProgressEvent('offline'), { status: 0 });
+    expect(errorToast).not.toHaveBeenCalled();
   });
 });

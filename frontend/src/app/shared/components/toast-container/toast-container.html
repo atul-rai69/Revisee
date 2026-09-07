@@ -1,13 +1,14 @@
 <section
   class="toast-stack"
-  aria-live="polite"
-  aria-atomic="true"
+  aria-label="Notifications"
 >
   @for (toast of toaster.toasts(); track toast.id) {
     <article
       class="toast-message"
       [ngClass]="'toast-' + toast.type"
-      role="status"
+      [attr.role]="getRole(toast.type)"
+      [attr.aria-live]="getAriaLive(toast.type)"
+      aria-atomic="true"
     >
       <i
         class="toast-icon ph"

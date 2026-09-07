@@ -19,9 +19,10 @@
           <span>Home</span>
         </a> -->
 
-        <a 
+        <a
           routerLink="/app/dashboard"
           routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
           class="nav-item"
         >
             <div class="icon-wrapper">
@@ -31,24 +32,30 @@
           <span>Home</span>
         </a>
 
-        <a href="" class="nav-item">
+        <a
+          routerLink="/app/dashboard"
+          fragment="learning-library"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="nav-item"
+        >
           <div class="icon-wrapper">
             <i class="ph ph-file-text"></i>
           </div>
           
-          <span>My Items</span>
+          <span>My Learning</span>
         </a>
 
         <a 
-          routerLink="/app/new-item"
+          routerLink="/app/revise"
           routerLinkActive="active"
           class="nav-item"
         >
           <div class="icon-wrapper">
-            <i class="ph ph-plus-square"></i>
+            <i class="ph ph-pencil-line"></i>
           </div>
           
-          <span>Create</span>
+          <span>Revise</span>
         </a>
 
         <a 
@@ -60,31 +67,7 @@
             <i class="ph ph-tag-simple"></i>
           </div>
           
-          <span>Labels</span>
-        </a>
-
-        <a href="" 
-          routerLink="/app/playground"
-          routerLinkActive="active"
-          class="nav-item"
-        >
-          <div class="icon-wrapper">
-            <i class="ph ph-chart-bar"></i>
-          </div>
-          
-          <span>Analytics</span>
-        </a>
-
-        <a href="" 
-          routerLink="/app/canvas"
-          routerLinkActive="active" 
-          class="nav-item"
-        >
-          <div class="icon-wrapper">
-            <i class="ph ph-gear"></i>
-          </div>
-          
-          <span>Settings</span>
+          <span>Topics</span>
         </a>
 
       </nav>
@@ -102,15 +85,14 @@
 
       <!-- PROFILE -->
       <div class="profile-avatar">
-        <img
-          src="https://i.pravatar.cc/100?img=12"
-          alt="User"
-        />
+        <i class="ph ph-user" aria-hidden="true"></i>
+        <span class="sr-only">Account</span>
       </div>
 
       <div>
         <button class="logout-btn"
           type="button"
+          aria-label="Log out"
           (click)="onLogout()"
         >
           <i class="ph ph-sign-out"></i>

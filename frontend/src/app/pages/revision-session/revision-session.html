@@ -1,0 +1,115 @@
+<main class="quiz-page">
+  @if (loading()) {
+    <section class="workspace-state" role="status" aria-live="polite">
+      <span class="study-spinner" aria-hidden="true"></span>
+      <h1>Loading your questions...</h1>
+      <p>Restoring the exact order saved for this revision.</p>
+    </section>
+  } @else if (loadError(); as error) {
+    <section class="workspace-state error-state" role="alert">
+      <i class="ph ph-warning-circle"></i>
+      <h1>{{ error.title }}</h1>
+      <p>{{ error.message }}</p>
+      @if (error.retryable) {
+        <button type="button" class="primary-btn" (click)="loadSession()">Try again</button>
+      } @else {
+        <button type="button" class="primary-btn-outlined" (click)="requestExit()">Back to Revise</button>
+      }
+    </section>
+  } @else if (session(); as revision) {
+    <header class="quiz-header">
+      <div>
+        <span class="eyebrow">Revision in progress</span>
+        <h1>Stay focused. You are doing great!</h1>
+      </div>
+      <div class="session-meter" aria-label="Revision progress">
+        <div><i class="ph ph-file-text"></i><strong>Question {{ currentIndex() + 1 }} of {{ revision.question_count }}</strong></div>
+        <progress [value]="currentIndex() + 1" [max]="revision.question_count"></progress>
+        <div><i class="ph ph-clock"></i><strong>{{ formatTime(elapsedSeconds()) }}</strong><span>Total elapsed</span></div>
+      </div>
+    </header>
+
+    @if (currentQuestion; as question) {
+      <section class="question-card" aria-labelledby="question-heading">
+        <div class="question-meta">
+          <span class="topic-pill"><i class="ph ph-book-open"></i>{{ topicSummary }}</span>
+          <span class="difficulty" [class.hard]="question.difficulty === 3">{{ difficultyLabel(question.difficulty) }}</span>
+          <span><i class="ph ph-timer"></i> About {{ question.expected_time_seconds }}s</span>
+        </div>
+        <h2 id="question-heading">{{ question.question }}</h2>
+        <div class="options" role="radiogroup" [attr.aria-label]="'Answers for question ' + (currentIndex() + 1)">
+          @for (option of question.options; track option.label) {
+            <button
+              type="button"
+              class="answer-option"
+              role="radio"
+              [attr.aria-checked]="selectedOption(question.session_question_id) === option.label"
+              [class.selected]="selectedOption(question.session_question_id) === option.label"
+              (click)="selectOption(option.label)"
+            >
+              <span>{{ option.label }}</span><strong>{{ option.text }}</strong>
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    <nav class="quiz-navigation" aria-label="Question navigation">
+      <button type="button" class="secondary-btn" [disabled]="currentIndex() === 0" (click)="previous()">
+        <i class="ph ph-arrow-left"></i> Previous
+      </button>
+      <div class="question-dots">
+        @for (question of revision.questions; track question.session_question_id; let index = $index) {
+          <button
+            type="button"
+            [class.current]="index === currentIndex()"
+            [class.answered]="isAnswered(question.session_question_id)"
+            [attr.aria-current]="index === currentIndex() ? 'step' : null"
+            [attr.aria-label]="'Question ' + (index + 1) + (isAnswered(question.session_question_id) ? ', answered' : ', unanswered')"
+            (click)="goToQuestion(index)"
+          >{{ index + 1 }}</button>
+        }
+      </div>
+      @if (currentIndex() < revision.questions.length - 1) {
+        <button type="button" class="primary-btn" (click)="next()">Next <i class="ph ph-arrow-right"></i></button>
+      } @else {
+        <button type="button" class="primary-btn" [disabled]="submitting()" (click)="requestSubmission()">
+          Submit revision
+        </button>
+      }
+    </nav>
+
+    <div class="quiz-footer">
+      <button type="button" class="exit-button" (click)="requestExit()"><i class="ph ph-sign-out"></i> Exit and resume later</button>
+      <p>Unsubmitted answers are kept only in this open page and will be lost when you leave.</p>
+    </div>
+
+    @if (submitError(); as error) {
+      <section class="submit-error" role="alert">
+        <strong>{{ error.title }}</strong><span>{{ error.message }}</span>
+        @if (error.retryable) { <button type="button" (click)="requestSubmission()">Retry submission</button> }
+      </section>
+    }
+
+    @if (showExitDialog()) {
+      <app-confirmation-dialog
+        title="Leave this revision?"
+        message="Your session can be resumed, but answers selected on this page have not been saved and will be discarded."
+        confirmLabel="Leave revision"
+        tone="warning"
+        (confirmed)="confirmExit()"
+        (cancelled)="showExitDialog.set(false)"
+      />
+    }
+    @if (showSubmitDialog()) {
+      <app-confirmation-dialog
+        title="Submit your revision?"
+        [message]="'You answered ' + answeredCount + ' of ' + revision.question_count + ' questions. Answers cannot be changed after submission.'"
+        confirmLabel="Submit answers"
+        [busy]="submitting()"
+        (confirmed)="confirmSubmission()"
+        (cancelled)="showSubmitDialog.set(false)"
+      />
+    }
+  }
+</main>
