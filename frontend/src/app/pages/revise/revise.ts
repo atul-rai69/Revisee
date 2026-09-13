@@ -15,6 +15,7 @@ import {
 import { Label, LabelService } from '../../core/services/label-service';
 import { RevisionSessionService } from '../../core/services/revision-session.service';
 import { ToasterService } from '../../core/services/toaster.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-revise',
@@ -23,6 +24,7 @@ import { ToasterService } from '../../core/services/toaster.service';
   styleUrl: './revise.css',
 })
 export class Revise implements OnInit {
+  readonly smartRevisionEnabled = environment.features.phase4SmartRevision;
   readonly topics = signal<Label[]>([]);
   readonly selectedTopicIds = signal<Set<number>>(new Set());
   readonly topicsLoading = signal(false);
@@ -50,7 +52,7 @@ export class Revise implements OnInit {
 
   ngOnInit(): void {
     const requestedStrategy = this.route.snapshot.queryParamMap.get('strategy');
-    if (requestedStrategy === 'RANDOM' || requestedStrategy === 'LABEL' || requestedStrategy === 'SMART') {
+    if (requestedStrategy === 'RANDOM' || requestedStrategy === 'LABEL' || (requestedStrategy === 'SMART' && this.smartRevisionEnabled)) {
       this.form.controls.strategy.setValue(requestedStrategy);
     }
     this.loadTopics();
@@ -84,6 +86,10 @@ export class Revise implements OnInit {
   }
 
   selectStrategy(strategy: RevisionStrategy): void {
+    if (strategy === 'SMART' && !this.smartRevisionEnabled) {
+      this.toaster.info('Smart revision is not available in this release.');
+      return;
+    }
     this.form.controls.strategy.setValue(strategy);
     this.createError.set(null);
   }

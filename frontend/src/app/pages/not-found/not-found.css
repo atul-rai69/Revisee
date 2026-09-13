@@ -1,0 +1,4 @@
+:host { display: block; min-height: 100%; }
+.not-found-page { min-height: 100vh; display: grid; place-items: center; align-content: center; gap: var(--space-2xl); padding: var(--page-gutter); background: radial-gradient(circle at 50% 5%, rgba(233, 173, 67, .15), transparent 34%), var(--color-canvas); }
+.brand img { width: 148px; }
+@media (max-width: 720px) { .not-found-page { min-height: calc(100dvh - 128px); padding: 24px; } }

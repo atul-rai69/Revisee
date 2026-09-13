@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ToastContainer } from './shared/components/toast-container/toast-container';
 import { Loader } from './shared/components/loader/loader';
@@ -14,5 +14,4 @@ import { Loader } from './shared/components/loader/loader';
   styleUrl: './app.css'
 })
 export class App {
-  protected readonly title = signal('frontend');
 }

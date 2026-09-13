@@ -73,6 +73,7 @@
           }
         </article>
 
+        @if (smartRevisionEnabled) {
         <article class="strategy-card smart" [class.selected]="strategy === 'SMART'">
           <button type="button" class="strategy-choice" (click)="selectStrategy('SMART')" [attr.aria-pressed]="strategy === 'SMART'">
             <span class="strategy-icon"><i class="ph ph-target"></i></span>
@@ -91,6 +92,7 @@
             </div>
           }
         </article>
+        }
       </div>
     </fieldset>
 

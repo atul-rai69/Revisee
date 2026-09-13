@@ -1,7 +1,12 @@
 :root {
-
-  --transition-fast: 0.15s ease;
-  --transition-base: 0.25s ease;
-  --transition-slow: 0.4s ease;
-
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(.2, .8, .2, 1);
+  --duration-hover: 160ms;
+  --duration-ui: 220ms;
+  --duration-panel: 300ms;
+  --duration-reveal: 480ms;
+  --stagger-step: 45ms;
+  --transition-fast: var(--duration-hover) var(--ease-standard);
+  --transition-base: var(--duration-ui) var(--ease-standard);
+  --transition-slow: var(--duration-reveal) var(--ease-standard);
 }

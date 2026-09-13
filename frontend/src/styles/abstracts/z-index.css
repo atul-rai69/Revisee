@@ -1,0 +1,16 @@
+:root {
+  --z-base: 1;
+  --z-sticky: 900;
+  --z-fixed: 1000;
+  --z-overlay: 1100;
+  --z-toast: 1200;
+}
+:root {
+  --z-base: 1;
+  --z-sticky: 100;
+  --z-fixed: 200;
+  --z-drawer: 400;
+  --z-dialog: 600;
+  --z-toast: 700;
+  --z-loader: 800;
+}

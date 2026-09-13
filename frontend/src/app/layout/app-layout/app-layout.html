@@ -1,11 +1,42 @@
-<div class="app-layout">
-
-  <app-sidebar class="sidebar"></app-sidebar>
-
-  <main class="page-content">
-
-    <router-outlet></router-outlet>
-
-  </main>
-
+<div class="app-shell" [class.focused-mode]="focusedMode()">
+  @if (!focusedMode()) {
+    <app-sidebar />
+  }
+  <div class="workspace">
+    @if (!focusedMode()) {
+      <header class="page-bar">
+        <div class="page-heading">
+          <img src="/assets/revisee-brand-kit/revisee-mark.svg" alt="" aria-hidden="true">
+          <span>{{ pageTitle() }}</span>
+        </div>
+        <div class="page-actions">
+          <a class="add-material" routerLink="/app/new-item">
+            <i class="ph ph-plus" aria-hidden="true"></i><span>Add material</span>
+          </a>
+          <div class="account-menu">
+            <button
+              type="button"
+              class="account-trigger"
+              aria-label="Open account menu"
+              aria-haspopup="menu"
+              [attr.aria-expanded]="accountMenuOpen()"
+              (click)="toggleAccountMenu()"
+            ><i class="ph ph-user" aria-hidden="true"></i></button>
+            @if (accountMenuOpen()) {
+              <div class="account-popover" role="menu">
+                <!-- TEMPORARY ACCOUNT COPY: settings route is not in the current capability set. -->
+                <div><strong>Revisee account</strong><span>Account settings are coming later.</span></div>
+                <button type="button" role="menuitem" (click)="onLogout()">
+                  <i class="ph ph-sign-out" aria-hidden="true"></i>Log out
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      </header>
+    }
+    <main class="page-content" tabindex="-1">
+      <router-outlet />
+    </main>
+  </div>
 </div>

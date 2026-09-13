@@ -23,4 +23,11 @@ describe('AppLayout', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('provides a compact page bar with add-material and account actions', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('.page-bar')).toBeTruthy();
+    expect(element.querySelector('a[href="/app/new-item"]')).toBeTruthy();
+    expect(element.querySelector('[aria-haspopup="menu"]')).toBeTruthy();
+  });
 });

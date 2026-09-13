@@ -73,7 +73,7 @@ export class Labels implements OnInit {
       },
       error: (error) => {
         console.error(error);
-        this.toaster.error('Could not load labels.');
+        this.toaster.error('Could not load Topics.');
       }
     });
   }
@@ -110,13 +110,13 @@ export class Labels implements OnInit {
 
     this.labelService.createLabel(labelName).subscribe({
       next: () => {
-        this.toaster.success('Label created successfully.');
+        this.toaster.success('Topic created successfully.');
         this.resetForm();
         this.loadLabels();
       },
       error: (error) => {
         console.error(error);
-        this.toaster.error('Could not create label.');
+        this.toaster.error('Could not create Topic.');
       }
     });
   }
@@ -129,13 +129,13 @@ export class Labels implements OnInit {
 
     this.labelService.updateLabel(id, labelName).subscribe({
       next: () => {
-        this.toaster.success('Label updated successfully.');
+        this.toaster.success('Topic updated successfully.');
         this.resetForm();
         this.loadLabels();
       },
       error: (error) => {
         console.error(error);
-        this.toaster.error('Could not update label.');
+        this.toaster.error('Could not update Topic.');
       }
     });
   }

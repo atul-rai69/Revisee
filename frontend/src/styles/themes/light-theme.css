@@ -1,26 +1,17 @@
 :root {
-
-  /* ========= BACKGROUNDS ========= */
-
-  --color-bg-primary: #f6fbfa;
-  --color-bg-secondary: #ffffff;
-
-  /* ========= SURFACES ========= */
-
-  --color-surface: rgba(255, 255, 255, 0.75);
-
-  /* ========= TEXT ========= */
-
-  --color-text-primary: var(--slate-900);
-  --color-text-secondary: var(--slate-500);
-
-  /* ========= BORDERS ========= */
-
-  --color-border: rgba(15, 23, 42, 0.08);
-
-  /* ========= PRIMARY ========= */
-
-  --color-primary: var(--teal-500);
-  --color-primary-hover: var(--teal-600);
-
+  --color-bg-primary: #f5f2e8;
+  --color-bg-secondary: #fffcf5;
+  --color-canvas: #f5f2e8;
+  --color-paper: #fffcf5;
+  --color-surface: #fffcf5;
+  --color-surface-muted: #efede4;
+  --color-surface-raised: #fffefa;
+  --color-text-primary: #1d2928;
+  --color-text-secondary: #69736f;
+  --color-text-inverse: #fffcf5;
+  --color-border: rgba(29, 41, 40, .12);
+  --color-border-strong: rgba(29, 41, 40, .2);
+  --color-primary: #147d73;
+  --color-primary-hover: #10665f;
+  --color-primary-soft: #d6f6f0;
 }

@@ -1,105 +1,39 @@
- <aside class="sidebar">
-
-    <!-- TOP -->
-    <div class="sidebar-top">
-
-      <!-- LOGO -->
-      <a routerLink="" class="logo-wrapper">
-        <img src="/revisee_logo.png" class="img-fluid" alt="">
-      </a>
-
-      <!-- NAVIGATION -->
-      <nav class="nav-menu">
-
-        <!-- <a href="" class="nav-item  active">
-            <div class="icon-wrapper">
-                <i class="ph ph-house"></i>
-            </div>
-          
-          <span>Home</span>
-        </a> -->
-
+<aside class="sidebar-panel" aria-label="Primary application navigation">
+  <div class="sidebar-top">
+    <a routerLink="/app/dashboard" class="brand-link" aria-label="Revisee Home">
+      <img class="brand-logo" src="/assets/revisee-brand-kit/revisee-logo-primary.svg" alt="Revisee">
+      <img class="brand-mark" src="/assets/revisee-brand-kit/revisee-mark.svg" alt="">
+    </a>
+    <nav class="nav-menu" aria-label="Primary">
+      @for (item of navigation; track item.route) {
         <a
-          routerLink="/app/dashboard"
+          #activeLink="routerLinkActive"
+          class="nav-item"
+          [routerLink]="item.route"
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: true }"
-          class="nav-item"
+          [attr.aria-current]="activeLink.isActive ? 'page' : null"
+          [attr.title]="collapsed() ? item.label : null"
         >
-            <div class="icon-wrapper">
-                <i class="ph ph-house"></i>
-            </div>
-          
-          <span>Home</span>
+          <i [class]="'ph ' + item.icon" aria-hidden="true"></i>
+          <span>{{ item.label }}</span>
         </a>
-
-        <a
-          routerLink="/app/dashboard"
-          fragment="learning-library"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: true }"
-          class="nav-item"
-        >
-          <div class="icon-wrapper">
-            <i class="ph ph-file-text"></i>
-          </div>
-          
-          <span>My Learning</span>
-        </a>
-
-        <a 
-          routerLink="/app/revise"
-          routerLinkActive="active"
-          class="nav-item"
-        >
-          <div class="icon-wrapper">
-            <i class="ph ph-pencil-line"></i>
-          </div>
-          
-          <span>Revise</span>
-        </a>
-
-        <a 
-          routerLink="/app/labels"
-          routerLinkActive="active"
-          class="nav-item"
-        >
-          <div class="icon-wrapper">
-            <i class="ph ph-tag-simple"></i>
-          </div>
-          
-          <span>Topics</span>
-        </a>
-
-      </nav>
-    </div>
-
-    <!-- BOTTOM -->
-    <div class="sidebar-bottom">
-
-      <!-- NOTIFICATION -->
-      <div class="notification-btn">
-        
-        <i class="ph ph-bell"></i>
-        <div class="notification-dot"></div>
-      </div>
-
-      <!-- PROFILE -->
-      <div class="profile-avatar">
-        <i class="ph ph-user" aria-hidden="true"></i>
-        <span class="sr-only">Account</span>
-      </div>
-
-      <div>
-        <button class="logout-btn"
-          type="button"
-          aria-label="Log out"
-          (click)="onLogout()"
-        >
-          <i class="ph ph-sign-out"></i>
-        </button>
-        
-      </div>
-
-    </div>
-
-  </aside>
+      }
+    </nav>
+  </div>
+  <div class="sidebar-bottom">
+    <button type="button" class="sidebar-action logout-action" (click)="onLogout()" title="Log out">
+      <i class="ph ph-sign-out" aria-hidden="true"></i><span>Log out</span>
+    </button>
+    <button
+      type="button"
+      class="sidebar-action collapse-action"
+      [attr.aria-label]="collapsed() ? 'Expand navigation' : 'Collapse navigation'"
+      [attr.aria-expanded]="!collapsed()"
+      (click)="toggleCollapsed()"
+    >
+      <i class="ph" [class.ph-caret-double-left]="!collapsed()" [class.ph-caret-double-right]="collapsed()" aria-hidden="true"></i>
+      <span>Collapse</span>
+    </button>
+  </div>
+</aside>

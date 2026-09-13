@@ -13,6 +13,7 @@ import {
 import { RevisionSessionService } from '../../core/services/revision-session.service';
 import { ToasterService } from '../../core/services/toaster.service';
 import { ConfirmationDialog } from '../../shared/components/confirmation-dialog/confirmation-dialog';
+import { environment } from '../../../environments/environment';
 
 interface DraftAnswer {
   selectedOption: AnswerOption;
@@ -26,6 +27,7 @@ interface DraftAnswer {
   styleUrl: './revision-session.css',
 })
 export class RevisionSession implements OnInit, OnDestroy {
+  readonly completedResultsEnabled = environment.features.phase3Results;
   readonly session = signal<RevisionSessionResponse | null>(null);
   readonly loading = signal(false);
   readonly loadError = signal<RevisionErrorMessage | null>(null);
@@ -102,9 +104,18 @@ export class RevisionSession implements OnInit, OnDestroy {
       .subscribe({
         next: (session) => {
           if (session.status === 'COMPLETED') {
-            void this.router.navigate(['/app/revision-sessions', this.sessionId, 'result'], {
-              replaceUrl: true,
-            });
+            if (this.completedResultsEnabled) {
+              void this.router.navigate(['/app/revision-sessions', this.sessionId, 'result'], {
+                replaceUrl: true,
+              });
+            } else {
+              this.loadError.set({
+                kind: 'ALREADY_COMPLETED',
+                title: 'Revision already completed',
+                message: 'Completed-session results are not available in this release.',
+                retryable: false,
+              });
+            }
             return;
           }
           this.session.set(session);
@@ -165,6 +176,10 @@ export class RevisionSession implements OnInit, OnDestroy {
   }
 
   requestSubmission(): void {
+    if (!this.completedResultsEnabled) {
+      this.toaster.info('Completed-session results are not available in this release.');
+      return;
+    }
     if (!this.allAnswered) {
       this.toaster.warning('Choose one answer for every question before submitting.', {
         title: 'Complete every question',

@@ -1,33 +1,33 @@
 :root {
+  /* Revisee brand primitives */
+  --navy-950: #071638;
+  --navy-900: #0b214b;
+  --teal-50: #eefbf8;
+  --teal-100: #d6f6f0;
+  --teal-200: #a9eae1;
+  --teal-300: #70d9cd;
+  --teal-400: #35c9bb;
+  --teal-500: #12bdae;
+  --teal-600: #147d73;
+  --teal-700: #10665f;
+  --teal-800: #0d514d;
+  --amber-400: #e9ad43;
+  --coral-400: #df765e;
 
-  /* ========= TEAL PALETTE ========= */
+  /* Warm, ink-like neutrals. Legacy slate names remain as compatibility tokens. */
+  --slate-50: #faf9f4;
+  --slate-100: #f1efe7;
+  --slate-200: #e3e0d6;
+  --slate-300: #cfcbc0;
+  --slate-400: #8c938f;
+  --slate-500: #69736f;
+  --slate-600: #4f5c58;
+  --slate-700: #34423f;
+  --slate-800: #263330;
+  --slate-900: #1d2928;
 
-  --teal-50: #f0fdfa;
-  --teal-100: #ccfbf1;
-  --teal-200: #99f6e4;
-  --teal-300: #5eead4;
-  --teal-400: #2dd4bf;
-  --teal-500: #14b8a6;
-  --teal-600: #0d9488;
-  --teal-700: #0f766e;
-
-  /* ========= NEUTRAL PALETTE ========= */
-
-  --slate-50: #f8fafc;
-  --slate-100: #f1f5f9;
-  --slate-200: #e2e8f0;
-  --slate-300: #cbd5e1;
-  --slate-400: #94a3b8;
-  --slate-500: #64748b;
-  --slate-600: #475569;
-  --slate-700: #334155;
-  --slate-800: #1e293b;
-  --slate-900: #0f172a;
-
-  /* ========= STATUS COLORS ========= */
-
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-
+  --success: #2e8067;
+  --warning: #b67519;
+  --danger: #b94f43;
+  --info: #3e6687;
 }

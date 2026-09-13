@@ -8,12 +8,12 @@
             <div>
                 <div class="ps-3">
                     <h1 class="page-title">
-                        Labels
+                        Topics
                     </h1>
 
                     <p class="page-description">
-                        Labels help you organize and find your learning items easily. <br>
-                        it will also help in customizing your tests for revision
+                        Topics help you organise and find your learning items. <br>
+                        They also help you build focused revision sessions.
                     </p>
                 </div>
         
@@ -27,7 +27,7 @@
                     class="primary-btn"
                     (click)="resetForm()"
                 >
-                    Create Label
+                    Create Topic
                 </button>
 
             </div>
@@ -46,7 +46,7 @@
             <div class="label-form-section">
 
                 <h2 class="section-title">
-                {{ editingLabelId() ? 'Edit Label' : 'Create New Label' }}
+                {{ editingLabelId() ? 'Edit Topic' : 'Create New Topic' }}
                 </h2>
 
                 <form
@@ -60,7 +60,7 @@
 
                     <label class="app-label">
 
-                    Label Name
+                    Topic name
 
                     </label>
 
@@ -71,13 +71,13 @@
 
                     formControlName="labelName"
 
-                    placeholder="Enter label name"
+                    placeholder="Enter Topic name"
                     >
 
                     <p class="input-helper">
 
                     Choose a short, meaningful
-                    name for your label.
+                    name for your Topic.
 
                     </p>
 
@@ -106,7 +106,7 @@
                     [disabled]="labelForm.invalid"
                     >
 
-                    {{ editingLabelId() ? 'Update Label' : 'Create Label' }}
+                    {{ editingLabelId() ? 'Update Topic' : 'Create Topic' }}
 
                     </button>
 
@@ -137,7 +137,7 @@
 
                         {{
                         labelForm.get('labelName')
-                        ?.value || 'Sample Label'
+                        ?.value || 'Sample Topic'
                         }}
 
                     </span>
@@ -146,7 +146,7 @@
 
                 <p class="preview-text">
 
-                This is how your label will
+                This is how your Topic will
                 appear across the app.
 
                 </p>
@@ -182,7 +182,7 @@
             <div class="table-heading-wrapper">
 
                 <h2 class="table-title">
-                Your Labels
+                Your Topics
                 </h2>
 
                 <span class="label-count">
@@ -225,7 +225,7 @@
             <input
             type="text"
 
-            placeholder="Search labels..."
+            placeholder="Search Topics..."
 
             
             >
@@ -241,7 +241,7 @@
             <!-- TABLE HEADER: Items and Created on columns are removed for now. -->
             <div class="table-header-row">
 
-            <div>Label</div>
+            <div>Topic</div>
 
             <div>Actions</div>
 
@@ -279,7 +279,7 @@
 
                 class="action-btn edit-btn"
 
-                aria-label="Edit label"
+                aria-label="Edit Topic"
 
                 (click)="onEditLabel(label)"
                 >
@@ -293,7 +293,7 @@
 
                 class="action-btn delete-btn"
 
-                aria-label="Delete label"
+                aria-label="Delete Topic"
                 >
 
                 <i class="ph ph-trash"></i>
@@ -326,7 +326,7 @@
             Showing
             1 to {{ labels().length }}
             of {{ labels().length }}
-            labels
+            Topics
 
             </p>
 

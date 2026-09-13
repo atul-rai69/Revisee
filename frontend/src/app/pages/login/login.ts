@@ -1,15 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, signal } from '@angular/core';
+import { Component, HostListener, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ToasterService } from '../../core/services/toaster.service';
-import { KnowledgeParticles } from '../../shared/components/knowledge-particles/knowledge-particles';
+import { RevealDirective } from '../../shared/directives/reveal.directive';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, KnowledgeParticles],
+  imports: [ReactiveFormsModule, RevealDirective],
   templateUrl: './login.html',
   styleUrl: './login.css',
 })
@@ -17,6 +17,7 @@ export class Login {
   readonly passwordVisible = signal(false);
   readonly submitting = signal(false);
   readonly loginError = signal<string | null>(null);
+  readonly headerScrolled = signal(false);
   readonly form;
 
   constructor(
@@ -33,6 +34,11 @@ export class Login {
 
   togglePasswordVisibility(): void {
     this.passwordVisible.update((visible) => !visible);
+  }
+
+  @HostListener('window:scroll')
+  updateHeaderSurface(): void {
+    this.headerScrolled.set(window.scrollY > 16);
   }
 
   onLogin(): void {
@@ -62,7 +68,7 @@ export class Login {
           this.toaster.success('Welcome back to your learning space.', {
             title: 'Logged in',
           });
-          void this.router.navigate(['/app/dashboard']);
+          void this.router.navigate(['/app']);
         },
         error: (error: HttpErrorResponse) => this.loginError.set(this.loginErrorMessage(error)),
       });

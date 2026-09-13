@@ -8,6 +8,7 @@ import { LabelService } from '../../core/services/label-service';
 import { RevisionSessionService } from '../../core/services/revision-session.service';
 import { ToasterService } from '../../core/services/toaster.service';
 import { Revise } from './revise';
+import { environment } from '../../../environments/environment';
 
 const createdSession: RevisionSessionResponse = {
   session_id: 42,
@@ -44,6 +45,7 @@ describe('Revise setup', () => {
   let service: FakeRevisionSessionService;
 
   beforeEach(async () => {
+    environment.features.phase4SmartRevision = true;
     await TestBed.configureTestingModule({
       imports: [Revise],
       providers: [
@@ -61,6 +63,10 @@ describe('Revise setup', () => {
     component = fixture.componentInstance;
     service = TestBed.inject(RevisionSessionService) as unknown as FakeRevisionSessionService;
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    environment.features.phase4SmartRevision = false;
   });
 
   it('maps Quick revision to a RANDOM request', () => {

@@ -1,16 +1,26 @@
-@import '../themes/light-theme.css';
-
 body {
-
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
-
   font-family: var(--font-family-base);
   font-size: var(--text-md);
   line-height: var(--line-height-base);
-
   margin: 0;
   padding: 0;
-
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button, a, input, textarea, select { outline: none; }
+:focus-visible { outline: 3px solid rgba(18, 189, 174, .45); outline-offset: 2px; }
+.reader-copy { font-family: var(--font-family-reading); font-size: 1.125rem; line-height: 1.78; }
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }

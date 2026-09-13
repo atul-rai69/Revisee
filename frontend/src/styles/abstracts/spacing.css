@@ -1,5 +1,5 @@
 :root {
-
+  --space-2xs: 2px;
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 12px;
@@ -9,5 +9,13 @@
   --space-3xl: 48px;
   --space-4xl: 64px;
   --space-5xl: 96px;
+  --space-6xl: 128px;
 
+  --page-gutter: clamp(16px, 3vw, 40px);
+  --page-width: 1440px;
+  --reading-width: 760px;
+  --sidebar-expanded: 240px;
+  --sidebar-collapsed: 72px;
+  --topbar-height: 64px;
+  --mobile-nav-height: 72px;
 }

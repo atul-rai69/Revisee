@@ -73,9 +73,13 @@
       @if (currentIndex() < revision.questions.length - 1) {
         <button type="button" class="primary-btn" (click)="next()">Next <i class="ph ph-arrow-right"></i></button>
       } @else {
-        <button type="button" class="primary-btn" [disabled]="submitting()" (click)="requestSubmission()">
-          Submit revision
-        </button>
+        @if (completedResultsEnabled) {
+          <button type="button" class="primary-btn" [disabled]="submitting()" (click)="requestSubmission()">
+            Submit revision
+          </button>
+        } @else {
+          <button type="button" class="primary-btn" (click)="requestExit()">Finish later</button>
+        }
       }
     </nav>
 
@@ -101,7 +105,7 @@
         (cancelled)="showExitDialog.set(false)"
       />
     }
-    @if (showSubmitDialog()) {
+    @if (completedResultsEnabled && showSubmitDialog()) {
       <app-confirmation-dialog
         title="Submit your revision?"
         [message]="'You answered ' + answeredCount + ' of ' + revision.question_count + ' questions. Answers cannot be changed after submission.'"

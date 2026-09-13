@@ -77,7 +77,7 @@ describe('Login', () => {
     expect(auth.credentials).toEqual({ username: 'atul', password: 'secret' });
     expect(auth.setToken).toHaveBeenCalledWith('token');
     expect(success).toHaveBeenCalled();
-    expect((TestBed.inject(Router) as unknown as FakeRouter).navigate).toHaveBeenCalledWith(['/app/dashboard']);
+    expect((TestBed.inject(Router) as unknown as FakeRouter).navigate).toHaveBeenCalledWith(['/app']);
   });
 
   it('shows safe invalid-credential and network feedback', () => {
@@ -106,5 +106,12 @@ describe('Login', () => {
     expect(text).not.toContain('Remember Me');
     expect(text).not.toContain('Sign up');
     expect(component).toBeTruthy();
+  });
+
+  it('uses the approved Revisee brand and labels temporary registration honestly', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('img[src*="revisee-logo-primary.svg"]')).toBeTruthy();
+    expect(element.textContent).toContain('Registration is not available in this release.');
+    expect(element.textContent).toContain('Living Study Notes');
   });
 });
