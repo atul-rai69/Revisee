@@ -10,6 +10,10 @@ from src.integrations.ai.base import AIProvider
 from src.integrations.storage.base import StorageProvider
 from src.modules.auth.models import User
 from src.modules.auth.service import AuthContext, AuthService
+from src.modules.ai_credentials.provider import (
+    GeminiPersonalAIProviderFactory,
+    PersonalAIProviderFactory,
+)
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -42,3 +46,8 @@ def get_storage_provider() -> StorageProvider:
     from src.integrations.storage.cloudinary import CloudinaryStorageProvider
 
     return CloudinaryStorageProvider(get_settings())
+
+
+@lru_cache
+def get_personal_ai_provider_factory() -> PersonalAIProviderFactory:
+    return GeminiPersonalAIProviderFactory(get_settings())

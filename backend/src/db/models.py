@@ -1,6 +1,7 @@
 """Import every model module so SQLAlchemy and Alembic see complete metadata."""
 
 from src.modules.auth.models import User, UserSession
+from src.modules.ai_credentials.models import AICredential, AICredentialUsage
 from src.modules.ai_generation.models import AIGenerationCall, AIGenerationEvent
 from src.modules.labels.models import Label
 from src.modules.learning_items.models import (
@@ -8,8 +9,9 @@ from src.modules.learning_items.models import (
     LearningItemKeyPoint,
     LearningItemLabel,
     Media,
+    PdfNote,
 )
-from src.modules.mastery.models import UserLabelMastery, UserLearningItemMastery
+from src.modules.mastery.models import MasteryHistory, UserLabelMastery, UserLearningItemMastery
 from src.modules.revisions.models import (
     Question,
     QuestionStatistics,
@@ -21,6 +23,8 @@ from src.modules.revisions.models import (
 
 
 __all__ = [
+    "AICredential",
+    "AICredentialUsage",
     "AIGenerationCall",
     "AIGenerationEvent",
     "Label",
@@ -28,6 +32,8 @@ __all__ = [
     "LearningItemKeyPoint",
     "LearningItemLabel",
     "Media",
+    "PdfNote",
+    "MasteryHistory",
     "Question",
     "QuestionStatistics",
     "RevisionSession",

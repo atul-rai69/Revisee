@@ -24,8 +24,10 @@
             ><i class="ph ph-user" aria-hidden="true"></i></button>
             @if (accountMenuOpen()) {
               <div class="account-popover" role="menu">
-                <!-- TEMPORARY ACCOUNT COPY: settings route is not in the current capability set. -->
-                <div><strong>Revisee account</strong><span>Account settings are coming later.</span></div>
+                <div><strong>Revisee account</strong><span>Manage your account preferences.</span></div>
+                <a routerLink="/app/settings" role="menuitem">
+                  <i class="ph ph-gear" aria-hidden="true"></i>Settings
+                </a>
                 <button type="button" role="menuitem" (click)="onLogout()">
                   <i class="ph ph-sign-out" aria-hidden="true"></i>Log out
                 </button>

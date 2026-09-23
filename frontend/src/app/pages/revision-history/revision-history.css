@@ -1,0 +1,39 @@
+.history-page { display: grid; align-content: start; gap: 24px; }
+.history-header { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.history-header h1 { margin: 5px 0; font-size: var(--text-3xl); }
+.history-header p, .session-main p { margin: 0; color: var(--color-text-secondary); }
+.eyebrow { color: var(--color-primary); font-size: var(--text-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.filter-tabs { display: flex; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); }
+.filter-tabs button, .pagination button { min-height: 40px; padding: 8px 14px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.filter-tabs button.active { color: var(--color-primary); background: var(--color-primary-soft); font-weight: 700; }
+.session-list { display: grid; gap: 10px; }
+.session-row { display: grid; grid-template-columns: auto minmax(190px, 1fr) auto auto; align-items: center; gap: 18px; padding: 18px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-paper); }
+.session-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; color: var(--warning); background: #fff4dc; font-size: 22px; }
+.session-icon.complete { color: var(--success); background: var(--teal-50); }
+.session-main > div { display: flex; align-items: center; gap: 9px; }
+.status-pill { padding: 3px 8px; border-radius: 99px; color: var(--color-text-secondary); background: var(--slate-100); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.session-main p { margin-top: 6px; font-size: var(--text-xs); }
+.session-row dl { display: flex; gap: 22px; margin: 0; }
+.session-row dl div { display: grid; gap: 2px; }
+.session-row dt { color: var(--color-text-secondary); font-size: 11px; }
+.session-row dd { margin: 0; font-weight: 700; }
+.row-action { display: inline-flex; align-items: center; gap: 6px; border: 0; color: var(--color-primary); background: transparent; font-weight: 700; cursor: pointer; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.pagination button { border: 1px solid var(--color-border); background: var(--color-paper); }
+.history-state { min-height: 300px; display: grid; place-items: center; align-content: center; gap: 10px; text-align: center; }
+.history-state > i { color: var(--color-primary); font-size: 38px; }
+.history-state h2, .history-state p { margin: 0; }
+.history-state p { color: var(--color-text-secondary); }
+.history-state.error > i { color: var(--danger); }
+@media (max-width: 900px) { .session-row { grid-template-columns: auto 1fr auto; } .session-row dl { grid-column: 2 / -1; } }
+@media (max-width: 640px) {
+  .history-page { width: auto; max-width: 100%; overflow: hidden; padding: 18px 12px 92px; }
+  .history-header { min-width: 0; align-items: stretch; flex-direction: column; }
+  .history-header p { overflow-wrap: anywhere; }
+  .filter-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; }
+  .filter-tabs button { min-width: 0; padding-inline: 4px; font-size: 12px; }
+  .session-row { grid-template-columns: auto minmax(0, 1fr); }
+  .session-row dl, .row-action { grid-column: 1 / -1; }
+  .session-row dl { display: grid; grid-template-columns: repeat(2, 1fr); }
+  .row-action { justify-self: start; }
+}

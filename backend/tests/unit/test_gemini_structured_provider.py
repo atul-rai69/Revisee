@@ -5,6 +5,7 @@ import pytest
 from src.core.exceptions import ProviderUnavailableError
 from src.integrations.ai.base import AIOperation, StructuredAIRequest
 from src.integrations.ai.gemini import GeminiAIProvider
+from src.core.exceptions import InvalidProviderCredentialError, ProviderQuotaError
 
 
 class _Models:
@@ -104,3 +105,23 @@ def test_legacy_generate_contract_is_preserved() -> None:
         )
     )
     assert provider.generate("legacy prompt") == '{"theory": "legacy"}'
+
+
+class _ProviderStatusError(RuntimeError):
+    def __init__(self, code: int) -> None:
+        self.code = code
+        super().__init__("sensitive provider detail")
+
+
+def test_personal_key_and_quota_errors_are_distinguished_without_leaking_details() -> None:
+    invalid = _provider(_Models(error=_ProviderStatusError(401)))
+    invalid._personal_credential = True
+    with pytest.raises(InvalidProviderCredentialError) as invalid_error:
+        invalid.generate_structured(_request())
+    assert "sensitive" not in invalid_error.value.detail
+
+    quota = _provider(_Models(error=_ProviderStatusError(429)))
+    quota._personal_credential = True
+    with pytest.raises(ProviderQuotaError) as quota_error:
+        quota.generate_structured(_request())
+    assert "sensitive" not in quota_error.value.detail

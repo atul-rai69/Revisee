@@ -1,4 +1,10 @@
 .pdf-grid { display: grid; gap: var(--space-xl); margin-top: var(--space-lg); }
+.pdf-selector { display: flex; gap: var(--space-sm); overflow-x: auto; padding-bottom: 2px; }
+.pdf-selector button { min-width: min(240px, 78vw); display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-sm); padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); background: var(--color-bg-secondary); text-align: left; cursor: pointer; }
+.pdf-selector button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdf-selector button i { color: var(--danger); font-size: 20px; }
+.pdf-selector button:hover, .pdf-selector button.active { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-soft); }
+.pdf-selector button:focus-visible { outline: 3px solid rgba(20, 125, 115, .22); outline-offset: 2px; }
 .pdf-card {
   min-width: 0;
   overflow: hidden;
@@ -33,15 +39,8 @@
 }
 .resource-icon i { color: var(--danger); font-size: 22px; }
 .resource-download-btn { display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; }
-.pdf-preview {
-  width: 100%;
-  max-width: 100%;
-  height: min(62vh, 680px);
-  min-height: 420px;
-  display: block;
-  border: 0;
-  background: var(--slate-50);
-}
+.rejected-media-note { display: flex; align-items: flex-start; gap: var(--space-sm); margin: 0; color: var(--color-text-secondary); font-size: var(--text-sm); }
+.rejected-media-note i, .section-empty-state--warning i { color: var(--warning); }
 
 .gallery-section { padding-bottom: var(--space-2xl); border-bottom: 1px solid var(--color-border); }
 .gallery-header { display: flex; align-items: center; justify-content: space-between; }

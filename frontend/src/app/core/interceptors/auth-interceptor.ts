@@ -22,10 +22,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authRequest).pipe(
     catchError((error: HttpErrorResponse) => {
-      const isLoginRequest = req.url.includes('/login');
+      const isPublicAuthRequest = req.url.includes('/login') || req.url.includes('/register');
 
       // 401 means the backend rejected the token or session.
-      if (error.status === 401 && !isLoginRequest) {
+      if (error.status === 401 && !isPublicAuthRequest) {
         authService.clearToken();
         toaster.warning('Your session expired. Please login again.');
         router.navigate(['/']);
@@ -37,12 +37,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       // Status 0 usually means the backend is unreachable.
-      if (error.status === 0 && !isLoginRequest) {
+      if (error.status === 0 && !isPublicAuthRequest) {
         toaster.error('Unable to connect to the server.');
       }
 
       // 5xx errors are server-side failures.
-      if (error.status >= 500 && !isLoginRequest) {
+      if (error.status >= 500 && !isPublicAuthRequest) {
         toaster.error('Something went wrong on the server.');
       }
 

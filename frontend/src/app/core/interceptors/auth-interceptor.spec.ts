@@ -46,4 +46,12 @@ describe('authInterceptor', () => {
     request.error(new ProgressEvent('offline'), { status: 0 });
     expect(errorToast).not.toHaveBeenCalled();
   });
+
+  it('leaves registration network feedback to the registration form', () => {
+    const errorToast = vi.spyOn(toaster, 'error');
+    auth.register('new-user', 'new-user@example.test', 'safe-password').subscribe({ error: () => undefined });
+    const request = http.expectOne(`${environment.apiUrl}/register`);
+    request.error(new ProgressEvent('offline'), { status: 0 });
+    expect(errorToast).not.toHaveBeenCalled();
+  });
 });

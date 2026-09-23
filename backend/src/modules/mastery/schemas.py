@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from enum import IntEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
@@ -74,3 +75,95 @@ class WeakAreaQuery(BaseModel):
     classification: WeakAreaClassification = "DEMONSTRATED_WEAKNESS"
     limit: int = Field(default=20, ge=1, le=50)
     offset: int = Field(default=0, ge=0, le=10000)
+
+
+MasteryEvidenceStatus = Literal[
+    "NO_QUESTIONS",
+    "NOT_ATTEMPTED",
+    "INSUFFICIENT_EVIDENCE",
+    "MEASURED",
+]
+
+
+class MasteryTrendPointResponse(BaseModel):
+    session_id: int
+    recorded_at: datetime
+    score_before: Decimal
+    score_after: Decimal
+    total_attempts: int
+    correct_attempts: int
+
+    @field_serializer("score_before", "score_after")
+    def serialize_score(self, value: Decimal) -> float:
+        return float(value)
+
+
+class MasteryAnalyticsItemResponse(BaseModel):
+    entity_id: int
+    display_name: str
+    question_count: int
+    evidence_status: MasteryEvidenceStatus
+    mastery_score: Decimal | None
+    total_attempts: int
+    correct_attempts: int
+    accuracy_percent: Decimal | None
+    last_practised_at: datetime | None
+    next_review_at: datetime | None
+    trend: list[MasteryTrendPointResponse] = Field(default_factory=list)
+
+    @field_serializer("mastery_score", "accuracy_percent")
+    def serialize_optional_score(self, value: Decimal | None) -> float | None:
+        return None if value is None else float(value)
+
+
+class MasteryAnalyticsResponse(BaseModel):
+    entity_type: WeakAreaEntityType
+    minimum_attempts: int
+    offset: int
+    limit: int
+    total: int
+    items: list[MasteryAnalyticsItemResponse]
+
+
+class RevisionActivityPointResponse(BaseModel):
+    date: date
+    completed_session_count: int
+    answered_count: int
+    correct_count: int
+    accuracy_percent: Decimal | None
+
+    @field_serializer("accuracy_percent")
+    def serialize_accuracy(self, value: Decimal | None) -> float | None:
+        return None if value is None else float(value)
+
+
+class RevisionSessionLimit(IntEnum):
+    LAST_7 = 7
+    LAST_30 = 30
+    LAST_50 = 50
+
+
+class TopicPracticePointResponse(BaseModel):
+    topic_id: int
+    topic_name: str
+    attempt_count: int
+    correct_count: int
+    accuracy_percent: Decimal | None
+    session_count: int
+
+    @field_serializer("accuracy_percent")
+    def serialize_accuracy(self, value: Decimal | None) -> float | None:
+        return None if value is None else float(value)
+
+
+class RevisionAnalyticsResponse(BaseModel):
+    completed_session_count: int
+    activity: list[RevisionActivityPointResponse]
+    requested_session_limit: RevisionSessionLimit
+    sessions_used: int
+    measured_learning_item_count: int
+    weak_area_ready: bool
+    minimum_attempts: int
+    topic_attribution: Literal["CURRENT_LEARNING_ITEM_TOPICS"]
+    attribution_note: str
+    topic_practice: list[TopicPracticePointResponse]

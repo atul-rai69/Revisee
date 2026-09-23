@@ -15,6 +15,7 @@ from src.modules.mastery.calculation import (
     quantize_hundredth,
 )
 from src.modules.mastery.service import apply_mastery_batches
+from src.modules.mastery.models import MasteryHistory
 from src.modules.revisions import submission_repository as repository
 from src.modules.revisions.models import RevisionSessionQuestion, UserAttempt
 from src.modules.revisions.submission_repository import QuestionStatisticsUpdate
@@ -177,6 +178,14 @@ class RevisionSubmissionService:
                 user_id,
                 sorted(label_batches),
             )
+            item_scores_before = {
+                row.learning_item_id: Decimal(row.mastery_score)
+                for row in item_mastery_rows
+            }
+            label_scores_before = {
+                row.label_id: Decimal(row.mastery_score)
+                for row in label_mastery_rows
+            }
 
             attempts = [
                 UserAttempt(
@@ -211,6 +220,37 @@ class RevisionSubmissionService:
                 {row.label_id: row for row in label_mastery_rows},
                 label_batches,
                 submitted_at,
+            )
+            mastery_repository.add_mastery_history(
+                self.db,
+                [
+                    MasteryHistory(
+                        user_id=user_id,
+                        entity_type="LEARNING_ITEM",
+                        entity_id=row.learning_item_id,
+                        session_id=session.id,
+                        recorded_at=submitted_at,
+                        score_before=item_scores_before[row.learning_item_id],
+                        score_after=row.mastery_score,
+                        total_attempts=row.total_attempts,
+                        correct_attempts=row.correct_attempts,
+                    )
+                    for row in item_mastery_rows
+                ]
+                + [
+                    MasteryHistory(
+                        user_id=user_id,
+                        entity_type="LABEL",
+                        entity_id=row.label_id,
+                        session_id=session.id,
+                        recorded_at=submitted_at,
+                        score_before=label_scores_before[row.label_id],
+                        score_after=row.mastery_score,
+                        total_attempts=row.total_attempts,
+                        correct_attempts=row.correct_attempts,
+                    )
+                    for row in label_mastery_rows
+                ],
             )
 
             session.status = "COMPLETED"

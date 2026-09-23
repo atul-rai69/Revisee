@@ -93,4 +93,18 @@ describe('RevisionSessionService', () => {
     expect(request.request.method).toBe('GET');
     request.flush(resultResponse);
   });
+
+  it('loads filtered paginated history and authoritative SMART readiness', () => {
+    service.getHistory({ status: 'COMPLETED', limit: 5, offset: 10 }).subscribe();
+    const history = http.expectOne((request) => request.url === `${environment.apiUrl}/revision-sessions`);
+    expect(history.request.params.get('status')).toBe('COMPLETED');
+    expect(history.request.params.get('limit')).toBe('5');
+    expect(history.request.params.get('offset')).toBe('10');
+    history.flush({ offset: 10, limit: 5, total: 0, items: [] });
+
+    service.getSmartReadiness(12).subscribe();
+    const readiness = http.expectOne(`${environment.apiUrl}/revision-sessions/smart-readiness?question_count=12`);
+    expect(readiness.request.method).toBe('GET');
+    readiness.flush({});
+  });
 });

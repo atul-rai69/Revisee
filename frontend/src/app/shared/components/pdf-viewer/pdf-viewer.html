@@ -1,0 +1,246 @@
+<section
+  #viewer
+  class="pdf-viewer"
+  [attr.aria-busy]="status() === 'loading' || rendering()"
+  [attr.aria-label]="'PDF viewer for ' + title"
+>
+  <div class="pdf-toolbar">
+    <div class="page-controls" aria-label="PDF page controls">
+      <button
+        type="button"
+        class="icon-btn"
+        (click)="previousPage()"
+        [disabled]="pageNumber() <= 1 || rendering()"
+        aria-label="Previous PDF page"
+      >
+        <i class="ph ph-caret-left" aria-hidden="true"></i>
+      </button>
+      <div class="zoom-controls" aria-label="PDF zoom controls">
+        <button type="button" class="icon-btn" (click)="zoomOut()" [disabled]="zoom() <= 0.75 || rendering()" aria-label="Zoom out">
+          <i class="ph ph-minus" aria-hidden="true"></i>
+        </button>
+        <span>{{ zoomPercent() }}%</span>
+        <button type="button" class="icon-btn" (click)="zoomIn()" [disabled]="zoom() >= 2 || rendering()" aria-label="Zoom in">
+          <i class="ph ph-plus" aria-hidden="true"></i>
+        </button>
+      </div>
+      <span>
+        Page {{ pageCount() ? pageNumber() : '—' }} of {{ pageCount() || '—' }}
+      </span>
+      <button
+        type="button"
+        class="icon-btn"
+        (click)="nextPage()"
+        [disabled]="pageNumber() >= pageCount() || rendering()"
+        aria-label="Next PDF page"
+      >
+        <i class="ph ph-caret-right" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="toolbar-actions">
+      <button type="button" class="reading-tool-button" (click)="openManualLookup()" [disabled]="noteEditorOpen">
+        <i class="ph ph-book-open-text" aria-hidden="true"></i>
+        <span>Look up word</span>
+      </button>
+      <button
+        type="button"
+        class="reading-tool-button"
+        (click)="addManualNote()"
+        [disabled]="attachmentId <= 0 || status() !== 'ready' || noteEditorOpen"
+      >
+        <i class="ph ph-note-pencil" aria-hidden="true"></i>
+        <span>Add note</span>
+      </button>
+      <button
+        type="button"
+        class="fullscreen-button"
+        (click)="toggleFullscreen()"
+        [disabled]="!fullscreenSupported()"
+        [attr.aria-label]="fullscreen() ? 'Exit full screen PDF view' : 'View PDF in full screen'"
+        [attr.aria-pressed]="fullscreen()"
+        [attr.title]="fullscreen() ? 'Exit full screen' : 'View PDF in full screen'"
+      >
+        <i
+          class="ph"
+          [class.ph-arrows-in]="fullscreen()"
+          [class.ph-arrows-out]="!fullscreen()"
+          aria-hidden="true"
+        ></i>
+        <span>{{ fullscreen() ? 'Exit full screen' : 'Full screen' }}</span>
+      </button>
+      <a [href]="url" target="_blank" rel="noopener noreferrer">
+        Open PDF
+        <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
+      </a>
+    </div>
+  </div>
+
+  @if (fullscreenMessage()) {
+    <p class="fullscreen-message" role="status">{{ fullscreenMessage() }}</p>
+  }
+
+  @if (status() === 'ready' && !textAvailable()) {
+    <p class="text-layer-message" role="status">
+      <i class="ph ph-scan" aria-hidden="true"></i>
+      This page has no selectable text and may be scanned. OCR is not available;
+      manual word lookup and notes still work.
+    </p>
+  }
+
+  <div class="pdf-viewport" #viewport (scroll)="dismissSelectionMenu()">
+    @if (status() === 'loading') {
+      <div class="pdf-state" role="status" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <strong>Loading PDF…</strong>
+        <span>Preparing the document locally in your browser.</span>
+      </div>
+    } @else if (status() === 'error') {
+      <div class="pdf-state pdf-state--error" role="alert">
+        <i class="ph ph-warning-circle" aria-hidden="true"></i>
+        <strong>Preview unavailable</strong>
+        <span>{{ errorMessage() }}</span>
+        <div>
+          <button type="button" class="primary-btn-outlined" (click)="retry()">Retry preview</button>
+          <a class="primary-btn" [href]="url" target="_blank" rel="noopener noreferrer">Open PDF</a>
+        </div>
+      </div>
+    }
+
+    <div class="pdf-page" [hidden]="status() !== 'ready'">
+      <canvas
+        #canvas
+        [attr.aria-label]="title + ', page ' + pageNumber() + ' of ' + pageCount()"
+        role="img"
+      ></canvas>
+      <div
+        #textLayer
+        class="textLayer"
+        [class.textLayer--unavailable]="!textAvailable()"
+        aria-label="Selectable PDF text"
+      ></div>
+    </div>
+
+    @if (status() === 'ready' && rendering()) {
+      <div class="render-indicator" role="status">Rendering page…</div>
+    }
+  </div>
+
+  @if (selectionMenu(); as menu) {
+    <div
+      class="selection-menu"
+      role="toolbar"
+      aria-label="Actions for selected PDF text"
+      [style.left.px]="menu.left"
+      [style.top.px]="menu.top"
+      (pointerdown)="$event.preventDefault()"
+    >
+      <button
+        type="button"
+        (click)="defineSelectedWord()"
+        [disabled]="!canDefineSelection()"
+        [attr.title]="canDefineSelection() ? 'Define selected word' : 'Select one word to define it'"
+      >
+        <i class="ph ph-book-open-text" aria-hidden="true"></i>
+        Define word
+      </button>
+      <button type="button" (click)="addSelectedNote()" [disabled]="attachmentId <= 0">
+        <i class="ph ph-note-pencil" aria-hidden="true"></i>
+        Add note
+      </button>
+      <button type="button" class="selection-close" (click)="dismissSelectionMenu()" aria-label="Dismiss selection actions">
+        <i class="ph ph-x" aria-hidden="true"></i>
+      </button>
+    </div>
+  }
+
+  @if (lookupPanelOpen()) {
+    <aside class="definition-panel" aria-labelledby="definition-panel-title">
+      <header>
+        <div>
+          <span class="eyebrow">Dictionary</span>
+          <h3 id="definition-panel-title">Look up a word</h3>
+        </div>
+        <button type="button" class="icon-btn" (click)="dismissLookup()" aria-label="Close dictionary panel">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </header>
+      <form (submit)="submitManualLookup($event)">
+        <label for="pdf-word-input">Word</label>
+        <div>
+          <input
+            id="pdf-word-input"
+            type="text"
+            maxlength="80"
+            autocomplete="off"
+            spellcheck="false"
+            [value]="manualWord()"
+            (input)="updateManualWord($event)"
+          >
+          <button type="submit" class="primary-btn" [disabled]="lookupStatus() === 'loading'">
+            {{ lookupStatus() === 'loading' ? 'Looking up…' : 'Define' }}
+          </button>
+        </div>
+      </form>
+      <p class="dictionary-privacy">Only this word is sent to Datamuse—not the PDF or selected passage.</p>
+      @if (lookupStatus() === 'loading') {
+        <p class="dictionary-state" role="status">Looking up the dictionary definition…</p>
+      } @else if (lookupResult(); as result) {
+        <div class="definition-result" aria-live="polite">
+          <div><strong>{{ result.word }}</strong>@if (result.partOfSpeech) { <span>{{ result.partOfSpeech }}</span> }</div>
+          <p>{{ result.definition }}</p>
+          <a [href]="result.sourceUrl" target="_blank" rel="noopener noreferrer">
+            Source: {{ result.sourceLabel }}
+          </a>
+        </div>
+      } @else if (lookupMessage()) {
+        <p class="dictionary-state dictionary-state--error" role="alert">{{ lookupMessage() }}</p>
+      }
+    </aside>
+  }
+
+  @if (noteEditorOpen) {
+    @if (noteForm; as editorForm) {
+      <aside
+        class="pdf-note-editor"
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby="pdf-viewer-note-title"
+      >
+        <header>
+          <div>
+            <span class="eyebrow">Personal PDF note</span>
+            <h3 id="pdf-viewer-note-title">{{ noteEditorTitle }}</h3>
+          </div>
+          <button
+            type="button"
+            class="icon-btn"
+            (click)="closeNoteEditor()"
+            [disabled]="noteSaving"
+            aria-label="Close note editor"
+          >
+            <i class="ph ph-x" aria-hidden="true"></i>
+          </button>
+        </header>
+        <form [formGroup]="editorForm" (ngSubmit)="saveNote()">
+          <label>
+            <span>Source excerpt <small>Optional · 500 characters</small></span>
+            <textarea formControlName="sourceExcerpt" rows="3" maxlength="500"></textarea>
+          </label>
+          <label>
+            <span>Your note <small>Required · 4,000 characters</small></span>
+            <textarea formControlName="noteText" rows="7" maxlength="4000" autofocus></textarea>
+          </label>
+          @if (noteSaveError) {
+            <p class="form-error" role="alert">{{ noteSaveError }}</p>
+          }
+          <footer>
+            <button type="button" class="primary-btn-outlined" (click)="closeNoteEditor()" [disabled]="noteSaving">Cancel</button>
+            <button type="submit" class="primary-btn" [disabled]="noteSaving">
+              {{ noteSaving ? 'Saving…' : 'Save personal note' }}
+            </button>
+          </footer>
+        </form>
+      </aside>
+    }
+  }
+</section>

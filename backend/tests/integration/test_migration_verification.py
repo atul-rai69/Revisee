@@ -35,6 +35,10 @@ REVISION_0003 = "20260826_0003"
 REVISION_0004 = "20260826_0004"
 REVISION_0005 = "20260827_0005"
 REVISION_0006 = "20260829_0006"
+REVISION_0007 = "20260914_0007"
+REVISION_0008 = "20260915_0008"
+REVISION_0009 = "20260920_0009"
+REVISION_0010 = "20260920_0010"
 
 
 class MigrationHarness:
@@ -119,21 +123,40 @@ def test_blank_chain_downgrade_reupgrade_and_orm_consistency(
     assert inspect(harness.engine).get_table_names() == []
 
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0006
+    assert harness.current_revision() == REVISION_0010
     _assert_0006_protection_contract(harness.engine)
+    _assert_0008_byok_contract(harness.engine)
+    _assert_0009_pdf_note_contract(harness.engine)
+    _assert_0010_media_filename_contract(harness.engine)
     _assert_orm_schema_consistency(harness.engine)
     harness.check()
+
+    harness.downgrade(REVISION_0008)
+    assert harness.current_revision() == REVISION_0008
+    assert "pdf_notes" not in inspect(harness.engine).get_table_names()
+    harness.upgrade("head")
+    assert harness.current_revision() == REVISION_0010
+    _assert_0009_pdf_note_contract(harness.engine)
+    _assert_0010_media_filename_contract(harness.engine)
+
+    harness.downgrade(REVISION_0007)
+    assert harness.current_revision() == REVISION_0007
+    assert "mastery_history" in inspect(harness.engine).get_table_names()
+    assert "ai_credentials" not in inspect(harness.engine).get_table_names()
+    harness.upgrade("head")
+    assert harness.current_revision() == REVISION_0010
+    _assert_0008_byok_contract(harness.engine)
 
     harness.downgrade(REVISION_0005)
     assert harness.current_revision() == REVISION_0005
     _assert_0005_protection_contract(harness.engine)
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0006
+    assert harness.current_revision() == REVISION_0010
 
     harness.downgrade(REVISION_0004)
     assert harness.current_revision() == REVISION_0004
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0006
+    assert harness.current_revision() == REVISION_0010
 
     # downgrade base drops every application table and is safe only here.
     harness.downgrade("base")
@@ -142,8 +165,11 @@ def test_blank_chain_downgrade_reupgrade_and_orm_consistency(
     assert harness.current_revision() is None
 
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0006
+    assert harness.current_revision() == REVISION_0010
     _assert_0006_protection_contract(harness.engine)
+    _assert_0008_byok_contract(harness.engine)
+    _assert_0009_pdf_note_contract(harness.engine)
+    _assert_0010_media_filename_contract(harness.engine)
     _assert_orm_schema_consistency(harness.engine)
     harness.check()
 
@@ -652,6 +678,63 @@ def test_0006_downgrade_restores_0005_contract_without_losing_rows(
     _assert_0006_protection_contract(harness.engine)
 
 
+def test_0009_downgrade_refuses_personal_pdf_notes(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0009)
+    with harness.engine.begin() as connection:
+        user_id = _seed_user(connection, suffix="pdf-note-downgrade")
+        item_id = _seed_item(connection, user_id)
+        media_id = connection.scalar(
+            text(
+                "INSERT INTO media (learning_item_id, type, url, public_id) "
+                "VALUES (:item_id, 'pdf', 'https://storage.test/file.pdf', 'file') "
+                "RETURNING id"
+            ),
+            {"item_id": item_id},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO pdf_notes "
+                "(user_id, learning_item_id, media_id, page_number, note_text) "
+                "VALUES (:user_id, :item_id, :media_id, 2, 'Keep this note')"
+            ),
+            {"user_id": user_id, "item_id": item_id, "media_id": media_id},
+        )
+    _assert_refusal(
+        harness,
+        lambda: harness.downgrade(REVISION_0008),
+        REVISION_0009,
+        "downgrade refused: personal PDF notes would be lost",
+    )
+
+
+def test_0010_downgrade_refuses_original_media_filenames(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0010)
+    with harness.engine.begin() as connection:
+        user_id = _seed_user(connection, suffix="media-name-downgrade")
+        item_id = _seed_item(connection, user_id)
+        connection.execute(
+            text(
+                "INSERT INTO media "
+                "(learning_item_id, type, url, public_id, original_filename) "
+                "VALUES (:item_id, 'pdf', 'https://storage.test/file.pdf', "
+                "'file', 'Original notes.pdf')"
+            ),
+            {"item_id": item_id},
+        )
+    _assert_refusal(
+        harness,
+        lambda: harness.downgrade(REVISION_0009),
+        REVISION_0010,
+        "downgrade refused: original media filenames would be lost",
+    )
+
+
 def _assert_refusal(
     harness: MigrationHarness,
     operation: Callable[[], None],
@@ -720,11 +803,65 @@ def _assert_0006_protection_contract(engine: Engine) -> None:
         "learning_item_key_points",
         ["learning_item_id"],
     ) == "CASCADE"
+
+
+def _assert_0008_byok_contract(engine: Engine) -> None:
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    assert {"ai_credentials", "ai_credential_usage"} <= tables
+
+    credential_columns = {
+        column["name"] for column in inspector.get_columns("ai_credentials")
+    }
+    assert {
+        "encrypted_secret",
+        "encryption_nonce",
+        "encryption_key_version",
+        "key_fingerprint",
+        "key_hint",
+    } <= credential_columns
+    assert "api_key" not in credential_columns
+
+    event_columns = {
+        column["name"] for column in inspector.get_columns("ai_generation_events")
+    }
+    assert "credential_id" in event_columns
+    assert _foreign_key_ondelete(
+        inspector,
+        "ai_generation_events",
+        ["credential_id"],
+    ) == "SET NULL"
+
+
+def _assert_0009_pdf_note_contract(engine: Engine) -> None:
+    inspector = inspect(engine)
+    assert "pdf_notes" in inspector.get_table_names()
+    columns = {column["name"] for column in inspector.get_columns("pdf_notes")}
+    assert {
+        "user_id",
+        "learning_item_id",
+        "media_id",
+        "page_number",
+        "source_excerpt",
+        "note_text",
+    } <= columns
+    assert _foreign_key_ondelete(inspector, "pdf_notes", ["user_id"]) == "CASCADE"
+    assert _foreign_key_ondelete(
+        inspector, "pdf_notes", ["learning_item_id"]
+    ) == "CASCADE"
+    assert _foreign_key_ondelete(inspector, "pdf_notes", ["media_id"]) == "CASCADE"
     assert _foreign_key_ondelete(
         inspector,
         "user_sessions",
         ["user_id"],
     ) == "CASCADE"
+
+
+def _assert_0010_media_filename_contract(engine: Engine) -> None:
+    inspector = inspect(engine)
+    column = _column(inspector, "media", "original_filename")
+    assert column["nullable"] is True
+    assert getattr(column["type"], "length", None) == 255
 
 
 def _column(inspector, table_name: str, column_name: str) -> dict[str, object]:

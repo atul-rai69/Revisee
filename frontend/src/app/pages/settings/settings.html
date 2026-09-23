@@ -1,0 +1,50 @@
+<main class="settings-page">
+  <header class="settings-header">
+    <div><span class="eyebrow">Account</span><h1>Settings</h1><p>Manage personal generation credentials without exposing saved keys to this browser.</p></div>
+  </header>
+
+  <section class="privacy-note" aria-labelledby="credential-privacy-title">
+    <i class="ph ph-shield-check" aria-hidden="true"></i>
+    <div><h2 id="credential-privacy-title">Your key stays server-side</h2><p>Revisee validates and encrypts each key before saving it. The complete key is never returned after this form is submitted.</p></div>
+  </section>
+
+  <section class="settings-card" aria-labelledby="add-key-title">
+    <header><div><span class="eyebrow">Gemini</span><h2 id="add-key-title">Add a personal credential</h2></div></header>
+    <p class="provider-disclosure">When you choose this credential during generation, Revisee sends the learning-item title, text notes and your optional personal remarks to Gemini. Uploaded files are not sent by the current generation flow. Gemini project limits and possible charges still apply.</p>
+    <form [formGroup]="createForm" (ngSubmit)="addCredential()" novalidate>
+      <label>Credential name<input type="text" formControlName="name" maxlength="80" autocomplete="off" placeholder="For example, Personal study key"></label>
+      <label>Gemini API key<input type="password" formControlName="apiKey" maxlength="500" autocomplete="new-password" spellcheck="false" placeholder="Paste the complete key"></label>
+      <label class="check-row"><input type="checkbox" formControlName="makeDefault"><span>Use this as my default personal key</span></label>
+      @if (formError()) { <p class="form-error" role="alert">{{ formError() }}</p> }
+      <button type="submit" class="primary-btn" [disabled]="creating()">{{ creating() ? 'Validating and saving…' : 'Validate and save key' }}</button>
+    </form>
+  </section>
+
+  <section class="settings-card" aria-labelledby="saved-keys-title">
+    <header><div><span class="eyebrow">Encrypted credentials</span><h2 id="saved-keys-title">Saved Gemini keys</h2></div><a [href]="providerConsoleUrl()" target="_blank" rel="noopener noreferrer">Open Gemini usage console <i class="ph ph-arrow-square-out" aria-hidden="true"></i></a></header>
+    @if (loading()) {
+      <div class="settings-state" role="status"><span class="spinner"></span>Loading credentials…</div>
+    } @else if (loadError()) {
+      <div class="settings-state error" role="alert"><p>{{ loadError() }}</p><button type="button" (click)="loadCredentials()">Retry</button></div>
+    } @else if (credentials().length === 0) {
+      <div class="settings-state"><i class="ph ph-key" aria-hidden="true"></i><strong>No personal Gemini keys configured</strong><p>You can continue using Revisee-provided generation.</p></div>
+    } @else {
+      <ul class="credential-list">
+        @for (credential of credentials(); track credential.id) {
+          <li>
+            <div class="credential-main"><span class="credential-icon"><i class="ph ph-key" aria-hidden="true"></i></span><div><div class="credential-title"><strong>{{ credential.name }}</strong>@if (credential.is_default) { <span class="default-badge">Default</span> }<span class="status-badge" [class.invalid]="credential.status === 'INVALID'">{{ credential.status === 'VALID' ? 'Validated' : 'Invalid' }}</span></div><span>{{ credential.provider }} · {{ credential.masked_identifier }}</span><small>Validated {{ credential.last_validated_at | date:'medium' }}</small></div></div>
+            <div class="usage"><small>Usage recorded in Revisee</small><strong>{{ usageLabel(credential) }}</strong><span>{{ credential.usage.request_count }} recorded {{ credential.usage.request_count === 1 ? 'request' : 'requests' }}@if (credential.usage.updated_at) { · updated {{ credential.usage.updated_at | date:'medium' }} }</span></div>
+            <div class="credential-actions">@if (!credential.is_default) { <button type="button" (click)="setDefault(credential.id)" [disabled]="savingId() !== null">Make default</button> }<button type="button" (click)="beginReplace(credential)" [disabled]="savingId() !== null">Replace</button><button type="button" class="danger" (click)="requestDelete(credential.id)" [disabled]="deletingId() !== null">Delete</button></div>
+            @if (editingId() === credential.id) {
+              <form class="replace-form" [formGroup]="editForm" (ngSubmit)="replaceCredential(credential.id)" novalidate><label>Name<input formControlName="name" maxlength="80"></label><label>Complete replacement key<input type="password" formControlName="apiKey" maxlength="500" autocomplete="new-password" spellcheck="false"></label>@if (editError()) { <p class="form-error" role="alert">{{ editError() }}</p> }<div><button type="button" (click)="cancelReplace()" [disabled]="savingId() !== null">Cancel</button><button type="submit" class="primary-btn" [disabled]="savingId() !== null">{{ savingId() === credential.id ? 'Validating…' : 'Validate replacement' }}</button></div></form>
+            }
+            @if (pendingDeleteId() === credential.id) {
+              <div class="delete-confirm" role="alertdialog" aria-label="Delete Gemini credential"><p>Delete <strong>{{ credential.name }}</strong>? Existing learning content remains, but this key can no longer be selected.</p><div><button type="button" (click)="cancelDelete()" [disabled]="deletingId() !== null">Cancel</button><button type="button" class="danger-solid" (click)="deleteCredential(credential.id)" [disabled]="deletingId() !== null">{{ deletingId() === credential.id ? 'Deleting…' : 'Delete key' }}</button></div></div>
+            }
+          </li>
+        }
+      </ul>
+      <p class="quota-note"><strong>Remaining quota:</strong> Not available. Gemini applies limits per project, not per API key. Revisee shows only token usage returned by successful provider responses; check Gemini’s console for authoritative limits.</p>
+    }
+  </section>
+</main>

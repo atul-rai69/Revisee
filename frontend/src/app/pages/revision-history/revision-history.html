@@ -1,0 +1,34 @@
+<main class="content-card history-page">
+  <header class="history-header">
+    <div><span class="eyebrow">Practice record</span><h1>Revision history</h1><p>Completed results and resumable sessions, newest first.</p></div>
+    <button type="button" class="primary-btn" (click)="startRevision()"><i class="ph ph-play"></i> Start revision</button>
+  </header>
+
+  <div class="filter-tabs" role="group" aria-label="Filter revision sessions">
+    @for (option of filterOptions; track option) {
+      <button type="button" [class.active]="filter() === option" [attr.aria-pressed]="filter() === option" (click)="setFilter(option)">
+        {{ option === 'ALL' ? 'All sessions' : option === 'COMPLETED' ? 'Completed' : 'In progress' }}
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <section class="history-state" role="status"><span class="study-spinner"></span><p>Loading revision sessions…</p></section>
+  } @else if (error()) {
+    <section class="history-state error" role="alert"><i class="ph ph-warning-circle"></i><h2>Revision history unavailable</h2><p>We could not load your sessions.</p><button class="primary-btn-outlined" type="button" (click)="load()">Try again</button></section>
+  } @else if (sessions().length === 0) {
+    <section class="history-state"><i class="ph ph-clock-counter-clockwise"></i><h2>{{ total() === 0 && filter() === 'ALL' ? 'You haven’t started a revision session yet.' : 'No sessions match this filter.' }}</h2><p>{{ total() === 0 && filter() === 'ALL' ? 'Practise your saved material to begin building your revision history.' : 'Choose another status to see more sessions.' }}</p>@if (filter() === 'ALL') { <button class="primary-btn" type="button" (click)="startRevision()">Start revision</button> }</section>
+  } @else {
+    <div class="session-list">
+      @for (session of sessions(); track session.session_id) {
+        <article class="session-row">
+          <div class="session-icon" [class.complete]="session.status === 'COMPLETED'"><i class="ph" [class.ph-check-circle]="session.status === 'COMPLETED'" [class.ph-play-circle]="session.status === 'IN_PROGRESS'"></i></div>
+          <div class="session-main"><div><span class="status-pill">{{ session.status === 'COMPLETED' ? 'Completed' : 'In progress' }}</span><strong>{{ strategyLabel(session.requested_strategy) }} revision</strong></div><p>{{ formatDate(session.started_at) }}@if (session.labels?.length) { · {{ topicNames(session) }} }</p></div>
+          <dl><div><dt>Questions</dt><dd>{{ session.question_count }}</dd></div>@if (session.status === 'COMPLETED') { <div><dt>Correct</dt><dd>{{ session.correct_count }}</dd></div><div><dt>Score</dt><dd>{{ session.score_percentage }}%</dd></div><div><dt>Answer time</dt><dd>{{ formatDuration(session.total_time_taken_seconds) }}</dd></div> }</dl>
+          <button type="button" class="row-action" (click)="open(session)">{{ session.status === 'COMPLETED' ? 'View result' : 'Resume revision' }} <i class="ph ph-arrow-right"></i></button>
+        </article>
+      }
+    </div>
+    <nav class="pagination" aria-label="Revision history pages"><button type="button" [disabled]="offset() === 0" (click)="previous()">Previous</button><span>Page {{ pageNumber() }} of {{ pageCount() }}</span><button type="button" [disabled]="offset() + limit >= total()" (click)="next()">Next</button></nav>
+  }
+</main>

@@ -1,0 +1,36 @@
+:host { display: block; min-width: 0; }
+.pdf-viewer { position: relative; overflow: hidden; border-radius: 0 0 var(--radius-md) var(--radius-md); background: var(--slate-100); }
+.pdf-toolbar { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: var(--space-sm) var(--space-md); border-bottom: 1px solid var(--color-border); background: var(--color-bg-secondary); }
+.pdf-toolbar a { display: inline-flex; align-items: center; gap: 6px; color: var(--color-primary); font-size: var(--text-sm); font-weight: var(--font-semibold); text-decoration: none; }
+.toolbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-sm); }
+.fullscreen-button { min-height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); background: var(--color-bg-secondary); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.fullscreen-button:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+.fullscreen-button:focus-visible { outline: 3px solid rgba(20, 125, 115, .22); outline-offset: 2px; }
+.fullscreen-button:disabled { opacity: .48; cursor: not-allowed; }
+.fullscreen-message { margin: 0; padding: 7px var(--space-md); color: var(--danger); background: #fff5f2; font-size: var(--text-xs); text-align: right; }
+.page-controls { display: flex; align-items: center; gap: var(--space-sm); color: var(--color-text-secondary); font-size: var(--text-sm); }
+.zoom-controls { display: flex; align-items: center; gap: 4px; padding-left: 4px; border-left: 1px solid var(--color-border); }
+.zoom-controls span { min-width: 42px; text-align: center; font-size: var(--text-xs); }
+.page-controls .icon-btn { width: 36px; height: 36px; border: 1px solid var(--color-border); background: var(--color-bg-secondary); }
+.page-controls .icon-btn:disabled { opacity: .42; cursor: not-allowed; }
+.pdf-viewport { position: relative; min-height: 460px; max-height: 72vh; overflow: auto; display: grid; justify-items: center; align-items: start; padding: var(--space-md); background: linear-gradient(135deg, rgba(7, 22, 56, .04), rgba(20, 125, 115, .05)); }
+.pdf-viewport canvas { max-width: 100%; background: #fff; box-shadow: var(--shadow-md); }
+.pdf-state { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; align-content: center; gap: var(--space-sm); padding: var(--space-xl); color: var(--color-text-secondary); text-align: center; background: var(--color-bg-secondary); }
+.pdf-state strong { color: var(--color-text-primary); }
+.pdf-state > i { color: var(--danger); font-size: 34px; }
+.pdf-state > div { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-sm); margin-top: var(--space-sm); }
+.pdf-state a { text-decoration: none; }
+.pdf-state .spinner { width: 30px; height: 30px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: pdf-spin .8s linear infinite; }
+.render-indicator { position: sticky; bottom: var(--space-sm); margin-top: var(--space-sm); padding: 6px 10px; border-radius: var(--radius-full); color: var(--color-text-secondary); background: rgba(255, 252, 245, .94); box-shadow: var(--shadow-sm); font-size: var(--text-xs); }
+@keyframes pdf-spin { to { transform: rotate(360deg); } }
+.pdf-viewer:fullscreen { width: 100vw; height: 100dvh; display: flex; flex-direction: column; border-radius: 0; background: var(--color-bg-primary); }
+.pdf-viewer:fullscreen .pdf-toolbar { flex: 0 0 auto; }
+.pdf-viewer:fullscreen .pdf-viewport { flex: 1 1 auto; min-height: 0; max-height: none; }
+@media (max-width: 640px) {
+  .pdf-toolbar { align-items: stretch; flex-direction: column; }
+  .toolbar-actions { justify-content: space-between; }
+  .pdf-viewport { min-height: 58vh; max-height: 68vh; padding: var(--space-sm); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pdf-state .spinner { animation: none; }
+}

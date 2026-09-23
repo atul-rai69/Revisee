@@ -15,8 +15,8 @@
 .account-popover > div { display: grid; gap: 3px; padding: 10px; border-bottom: 1px solid var(--color-border); }
 .account-popover strong { font-size: 13px; }
 .account-popover span { color: var(--color-text-secondary); font-size: 11px; line-height: 1.4; }
-.account-popover button { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 9px; margin-top: 5px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); color: var(--color-text-primary); background: transparent; font-size: 13px; cursor: pointer; }
-.account-popover button:hover { background: var(--slate-100); }
+.account-popover button, .account-popover > a { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 9px; margin-top: 5px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); color: var(--color-text-primary); background: transparent; font-size: 13px; text-decoration: none; cursor: pointer; }
+.account-popover button:hover, .account-popover > a:hover { background: var(--slate-100); }
 .page-content { min-width: 0; min-height: 0; overflow: auto; padding: 14px; }
 .focused-mode .workspace { display: block; }
 .focused-mode .page-content { height: 100dvh; padding: 0; }

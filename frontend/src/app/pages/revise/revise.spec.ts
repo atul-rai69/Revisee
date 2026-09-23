@@ -8,7 +8,6 @@ import { LabelService } from '../../core/services/label-service';
 import { RevisionSessionService } from '../../core/services/revision-session.service';
 import { ToasterService } from '../../core/services/toaster.service';
 import { Revise } from './revise';
-import { environment } from '../../../environments/environment';
 
 const createdSession: RevisionSessionResponse = {
   session_id: 42,
@@ -35,6 +34,9 @@ class FakeRevisionSessionService {
     this.lastRequest = request;
     return this.result;
   }
+  getSmartReadiness(questionCount: number) {
+    return of({ requested_question_count: questionCount, eligible_question_count: 20, question_count_ready: true, actionable_learning_item_count: 1, practised_learning_item_count: 1, evidence_ready_learning_item_count: 1, minimum_attempts_per_item: 3, smart_targeting_available: true, can_start: true, strategy_if_started: 'SMART' as const, explanation: 'Ready', suggested_action: 'START_SMART' as const });
+  }
 }
 
 class FakeRouter { navigate = vi.fn().mockResolvedValue(true); }
@@ -45,7 +47,6 @@ describe('Revise setup', () => {
   let service: FakeRevisionSessionService;
 
   beforeEach(async () => {
-    environment.features.phase4SmartRevision = true;
     await TestBed.configureTestingModule({
       imports: [Revise],
       providers: [
@@ -63,10 +64,6 @@ describe('Revise setup', () => {
     component = fixture.componentInstance;
     service = TestBed.inject(RevisionSessionService) as unknown as FakeRevisionSessionService;
     fixture.detectChanges();
-  });
-
-  afterEach(() => {
-    environment.features.phase4SmartRevision = false;
   });
 
   it('maps Quick revision to a RANDOM request', () => {

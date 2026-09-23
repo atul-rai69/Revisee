@@ -1,0 +1,62 @@
+.pdf-page { position: relative; line-height: 0; background: #fff; box-shadow: var(--shadow-md); }
+.pdf-page canvas { display: block; box-shadow: none; }
+.textLayer { position: absolute; inset: 0; z-index: 1; overflow: clip; color-scheme: only light; line-height: 1; text-align: initial; letter-spacing: normal; word-spacing: normal; transform-origin: 0 0; caret-color: CanvasText; forced-color-adjust: none; -webkit-text-size-adjust: none; text-size-adjust: none; }
+/*
+ * PDF.js creates the text nodes after Angular has rendered this component.
+ * Those nodes do not receive Angular's emulated-encapsulation attribute, so
+ * nested selectors must cross the host boundary explicitly. Without this,
+ * the browser paints a second, normally-flowing copy of the PDF text.
+ */
+:host ::ng-deep .textLayer :is(span, br) { position: absolute; color: transparent; white-space: pre; cursor: text; transform-origin: 0 0; user-select: text; }
+.textLayer { --min-font-size: 1; --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size)); --min-font-size-inv: calc(1 / var(--min-font-size)); }
+:host ::ng-deep .textLayer > :not(.markedContent),
+:host ::ng-deep .textLayer .markedContent span:not(.markedContent) { z-index: 1; --font-height: 0; --scale-x: 1; --rotate: 0deg; font-size: calc(var(--text-scale-factor) * var(--font-height)); transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
+:host ::ng-deep .textLayer .markedContent { display: contents; }
+:host ::ng-deep .textLayer span[role="img"] { cursor: default; user-select: none; }
+:host ::ng-deep .textLayer ::selection { color: transparent; background: rgba(20, 125, 115, .28); }
+:host ::ng-deep .textLayer .endOfContent { position: absolute; inset: 100% 0 0; z-index: 0; display: block; cursor: default; user-select: none; }
+.textLayer--unavailable { pointer-events: none; }
+.reading-tool-button { min-height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); background: var(--color-bg-secondary); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.reading-tool-button:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+.reading-tool-button:focus-visible, .selection-menu button:focus-visible, .definition-panel button:focus-visible, .definition-panel input:focus-visible { outline: 3px solid rgba(20, 125, 115, .22); outline-offset: 2px; }
+.reading-tool-button:disabled { opacity: .48; cursor: not-allowed; }
+.text-layer-message { margin: 0; display: flex; align-items: center; gap: 8px; padding: 8px var(--space-md); color: var(--color-text-secondary); background: #fff7e8; border-bottom: 1px solid var(--color-border); font-size: var(--text-xs); }
+.selection-menu { position: fixed; z-index: 1000; display: flex; align-items: center; gap: 3px; padding: 4px; border: 1px solid rgba(7, 22, 56, .18); border-radius: 10px; background: var(--color-bg-secondary); box-shadow: var(--shadow-lg); transform: translateX(-50%); }
+.selection-menu button { min-height: 36px; display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border: 0; border-radius: 7px; color: var(--color-text-primary); background: transparent; font: inherit; font-size: var(--text-xs); font-weight: var(--font-semibold); cursor: pointer; }
+.selection-menu button:hover:not(:disabled) { color: var(--color-primary); background: var(--teal-50); }
+.selection-menu button:disabled { opacity: .45; cursor: not-allowed; }
+.selection-menu .selection-close { width: 34px; padding: 6px; justify-content: center; color: var(--color-text-secondary); }
+.definition-panel { position: absolute; top: 68px; right: var(--space-md); z-index: 4; width: min(420px, calc(100% - (2 * var(--space-md)))); max-height: calc(100% - 84px); overflow: auto; padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-secondary); box-shadow: var(--shadow-lg); }
+.definition-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md); }
+.definition-panel h3 { margin: 2px 0 var(--space-sm); font-size: var(--text-lg); }
+.definition-panel form { display: grid; gap: 6px; max-width: 620px; }
+.definition-panel form > div { display: flex; gap: var(--space-sm); }
+.definition-panel label { color: var(--color-text-secondary); font-size: var(--text-xs); font-weight: var(--font-semibold); }
+.definition-panel input { min-width: 0; flex: 1; min-height: 42px; padding: 8px 11px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-primary); background: var(--color-bg-primary); font: inherit; }
+.dictionary-privacy { margin: 8px 0 0; color: var(--color-text-secondary); font-size: var(--text-xs); }
+.dictionary-state { margin: var(--space-md) 0 0; padding: var(--space-sm); border-radius: var(--radius-sm); color: var(--color-text-secondary); background: var(--slate-50); }
+.dictionary-state--error { color: var(--danger); background: #fff1ee; }
+.definition-result { margin-top: var(--space-md); padding: var(--space-md); border-left: 3px solid var(--color-primary); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--paper-50); }
+.definition-result > div { display: flex; align-items: baseline; gap: 8px; }
+.definition-result strong { font-family: var(--font-reading); font-size: var(--text-xl); }
+.definition-result span { color: var(--color-text-secondary); font-size: var(--text-xs); font-style: italic; }
+.definition-result p { margin: 8px 0; color: var(--color-text-primary); line-height: 1.55; }
+.definition-result a { color: var(--color-primary); font-size: var(--text-xs); }
+.pdf-note-editor { position: absolute; top: 68px; right: var(--space-md); z-index: 5; width: min(520px, calc(100% - (2 * var(--space-md)))); max-height: calc(100% - 84px); overflow: auto; padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-secondary); box-shadow: var(--shadow-lg); }
+.pdf-note-editor > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md); }
+.pdf-note-editor h3 { margin: 2px 0 var(--space-md); font-size: var(--text-lg); }
+.pdf-note-editor form { display: grid; gap: var(--space-md); }
+.pdf-note-editor label { display: grid; gap: 6px; color: var(--color-text-primary); font-weight: var(--font-semibold); }
+.pdf-note-editor label small { color: var(--color-text-secondary); font-weight: var(--font-normal); }
+.pdf-note-editor textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-primary); background: var(--color-bg-primary); font: inherit; line-height: 1.5; }
+.pdf-note-editor footer { display: flex; justify-content: flex-end; gap: var(--space-sm); }
+.pdf-note-editor button:focus-visible, .pdf-note-editor textarea:focus-visible { outline: 3px solid rgba(20, 125, 115, .22); outline-offset: 2px; }
+.pdf-note-editor button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 760px) {
+  .toolbar-actions { flex-wrap: wrap; }
+  .reading-tool-button span, .fullscreen-button span { display: none; }
+  .selection-menu { max-width: calc(100vw - 16px); }
+  .definition-panel { top: 120px; right: var(--space-sm); width: calc(100% - (2 * var(--space-sm))); max-height: calc(100% - 136px); }
+  .pdf-note-editor { top: 120px; right: var(--space-sm); width: calc(100% - (2 * var(--space-sm))); max-height: calc(100% - 136px); }
+  .definition-panel form > div { align-items: stretch; flex-direction: column; }
+}

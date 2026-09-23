@@ -260,6 +260,20 @@
   to { transform: rotate(360deg); }
 }
 
+
+.question-dialog { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(7, 22, 56, .48); backdrop-filter: blur(3px); }
+.question-dialog form { width: min(720px, 100%); max-height: calc(100dvh - 40px); display: grid; gap: 16px; padding: 24px; overflow-y: auto; border-radius: var(--radius-lg); background: var(--color-paper); box-shadow: var(--shadow-xl); }
+.question-dialog header, .question-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.question-dialog h2 { margin: 4px 0 0; }
+.question-dialog label { display: grid; gap: 6px; color: var(--color-text-primary); font-size: var(--text-sm); font-weight: 600; }
+.question-dialog input, .question-dialog textarea, .question-dialog select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); color: var(--color-text-primary); background: white; font: inherit; }
+.question-dialog textarea { resize: vertical; }
+.option-fields { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.detail-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.dialog-close { width: 44px; height: 44px; border: 0; border-radius: var(--radius-sm); background: transparent; font-size: 20px; }
+.form-error { margin: 0; color: var(--danger); }
+.question-dialog footer { justify-content: flex-end; }
+
 @media (max-width: 760px) {
   .question-bank-page {
     padding: var(--space-md);
@@ -284,6 +298,9 @@
   .question-card {
     padding: var(--space-lg);
   }
+  .option-fields, .detail-fields { grid-template-columns: 1fr; }
+  .question-dialog { align-items: end; padding: 0; }
+  .question-dialog form { max-height: 94dvh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

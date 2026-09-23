@@ -11,11 +11,11 @@ import {
   RevisionSessionCreateRequest,
   RevisionStrategy,
   SmartRevisionRequest,
+  SmartReadiness,
 } from '../../core/models/revision.models';
 import { Label, LabelService } from '../../core/services/label-service';
 import { RevisionSessionService } from '../../core/services/revision-session.service';
 import { ToasterService } from '../../core/services/toaster.service';
-import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-revise',
@@ -24,7 +24,10 @@ import { environment } from '../../../environments/environment';
   styleUrl: './revise.css',
 })
 export class Revise implements OnInit {
-  readonly smartRevisionEnabled = environment.features.phase4SmartRevision;
+  readonly smartRevisionEnabled = true;
+  readonly smartReadiness = signal<SmartReadiness | null>(null);
+  readonly smartReadinessLoading = signal(false);
+  readonly smartReadinessError = signal(false);
   readonly topics = signal<Label[]>([]);
   readonly selectedTopicIds = signal<Set<number>>(new Set());
   readonly topicsLoading = signal(false);
@@ -56,6 +59,7 @@ export class Revise implements OnInit {
       this.form.controls.strategy.setValue(requestedStrategy);
     }
     this.loadTopics();
+    this.loadSmartReadiness();
   }
 
   get strategy(): RevisionStrategy {
@@ -75,6 +79,9 @@ export class Revise implements OnInit {
         this.derivedQuestionCount <= 50
       );
     }
+    if (this.strategy === 'SMART') {
+      return this.form.controls.questionCount.valid && this.smartReadiness()?.can_start === true;
+    }
     return this.form.controls.questionCount.valid;
   }
 
@@ -92,11 +99,13 @@ export class Revise implements OnInit {
     }
     this.form.controls.strategy.setValue(strategy);
     this.createError.set(null);
+    if (strategy === 'SMART') this.loadSmartReadiness();
   }
 
   adjustQuestionCount(change: number): void {
     const control = this.form.controls.questionCount;
     control.setValue(Math.min(50, Math.max(1, control.value + change)));
+    if (this.strategy === 'SMART') this.loadSmartReadiness();
   }
 
   adjustQuestionsPerLabel(change: number): void {
@@ -128,6 +137,18 @@ export class Revise implements OnInit {
       .subscribe({
         next: (topics) => this.topics.set(topics),
         error: () => this.topicError.set('Topics could not be loaded. Try again.'),
+      });
+  }
+
+  loadSmartReadiness(): void {
+    if (this.smartReadinessLoading() || !this.form.controls.questionCount.valid) return;
+    this.smartReadinessLoading.set(true);
+    this.smartReadinessError.set(false);
+    this.revisionService.getSmartReadiness(this.form.controls.questionCount.value)
+      .pipe(finalize(() => this.smartReadinessLoading.set(false)))
+      .subscribe({
+        next: (readiness) => this.smartReadiness.set(readiness),
+        error: () => this.smartReadinessError.set(true),
       });
   }
 

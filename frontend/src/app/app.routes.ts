@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth-guard';
-import { phase3ResultsGuard } from './core/guards/phase-guard';
 
 export const routes: Routes = [
     {
@@ -58,13 +57,27 @@ export const routes: Routes = [
             title: 'Revise · Revisee'
         },
         {
+            path: 'revision-sessions',
+            loadComponent: () => import('./pages/revision-history/revision-history').then((module) => module.RevisionHistory),
+            title: 'Revision history · Revisee'
+        },
+        {
+            path: 'analytics',
+            loadComponent: () => import('./pages/analytics/analytics').then((module) => module.Analytics),
+            title: 'Mastery analytics · Revisee'
+        },
+        {
+            path: 'settings',
+            loadComponent: () => import('./pages/settings/settings').then((module) => module.Settings),
+            title: 'Settings · Revisee'
+        },
+        {
             path: 'revision-sessions/:sessionId',
             loadComponent: () => import('./pages/revision-session/revision-session').then((module) => module.RevisionSession),
             title: 'Revision session · Revisee'
         },
         {
             path: 'revision-sessions/:sessionId/result',
-            canMatch: [phase3ResultsGuard],
             loadComponent: () => import('./pages/revision-result/revision-result').then((module) => module.RevisionResult),
             title: 'Revision result · Revisee'
         },

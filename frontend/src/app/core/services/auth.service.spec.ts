@@ -27,6 +27,25 @@ describe('AuthService', () => {
     request.flush({ access_token: 'token', token_type: 'bearer' });
   });
 
+  it('sends registration credentials in a JSON body with local loading', () => {
+    service.register('new-user', 'new-user@example.test', 'safe-password').subscribe(
+      (response) => expect(response.message).toBe('Registration successful'),
+    );
+    const request = http.expectOne(`${environment.apiUrl}/register`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      username: 'new-user',
+      email: 'new-user@example.test',
+      password: 'safe-password',
+    });
+    expect(request.request.context.get(SKIP_GLOBAL_LOADER)).toBe(true);
+    request.flush({
+      access_token: 'registration-token',
+      token_type: 'bearer',
+      message: 'Registration successful',
+    });
+  });
+
   it('stores and clears the existing token key', () => {
     service.setToken('abc');
     expect(localStorage.getItem('token')).toBe('abc');

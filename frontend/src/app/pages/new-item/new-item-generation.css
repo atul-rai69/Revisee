@@ -1,0 +1,20 @@
+.generation-card { display: grid; gap: var(--space-lg); margin-bottom: var(--space-lg); }
+.generation-heading { display: flex; align-items: start; justify-content: space-between; gap: var(--space-lg); }
+.generation-heading h2 { margin: 5px 0 0; color: var(--color-text-primary); font-size: var(--text-xl); }
+.generation-heading a, .personal-options a { color: var(--color-primary); font-weight: var(--font-semibold); }
+.generation-kicker { color: var(--color-primary); font-size: var(--text-xs); font-weight: var(--font-bold); letter-spacing: .07em; text-transform: uppercase; }
+.generation-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
+.generation-choices label { display: flex; align-items: start; gap: var(--space-md); padding: var(--space-lg); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-paper); cursor: pointer; }
+.generation-choices label.selected { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(20, 125, 115, .1); }
+.generation-choices span { display: grid; gap: 3px; }
+.generation-choices small, .generation-disclosure, .personal-options small, .credential-state { color: var(--color-text-secondary); font-size: var(--text-sm); }
+.generation-disclosure { margin: 0; padding: var(--space-md); border-radius: var(--radius-md); background: #fff8e8; line-height: 1.5; }
+.personal-options { display: grid; gap: var(--space-md); padding: var(--space-lg); border-radius: var(--radius-md); background: var(--teal-50); }
+.personal-options label { display: grid; gap: 6px; color: var(--color-text-primary); font-weight: var(--font-semibold); }
+.personal-options label > span { color: var(--color-text-secondary); font-size: var(--text-xs); font-weight: normal; }
+.personal-options select, .personal-options textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text-primary); background: var(--color-paper); font: inherit; }
+.personal-options select:focus-visible, .personal-options textarea:focus-visible { outline: 3px solid rgba(20, 125, 115, .2); outline-offset: 2px; }
+.credential-state { margin: 0; }
+.credential-state button { border: 0; color: var(--color-primary); background: transparent; font-weight: 700; }
+.primary-btn:disabled { opacity: .6; cursor: not-allowed; }
+@media (max-width: 700px) { .generation-heading { flex-direction: column; } .generation-choices { grid-template-columns: 1fr; } }

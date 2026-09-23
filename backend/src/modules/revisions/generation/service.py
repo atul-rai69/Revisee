@@ -9,7 +9,10 @@ from src.core.config import Settings
 from src.core.exceptions import (
     ApplicationError,
     DomainValidationError,
+    InvalidProviderCredentialError,
+    ProviderBusyError,
     ProviderOutputError,
+    ProviderQuotaError,
     ProviderUnavailableError,
     ResourceNotFoundError,
 )
@@ -78,6 +81,8 @@ class QuestionGenerationService:
         question_count: int,
         operation: AIOperation,
         call_order: int = 1,
+        personal_remarks: str | None = None,
+        credential_id: int | None = None,
     ) -> QuestionGenerationResult:
         self._validate_request(question_count, call_order)
         source_record = generation_repository.find_owned_source(
@@ -119,6 +124,7 @@ class QuestionGenerationService:
             source,
             question_count,
             self.settings.AI_MAX_PROMPT_CHARACTERS,
+            personal_remarks,
         )
         self.db.rollback()
 
@@ -129,6 +135,7 @@ class QuestionGenerationService:
             question_count=question_count,
             call_order=call_order,
             source_identifier=source.source_identifier,
+            credential_id=credential_id,
         )
         self._mark_processing(event_id, call_id)
 
@@ -143,6 +150,15 @@ class QuestionGenerationService:
         started = monotonic()
         try:
             provider_result = self.provider.generate_structured(request)
+        except InvalidProviderCredentialError:
+            self._record_failure(event_id, call_id, "AI_CREDENTIAL_INVALID", prompt)
+            raise
+        except ProviderQuotaError:
+            self._record_failure(event_id, call_id, "AI_PROVIDER_QUOTA", prompt)
+            raise
+        except ProviderBusyError:
+            self._record_failure(event_id, call_id, "AI_PROVIDER_BUSY", prompt)
+            raise
         except ProviderUnavailableError:
             self._record_failure(
                 event_id,
@@ -322,9 +338,11 @@ class QuestionGenerationService:
         question_count: int,
         call_order: int,
         source_identifier: str,
+        credential_id: int | None,
     ) -> tuple[int, int]:
         event = AIGenerationEvent(
             user_id=user_id,
+            credential_id=credential_id,
             operation_type=operation.value,
             prompt_template_version=QUESTION_PROMPT_TEMPLATE_VERSION,
             status="PENDING",

@@ -1,4 +1,5 @@
-import {ChangeDetectorRef, Component,ElementRef,OnDestroy,OnInit,ViewChild} from '@angular/core';
+import {ChangeDetectorRef, Component,ElementRef,OnDestroy,OnInit,ViewChild, signal} from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import {FormBuilder,FormGroup,ReactiveFormsModule,Validators} from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -7,6 +8,8 @@ import { LearningItem } from '../../core/services/learning-item';
 import { ToasterService } from '../../core/services/toaster.service';
 import StarterKit from '@tiptap/starter-kit';
 import { LabelService } from '../../core/services/label-service';
+import { AICredential, AICredentialsService } from '../../core/services/ai-credentials.service';
+import { finalize } from 'rxjs';
 
 
 // to store the uploaded images
@@ -28,6 +31,9 @@ interface Label {
   label_name: string;
 }
 
+export const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const MAX_PDF_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 
 @Component({
   selector: 'app-new-item',
@@ -42,11 +48,14 @@ interface Label {
 
   templateUrl: './new-item.html',
 
-  styleUrl: './new-item.css',
+  styleUrls: ['./new-item.css', './new-item-generation.css'],
 })
 
 
-export class NewItem implements OnInit {
+export class NewItem implements OnInit, OnDestroy {
+
+  readonly maxImageUploadMegabytes = MAX_IMAGE_UPLOAD_BYTES / 1024 / 1024;
+  readonly maxPdfUploadMegabytes = MAX_PDF_UPLOAD_BYTES / 1024 / 1024;
 
   @ViewChild('editorElement', { static: true })
 
@@ -74,6 +83,10 @@ export class NewItem implements OnInit {
   selectedLabels: Label[] = [];
 
   labelSearch = '';
+  readonly credentials = signal<AICredential[]>([]);
+  readonly credentialsLoading = signal(false);
+  readonly credentialsError = signal(false);
+  readonly saving = signal(false);
 
 
   constructor(
@@ -81,15 +94,33 @@ export class NewItem implements OnInit {
     private cdr: ChangeDetectorRef,
     private learningItem: LearningItem,
     private labelService: LabelService,
-    private toaster: ToasterService
+    private toaster: ToasterService,
+    private credentialService: AICredentialsService,
   ) {}
 
   ngOnInit(): void {
-
-    this.getLabels();
-
     this.initializeForm();
     this.initializeEditor();
+    this.getLabels();
+    this.loadCredentials();
+  }
+
+  loadCredentials(): void {
+    if (this.credentialsLoading()) return;
+    this.credentialsLoading.set(true);
+    this.credentialsError.set(false);
+    this.credentialService.list().pipe(finalize(() => this.credentialsLoading.set(false))).subscribe({
+      next: (response) => {
+        this.credentials.set(response.credentials.filter((credential) => credential.status === 'VALID'));
+        const selected = this.learningItemForm?.get('credentialId')?.value;
+        if (!selected) {
+          this.learningItemForm?.get('credentialId')?.setValue(
+            response.credentials.find((credential) => credential.is_default && credential.status === 'VALID')?.id ?? null,
+          );
+        }
+      },
+      error: () => this.credentialsError.set(true),
+    });
   }
 
   getLabels():void{
@@ -144,8 +175,11 @@ export class NewItem implements OnInit {
   }
 
   processFiles(files: FileList): void {
-
-    Array.from(files).forEach(file => {
+    this.acceptFilesWithinLimit(
+      Array.from(files),
+      MAX_IMAGE_UPLOAD_BYTES,
+      'image',
+    ).forEach(file => {
 
       const preview =
         URL.createObjectURL(file);
@@ -169,7 +203,11 @@ export class NewItem implements OnInit {
   }
 
   processPdfFiles(files: FileList): void {
-    Array.from(files).forEach(file => {
+    this.acceptFilesWithinLimit(
+      Array.from(files),
+      MAX_PDF_UPLOAD_BYTES,
+      'PDF',
+    ).forEach(file => {
 
       if (
         file.type !== 'application/pdf'
@@ -261,7 +299,10 @@ export class NewItem implements OnInit {
         [
           Validators.required
         ]
-      ]
+      ],
+      generationSource: ['REVISEE'],
+      credentialId: [null as number | null],
+      personalRemarks: ['', [Validators.maxLength(2000)]],
 
     });
   }
@@ -370,6 +411,11 @@ export class NewItem implements OnInit {
     console.log('reset running');
     // reset reactive form
     this.learningItemForm.reset();
+    this.learningItemForm.patchValue({
+      generationSource: 'REVISEE',
+      credentialId: this.credentials().find((credential) => credential.is_default)?.id ?? null,
+      personalRemarks: '',
+    });
 
     // clear uploaded images
     this.uploadedImages.forEach(image => {
@@ -402,8 +448,7 @@ export class NewItem implements OnInit {
 
 
   onSubmit(): void {
-
-    console.log(this.learningItemForm.value.title)
+    if (this.saving()) return;
     
     if (
       this.learningItemForm.invalid
@@ -416,6 +461,16 @@ export class NewItem implements OnInit {
 
       return;
     }
+
+    if (
+      this.learningItemForm.value.generationSource === 'PERSONAL'
+      && !this.learningItemForm.value.credentialId
+    ) {
+      this.toaster.warning('Choose a valid personal Gemini credential or use Revisee-provided generation.');
+      return;
+    }
+
+    if (!this.uploadSizesAreValid()) return;
 
     const formData = new FormData();
 
@@ -439,6 +494,12 @@ export class NewItem implements OnInit {
       'labels',
       JSON.stringify(labelIds)
     );
+    formData.append('generation_source', this.learningItemForm.value.generationSource);
+    if (this.learningItemForm.value.generationSource === 'PERSONAL') {
+      formData.append('credential_id', String(this.learningItemForm.value.credentialId));
+      const remarks = this.learningItemForm.value.personalRemarks?.trim();
+      if (remarks) formData.append('personal_remarks', remarks);
+    }
 
     // images
     this.uploadedImages.forEach(image => {
@@ -461,7 +522,10 @@ export class NewItem implements OnInit {
     });
 
 
-    this.learningItem.createLearningItem(formData).subscribe({
+    this.saving.set(true);
+    this.learningItem.createLearningItem(formData).pipe(
+      finalize(() => this.saving.set(false)),
+    ).subscribe({
 
       next: (response) => {
         console.log(response);
@@ -470,10 +534,9 @@ export class NewItem implements OnInit {
           'Learning item created successfully.'
         );
       },
-      error: (error) => {
-        console.error(error);
+      error: (error: HttpErrorResponse) => {
         this.toaster.error(
-          'Could not create the learning item. Please try again.'
+          this.generationErrorMessage(error)
         );
       }
 
@@ -490,6 +553,56 @@ export class NewItem implements OnInit {
   get topicTitle() {
 
     return this.learningItemForm.get('title')!;
+  }
+
+  get generationSourceControl() {
+    return this.learningItemForm.get('generationSource')!;
+  }
+
+  private generationErrorMessage(error: HttpErrorResponse): string {
+    const detail = error.error?.detail;
+    if (
+      error.status === 422
+      && typeof detail === 'string'
+      && (detail.includes('image must be') || detail.includes('PDF must be'))
+    ) return detail;
+    if (error.status === 422) return 'The selected Gemini key or learning material was rejected. Check the credential and input limits.';
+    if (error.status === 429) return 'Gemini quota or request limits were reached. Choose another option or try later.';
+    if (error.status === 502) return 'Gemini returned content Revisee could not safely validate. Nothing was saved.';
+    if (error.status === 503) return 'The selected generation provider is temporarily unavailable. Nothing was saved.';
+    return 'Could not create the learning item. Nothing was saved; please try again.';
+  }
+
+  private acceptFilesWithinLimit(
+    files: File[],
+    maximumBytes: number,
+    mediaLabel: 'image' | 'PDF',
+  ): File[] {
+    const accepted = files.filter((file) => file.size <= maximumBytes);
+    const rejectedCount = files.length - accepted.length;
+    if (rejectedCount) {
+      const limit = maximumBytes / 1024 / 1024;
+      this.toaster.warning(
+        rejectedCount === 1
+          ? `That ${mediaLabel} is larger than ${limit} MB and was not added.`
+          : `${rejectedCount} ${mediaLabel} files are larger than ${limit} MB and were not added.`,
+      );
+    }
+    return accepted;
+  }
+
+  private uploadSizesAreValid(): boolean {
+    const oversizedImages = this.uploadedImages.some(
+      ({ file }) => file.size > MAX_IMAGE_UPLOAD_BYTES,
+    );
+    const oversizedPdfs = this.uploadedPdfs.some(
+      ({ file }) => file.size > MAX_PDF_UPLOAD_BYTES,
+    );
+    if (!oversizedImages && !oversizedPdfs) return true;
+    this.toaster.warning(
+      'Remove files larger than 10 MB before creating this learning item.',
+    );
+    return false;
   }
 
 }

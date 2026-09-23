@@ -324,7 +324,7 @@ def test_foreign_session_is_concealed_for_submit_and_result(
 ) -> None:
     second = client.post(
         "/register",
-        params={
+        json={
             "username": "submission-second",
             "email": "submission-second@example.test",
             "password": "safe-password",

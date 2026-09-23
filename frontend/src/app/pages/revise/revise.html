@@ -82,11 +82,25 @@
           </button>
           @if (strategy === 'SMART') {
             <div class="strategy-controls">
-              <p class="smart-note"><i class="ph ph-chart-bar"></i> Weak and due learning items are prioritised. Quick revision may be used when there is not enough evidence.</p>
+              @if (smartReadinessLoading()) {
+                <p class="smart-note" role="status"><span class="mini-spinner"></span> Checking your learning evidence…</p>
+              } @else if (smartReadinessError()) {
+                <p class="inline-error" role="alert">SMART readiness could not be checked. <button type="button" (click)="loadSmartReadiness()">Retry</button></p>
+              } @else if (smartReadiness(); as readiness) {
+                <div class="smart-readiness" [class.ready]="readiness.smart_targeting_available">
+                  <p><i class="ph ph-chart-bar"></i> {{ readiness.explanation }}</p>
+                  <dl>
+                    <div><dt>Stored questions</dt><dd>{{ readiness.eligible_question_count }} / {{ readiness.requested_question_count }} needed</dd></div>
+                    <div><dt>Practised items</dt><dd>{{ readiness.practised_learning_item_count }}</dd></div>
+                    <div><dt>Items with sufficient evidence</dt><dd>{{ readiness.evidence_ready_learning_item_count }} ({{ readiness.minimum_attempts_per_item }} attempts each)</dd></div>
+                    <div><dt>Weak or due items</dt><dd>{{ readiness.actionable_learning_item_count }}</dd></div>
+                  </dl>
+                </div>
+              }
               <label for="smart-count">Number of questions</label>
               <div class="stepper">
                 <button type="button" aria-label="Decrease question count" (click)="adjustQuestionCount(-1)">−</button>
-                <input id="smart-count" type="number" min="1" max="50" formControlName="questionCount">
+                <input id="smart-count" type="number" min="1" max="50" formControlName="questionCount" (change)="loadSmartReadiness()">
                 <button type="button" aria-label="Increase question count" (click)="adjustQuestionCount(1)">+</button>
               </div>
             </div>

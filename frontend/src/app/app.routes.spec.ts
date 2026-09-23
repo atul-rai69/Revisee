@@ -1,5 +1,4 @@
 import { routes } from './app.routes';
-import { environment } from '../environments/environment';
 
 describe('application revision routes', () => {
   it('keeps product routes under the guarded application shell', () => {
@@ -9,6 +8,9 @@ describe('application revision routes', () => {
     expect(childPaths).toContain('revise');
     expect(childPaths).toContain('revision-sessions/:sessionId');
     expect(childPaths).toContain('revision-sessions/:sessionId/result');
+    expect(childPaths).toContain('revision-sessions');
+    expect(childPaths).toContain('analytics');
+    expect(childPaths).toContain('settings');
     expect(childPaths).toContain('learning-items/:id/questions');
     expect(childPaths).toContain('library');
     expect(childPaths).not.toContain('playground');
@@ -23,11 +25,9 @@ describe('application revision routes', () => {
     expect(routes.at(-1)?.path).toBe('**');
   });
 
-  it('enables completed-session results while keeping Phase 4 capabilities off', () => {
+  it('exposes verified completed-session results without a roadmap-only route gate', () => {
     const appRoute = routes.find((route) => route.path === 'app');
     const resultsRoute = appRoute?.children?.find((route) => route.path?.endsWith('/result'));
-    expect(environment.features.phase3Results).toBe(true);
-    expect(environment.features.phase4SmartRevision).toBe(false);
-    expect(resultsRoute?.canMatch?.length).toBeGreaterThan(0);
+    expect(resultsRoute?.canMatch).toBeUndefined();
   });
 });

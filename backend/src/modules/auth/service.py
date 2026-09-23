@@ -2,6 +2,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.core.config import get_settings
@@ -29,7 +30,7 @@ class AuthService:
     def register(self, username: str, email: str, password: str) -> dict[str, str]:
         if repository.find_user_by_username_or_email(self.db, username, email):
             self.db.rollback()
-            raise ConflictError("User exists")
+            raise ConflictError("An account with that username or email already exists")
 
         user = User(
             username=username,
@@ -43,12 +44,15 @@ class AuthService:
             user_session = self._new_session(user.id)
             repository.add_session(self.db, user_session)
             self.db.commit()
+        except IntegrityError as exc:
+            self.db.rollback()
+            raise ConflictError("An account with that username or email already exists") from exc
         except Exception:
             self.db.rollback()
             raise
 
         return {
-            "message": "registration successfull",
+            "message": "Registration successful",
             "access_token": self._token(user.id, user_session.session_id),
             "token_type": "bearer",
         }

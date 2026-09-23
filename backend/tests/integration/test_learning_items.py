@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import text
 
 
@@ -53,11 +54,11 @@ def test_learning_item_create_read_delete_contract(
 def test_user_cannot_read_or_delete_another_users_item(client) -> None:
     first = client.post(
         "/register",
-        params={"username": "one", "email": "one@example.test", "password": "pw"},
+        json={"username": "one", "email": "one@example.test", "password": "safe-password"},
     ).json()
     second = client.post(
         "/register",
-        params={"username": "two", "email": "two@example.test", "password": "pw"},
+        json={"username": "two", "email": "two@example.test", "password": "safe-password"},
     ).json()
     first_headers = {"Authorization": f"Bearer {first['access_token']}"}
     second_headers = {"Authorization": f"Bearer {second['access_token']}"}
@@ -89,11 +90,11 @@ def test_user_cannot_read_or_delete_another_users_item(client) -> None:
 def test_user_cannot_attach_another_users_label(client, fake_ai) -> None:
     first = client.post(
         "/register",
-        params={"username": "label-owner", "email": "owner@example.test", "password": "pw"},
+        json={"username": "label-owner", "email": "owner@example.test", "password": "safe-password"},
     ).json()
     second = client.post(
         "/register",
-        params={"username": "attacker", "email": "attacker@example.test", "password": "pw"},
+        json={"username": "attacker", "email": "attacker@example.test", "password": "safe-password"},
     ).json()
     first_headers = {"Authorization": f"Bearer {first['access_token']}"}
     second_headers = {"Authorization": f"Bearer {second['access_token']}"}
@@ -157,3 +158,68 @@ def test_database_work_failure_compensates_uploads(
     )
     assert response.status_code == 500
     assert fake_storage.deletes == [("test-1", "image")]
+
+
+@pytest.mark.parametrize(
+    ("field_name", "filename", "content_type", "setting_name", "media_label"),
+    [
+        ("images", "large.png", "image/png", "CLOUDINARY_MAX_IMAGE_BYTES", "image"),
+        ("pdfs", "large.pdf", "application/pdf", "CLOUDINARY_MAX_RAW_BYTES", "PDF"),
+    ],
+)
+def test_oversized_media_is_rejected_before_generation_or_upload(
+    client,
+    registered_user,
+    fake_ai,
+    fake_storage,
+    field_name: str,
+    filename: str,
+    content_type: str,
+    setting_name: str,
+    media_label: str,
+) -> None:
+    from src.core.config import get_settings
+    from src.main import app
+
+    one_megabyte = 1024 * 1024
+    settings = get_settings().model_copy(update={setting_name: one_megabyte})
+    app.dependency_overrides[get_settings] = lambda: settings
+
+    response = client.post(
+        "/learning-items",
+        data={"title": "Large media", "description_text": "Notes", "labels": "[]"},
+        files=[(field_name, (filename, b"x" * (one_megabyte + 1), content_type))],
+        headers=registered_user["headers"],
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == f"Each {media_label} must be 1 MB or smaller"
+    assert fake_ai.calls == 0
+    assert fake_storage.uploads == []
+
+
+def test_media_at_configured_size_limit_is_accepted(
+    client,
+    registered_user,
+    fake_ai,
+    fake_storage,
+) -> None:
+    from src.core.config import get_settings
+    from src.main import app
+
+    one_megabyte = 1024 * 1024
+    settings = get_settings().model_copy(
+        update={"CLOUDINARY_MAX_RAW_BYTES": one_megabyte}
+    )
+    app.dependency_overrides[get_settings] = lambda: settings
+
+    response = client.post(
+        "/learning-items",
+        data={"title": "Boundary PDF", "description_text": "Notes", "labels": "[]"},
+        files=[("pdfs", ("boundary.pdf", b"x" * one_megabyte, "application/pdf"))],
+        headers=registered_user["headers"],
+    )
+
+    assert response.status_code == 200
+    assert fake_ai.calls == 1
+    assert len(fake_storage.uploads) == 1

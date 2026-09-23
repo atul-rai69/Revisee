@@ -9,6 +9,10 @@ export interface LoginResponse {
   token_type: string;
 }
 
+export interface RegistrationResponse extends LoginResponse {
+  message: string;
+}
+
 export interface LogoutResponse {
   message: string;
 }
@@ -31,6 +35,14 @@ export class AuthService {
     return this.http.post<LoginResponse>(
       `${this.apiUrl}/login`,
       { username, password },
+      { context: new HttpContext().set(SKIP_GLOBAL_LOADER, true) },
+    );
+  }
+
+  register(username: string, email: string, password: string): Observable<RegistrationResponse> {
+    return this.http.post<RegistrationResponse>(
+      `${this.apiUrl}/register`,
+      { username, email, password },
       { context: new HttpContext().set(SKIP_GLOBAL_LOADER, true) },
     );
   }
