@@ -1,0 +1,79 @@
+services:
+  - type: web
+    name: revisee-api
+    runtime: python
+    rootDir: backend
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ENVIRONMENT
+        value: production
+      - key: REVISEE_DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "5"
+      - key: SESSION_EXPIRE_MINUTES
+        value: "30"
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: BYOK_ACTIVE_ENCRYPTION_KEY_VERSION
+        sync: false
+      - key: BYOK_ENCRYPTION_KEYS
+        sync: false
+      - key: AI_GENERATION_ENABLED
+        value: "true"
+      - key: AI_MAX_SOURCE_CHARACTERS
+        value: "8000"
+      - key: AI_MAX_THEORY_CHARACTERS
+        value: "6000"
+      - key: AI_MAX_KEY_POINT_CHARACTERS
+        value: "2000"
+      - key: AI_MAX_NOTES_CHARACTERS
+        value: "8000"
+      - key: AI_MAX_PROMPT_CHARACTERS
+        value: "12000"
+      - key: AI_MAX_RAW_RESPONSE_CHARACTERS
+        value: "40000"
+      - key: AI_MAX_OUTPUT_TOKENS
+        value: "4800"
+      - key: AI_MAX_QUESTIONS_PER_CALL
+        value: "10"
+      - key: AI_MAX_SOURCE_ITEMS_PER_OPERATION
+        value: "5"
+      - key: AI_PROVIDER_TIMEOUT_SECONDS
+        value: "20"
+      - key: AI_OPERATION_DEADLINE_SECONDS
+        value: "120"
+      - key: AI_PROVIDER_ATTEMPTS
+        value: "2"
+      - key: AI_MAX_EXPECTED_TIME_SECONDS
+        value: "3600"
+      - key: AI_MAX_PERSONAL_REMARKS_CHARACTERS
+        value: "2000"
+      - key: AI_MAX_CONCURRENT_PROVIDER_REQUESTS
+        value: "2"
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_MAX_IMAGE_BYTES
+        value: "10485760"
+      - key: CLOUDINARY_MAX_RAW_BYTES
+        value: "10485760"
+      - key: CORS_ORIGINS
+        sync: false

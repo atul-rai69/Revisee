@@ -14,6 +14,7 @@ def test_legacy_openapi_paths_are_preserved(client) -> None:
         "/revision-sessions/{session_id}",
     }
     approved_additions = {
+        "/health",
         "/revision-sessions/{session_id}/submit",
         "/revision-sessions/{session_id}/result",
         "/weak-areas",
@@ -56,7 +57,13 @@ def test_legacy_openapi_paths_are_preserved(client) -> None:
         for path in schema["paths"].values()
         for method in path
     )
-    assert operation_count == 32
+    assert operation_count == 33
+
+
+def test_health_endpoint_is_public_and_minimal(client) -> None:
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
 
 
 def test_registration_openapi_contract_uses_json_body(client) -> None:

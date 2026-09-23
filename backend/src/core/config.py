@@ -78,6 +78,38 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
+    @model_validator(mode="after")
+    def validate_cors_origins(self) -> "Settings":
+        if not self.CORS_ORIGINS:
+            raise ValueError("CORS_ORIGINS must contain at least one origin")
+
+        for origin in self.CORS_ORIGINS:
+            parsed = urlsplit(origin)
+            if (
+                "*" in origin
+                or parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError(
+                    "CORS_ORIGINS entries must be explicit HTTP(S) origins"
+                )
+
+            if self.ENVIRONMENT == "production":
+                hostname = (parsed.hostname or "").casefold()
+                if parsed.scheme != "https" or hostname in {
+                    "localhost",
+                    "127.0.0.1",
+                    "::1",
+                }:
+                    raise ValueError(
+                        "Production CORS_ORIGINS must use HTTPS and cannot "
+                        "contain localhost"
+                    )
+        return self
+
     @field_validator("BYOK_ENCRYPTION_KEYS", mode="before")
     @classmethod
     def parse_byok_encryption_keys(cls, value: object) -> object:
