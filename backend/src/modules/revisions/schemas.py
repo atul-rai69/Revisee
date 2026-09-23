@@ -1,3 +1,5 @@
+from datetime import datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import (
@@ -6,8 +8,10 @@ from pydantic import (
     Field,
     PositiveInt,
     field_validator,
+    field_serializer,
     model_validator,
 )
+from src.modules.ai_credentials.schemas import GenerationChoice
 
 
 class GenerateRevisionRequest(BaseModel):
@@ -41,6 +45,18 @@ class GeneratedRevisionResponse(BaseModel):
 
 class RevisionGenerationResponse(BaseModel):
     message: str
+
+
+class GenerateQuestionsRequest(GenerationChoice):
+    question_count: int = Field(default=5, ge=1, le=10)
+
+
+class GeneratedQuestionsResponse(BaseModel):
+    message: str
+    status: Literal["COMPLETED", "PARTIAL"]
+    requested_count: int
+    saved_count: int
+    duplicate_count: int
 
 
 class RandomRevisionSessionRequest(BaseModel):
@@ -144,3 +160,43 @@ class RevisionSessionShortageDetail(BaseModel):
 
 class RevisionSessionShortageResponse(BaseModel):
     detail: RevisionSessionShortageDetail
+
+
+class RevisionSessionHistoryItem(BaseModel):
+    session_id: int
+    status: Literal["IN_PROGRESS", "COMPLETED"]
+    requested_strategy: Literal["RANDOM", "LABEL", "SMART"]
+    strategy_used: Literal["RANDOM", "LABEL", "SMART"]
+    started_at: datetime | None
+    completed_at: datetime | None
+    question_count: int
+    labels: list[RevisionSessionLabelResponse] | None
+    correct_count: int | None
+    score_percentage: Decimal | None
+    total_time_taken_seconds: int | None
+
+    @field_serializer("score_percentage")
+    def serialize_score(self, value: Decimal | None) -> float | None:
+        return None if value is None else float(value)
+
+
+class RevisionSessionHistoryPage(BaseModel):
+    offset: int
+    limit: int
+    total: int
+    items: list[RevisionSessionHistoryItem]
+
+
+class SmartReadinessResponse(BaseModel):
+    requested_question_count: int
+    eligible_question_count: int
+    question_count_ready: bool
+    actionable_learning_item_count: int
+    practised_learning_item_count: int
+    evidence_ready_learning_item_count: int
+    minimum_attempts_per_item: int
+    smart_targeting_available: bool
+    can_start: bool
+    strategy_if_started: Literal["SMART", "RANDOM"] | None
+    explanation: str
+    suggested_action: Literal["ADD_QUESTIONS", "PRACTISE", "START_SMART"]

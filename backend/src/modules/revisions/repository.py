@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, case, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,7 @@ from src.modules.revisions.models import (
     RevisionSession,
     RevisionSessionLabel,
     RevisionSessionQuestion,
+    UserAttempt,
 )
 from src.modules.revisions.schemas import GeneratedRevisionResponse
 from src.modules.revisions.selection import QuestionCandidate
@@ -299,3 +300,68 @@ def list_session_questions(
         .order_by(RevisionSessionQuestion.question_order)
         .all()
     )
+
+
+def count_owned_sessions(db: Session, user_id: int, status: str | None) -> int:
+    query = db.query(func.count(RevisionSession.id)).filter(
+        RevisionSession.user_id == user_id
+    )
+    if status is not None:
+        query = query.filter(RevisionSession.status == status)
+    return query.scalar() or 0
+
+
+def list_owned_sessions(
+    db: Session,
+    user_id: int,
+    status: str | None,
+    limit: int,
+    offset: int,
+) -> list[RevisionSession]:
+    query = db.query(RevisionSession).filter(RevisionSession.user_id == user_id)
+    if status is not None:
+        query = query.filter(RevisionSession.status == status)
+    return (
+        query.order_by(RevisionSession.started_at.desc(), RevisionSession.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+
+def list_labels_for_sessions(
+    db: Session, session_ids: Sequence[int]
+) -> dict[int, list[RevisionSessionLabel]]:
+    if not session_ids:
+        return {}
+    rows = (
+        db.query(RevisionSessionLabel)
+        .filter(RevisionSessionLabel.session_id.in_(session_ids))
+        .order_by(RevisionSessionLabel.session_id, RevisionSessionLabel.label_order)
+        .all()
+    )
+    result: dict[int, list[RevisionSessionLabel]] = {session_id: [] for session_id in session_ids}
+    for row in rows:
+        result[row.session_id].append(row)
+    return result
+
+
+def summarize_attempts_for_sessions(
+    db: Session, user_id: int, session_ids: Sequence[int]
+) -> dict[int, tuple[int, int]]:
+    if not session_ids:
+        return {}
+    rows = (
+        db.query(
+            UserAttempt.session_id,
+            func.sum(case((UserAttempt.is_correct.is_(True), 1), else_=0)).label("correct_count"),
+            func.sum(UserAttempt.time_taken_seconds).label("total_time"),
+        )
+        .filter(UserAttempt.user_id == user_id, UserAttempt.session_id.in_(session_ids))
+        .group_by(UserAttempt.session_id)
+        .all()
+    )
+    return {
+        row.session_id: (int(row.correct_count or 0), int(row.total_time or 0))
+        for row in rows
+    }

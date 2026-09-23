@@ -1,8 +1,10 @@
 from sqlalchemy import (
+    CheckConstraint,
     Column,
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -84,3 +86,54 @@ class Media(Base):
     )
     url = Column(String(500), nullable=False)
     public_id = Column(String(300), nullable=False)
+    original_filename = Column(String(255))
+
+
+class PdfNote(Base):
+    __tablename__ = "pdf_notes"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    learning_item_id = Column(
+        Integer,
+        ForeignKey("learning_item.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    media_id = Column(
+        Integer,
+        ForeignKey("media.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    page_number = Column(Integer, nullable=False)
+    source_excerpt = Column(String(500))
+    note_text = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    __table_args__ = (
+        CheckConstraint("page_number > 0", name="ck_pdf_note_page_positive"),
+        CheckConstraint(
+            "length(btrim(note_text)) BETWEEN 1 AND 4000",
+            name="ck_pdf_note_text_length",
+        ),
+        CheckConstraint(
+            "source_excerpt IS NULL OR length(source_excerpt) <= 500",
+            name="ck_pdf_note_excerpt_length",
+        ),
+        Index(
+            "ix_pdf_notes_user_item_updated",
+            "user_id",
+            "learning_item_id",
+            "updated_at",
+        ),
+        Index("ix_pdf_notes_media_page", "media_id", "page_number"),
+    )

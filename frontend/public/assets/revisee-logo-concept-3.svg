@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 140" role="img" aria-labelledby="title desc">
+  <title id="title">Revisee logo concept 3</title>
+  <desc id="desc">A turning study page forming a renewal loop and rising sun beside the Revisee wordmark.</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M113 30c-31-18-70-4-80 29-10 34 12 66 46 71 24 3 47-8 58-29" stroke="#147D73" stroke-width="8"/>
+    <path d="m124 24-12 28-27-13" stroke="#147D73" stroke-width="8"/>
+    <path d="M57 98V48c21-7 39-3 54 10v50c-15-13-33-17-54-10Z" fill="#FFFCF5" stroke="#1D2928" stroke-width="6"/>
+    <path d="M111 108V58c17-11 33-15 49-10-15 8-24 21-27 39-8 5-15 12-22 21Z" fill="#FFFCF5" stroke="#1D2928" stroke-width="6"/>
+    <path d="M126 49a24 24 0 0 1 31 23" stroke="#E9AD43" stroke-width="7"/>
+    <path d="M142 35V24M157 41l8-9" stroke="#DF765E" stroke-width="5"/>
+  </g>
+  <text x="188" y="91" fill="#1D2928" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="700" letter-spacing="-2">Revisee</text>
+  <path d="M468 101c8 0 14-6 14-14 0 8 6 14 14 14-8 0-14 6-14 14 0-8-6-14-14-14Z" fill="#DF765E"/>
+</svg>

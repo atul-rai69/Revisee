@@ -10,11 +10,23 @@ backend/**/*.pyc
 backend/.pytest_cache/
 backend/.mypy_cache/
 
-# Environment variables
-backend/.env
+# Environment variables and local credentials
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 
 # Logs
 backend/*.log
+**/*.log
+**/coverage/
+**/.coverage
+**/htmlcov/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
 
 # ==========================
 # Angular (Frontend)
@@ -24,9 +36,17 @@ frontend/node_modules/
 frontend/dist/
 frontend/.angular/
 frontend/.cache/
+frontend/artifacts/
+frontend/__screenshots__/
+**/test-results/
+**/playwright-report/
+**/generated-reports/
+**/local-uploads/
 
-# Environment files (if any)
+# Angular environment sources. Keep the safe development source tracked;
+# production is generated at build time from Vercel's REVISEE_API_URL.
 frontend/src/environments/environment*.ts
+!frontend/src/environments/environment.ts
 
 # ==========================
 # IDE

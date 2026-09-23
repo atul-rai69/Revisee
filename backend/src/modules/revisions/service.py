@@ -1,13 +1,15 @@
 import json
 import random
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from src.core.exceptions import ProviderOutputError, ResourceNotFoundError
-from src.integrations.ai.base import AIProvider
+from src.integrations.ai.base import AIOperation, AIProvider, StructuredAIRequest, StructuredAIResult
+from src.core.config import get_settings
 from src.modules.labels.models import Label
 from src.modules.learning_items import repository as learning_item_repository
 from src.modules.revisions import repository
@@ -26,6 +28,9 @@ from src.modules.revisions.schemas import (
     RevisionSessionQuestionResponse,
     RevisionSessionRequest,
     RevisionSessionResponse,
+    RevisionSessionHistoryItem,
+    RevisionSessionHistoryPage,
+    SmartReadinessResponse,
     SmartRevisionSessionRequest,
 )
 from src.modules.revisions.selection import (
@@ -35,6 +40,9 @@ from src.modules.revisions.selection import (
     select_random_question_ids,
 )
 from src.modules.revisions.smart_selection import select_smart_question_ids
+from src.modules.revisions.smart_selection import candidate_tier
+from src.modules.mastery.weak_areas import MINIMUM_ATTEMPTS
+from src.modules.mastery.calculation import quantize_hundredth
 
 
 class RevisionService:
@@ -42,8 +50,35 @@ class RevisionService:
         self.db = db
         self.provider = provider
 
-    def generate_content(self, title: str, description: str) -> GeneratedRevisionResponse:
-        raw_content = self.provider.generate(build_revision_prompt(title, description))
+    def generate_content(
+        self,
+        title: str,
+        description: str,
+        personal_remarks: str | None = None,
+    ) -> GeneratedRevisionResponse:
+        raw_content = self.provider.generate(
+            build_revision_prompt(title, description, personal_remarks)
+        )
+        return self._parse_content(raw_content)
+
+    def generate_content_with_usage(
+        self,
+        title: str,
+        description: str,
+        personal_remarks: str | None = None,
+    ) -> tuple[GeneratedRevisionResponse, StructuredAIResult]:
+        settings = get_settings()
+        result = self.provider.generate_structured(
+            StructuredAIRequest(
+                prompt=build_revision_prompt(title, description, personal_remarks),
+                operation=AIOperation.LEARNING_ITEM_CREATE,
+                max_output_tokens=settings.AI_MAX_OUTPUT_TOKENS,
+            )
+        )
+        return self._parse_content(result.text), result
+
+    @staticmethod
+    def _parse_content(raw_content: str) -> GeneratedRevisionResponse:
         try:
             decoded = json.loads(raw_content)
             return GeneratedRevisionResponse.model_validate(decoded)
@@ -130,6 +165,134 @@ class RevisionSessionService:
         labels = repository.list_session_labels(self.db, session.id)
         questions = repository.list_session_questions(self.db, session.id)
         return self._response(session, labels, questions)
+
+    def history(
+        self,
+        user_id: int,
+        *,
+        status: str | None,
+        limit: int,
+        offset: int,
+    ) -> RevisionSessionHistoryPage:
+        sessions = repository.list_owned_sessions(
+            self.db, user_id, status, limit, offset
+        )
+        session_ids = [session.id for session in sessions]
+        labels_by_session = repository.list_labels_for_sessions(self.db, session_ids)
+        attempts_by_session = repository.summarize_attempts_for_sessions(
+            self.db, user_id, session_ids
+        )
+        items: list[RevisionSessionHistoryItem] = []
+        for session in sessions:
+            completed = session.status == "COMPLETED"
+            correct_count, total_time = attempts_by_session.get(session.id, (0, 0))
+            question_count = session.requested_question_count
+            score = (
+                quantize_hundredth(
+                    Decimal(correct_count) * Decimal("100") / Decimal(question_count)
+                )
+                if completed and question_count > 0
+                else None
+            )
+            labels = labels_by_session.get(session.id, [])
+            items.append(
+                RevisionSessionHistoryItem(
+                    session_id=session.id,
+                    status=session.status,
+                    requested_strategy=session.requested_strategy,
+                    strategy_used=session.strategy_used,
+                    started_at=session.started_at,
+                    completed_at=session.ended_at,
+                    question_count=question_count,
+                    labels=(
+                        [
+                            RevisionSessionLabelResponse(
+                                label_id=label.label_id,
+                                label_name=label.label_name_snapshot,
+                                question_quota=label.question_quota,
+                            )
+                            for label in labels
+                        ]
+                        if labels else None
+                    ),
+                    correct_count=correct_count if completed else None,
+                    score_percentage=score,
+                    total_time_taken_seconds=total_time if completed else None,
+                )
+            )
+        total = repository.count_owned_sessions(self.db, user_id, status)
+        self.db.rollback()
+        return RevisionSessionHistoryPage(
+            offset=offset, limit=limit, total=total, items=items
+        )
+
+    def smart_readiness(
+        self, user_id: int, question_count: int
+    ) -> SmartReadinessResponse:
+        candidates = repository.list_owned_eligible_smart_candidates(self.db, user_id)
+        eligible_count = len({candidate.question_id for candidate in candidates})
+        evidence_by_item = {
+            candidate.learning_item_id: candidate for candidate in candidates
+        }
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        actionable = sum(
+            candidate_tier(candidate, now) in {1, 2}
+            for candidate in evidence_by_item.values()
+        )
+        practised = sum(
+            candidate.total_attempts > 0 for candidate in evidence_by_item.values()
+        )
+        evidence_ready = sum(
+            candidate.total_attempts >= MINIMUM_ATTEMPTS
+            for candidate in evidence_by_item.values()
+        )
+        can_start = eligible_count >= question_count
+        targeted = can_start and actionable > 0
+        if not can_start:
+            explanation = (
+                f"{eligible_count} eligible stored questions are available; "
+                f"{question_count} are needed for this session."
+            )
+            suggested_action = "ADD_QUESTIONS"
+            strategy = None
+        elif targeted:
+            explanation = (
+                f"SMART can prioritise {actionable} weak or due learning "
+                "item" + ("s." if actionable != 1 else ".")
+            )
+            suggested_action = "START_SMART"
+            strategy = "SMART"
+        else:
+            needs_evidence = evidence_ready < len(evidence_by_item)
+            if needs_evidence:
+                explanation = (
+                    "There are enough questions to practise, but no learning item "
+                    "currently has weak or due evidence. SMART will use Quick revision "
+                    f"while evidence builds toward {MINIMUM_ATTEMPTS} attempts per item."
+                )
+            else:
+                explanation = (
+                    "There are enough questions to practise and the available learning "
+                    "items have sufficient evidence, but none is currently weak or due. "
+                    "SMART will use Quick revision."
+                )
+            suggested_action = "PRACTISE"
+            strategy = "RANDOM"
+        self.db.rollback()
+        return SmartReadinessResponse(
+            requested_question_count=question_count,
+            eligible_question_count=eligible_count,
+            question_count_ready=can_start,
+            actionable_learning_item_count=actionable,
+            practised_learning_item_count=practised,
+            evidence_ready_learning_item_count=evidence_ready,
+            minimum_attempts_per_item=MINIMUM_ATTEMPTS,
+            smart_targeting_available=targeted,
+            can_start=can_start,
+            strategy_if_started=strategy,
+            explanation=explanation,
+            suggested_action=suggested_action,
+        )
 
     def _create_random(
         self,

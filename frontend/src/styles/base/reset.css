@@ -1,0 +1,9 @@
+*, *::before, *::after { box-sizing: border-box; }
+html { min-width: 320px; scroll-behavior: smooth; }
+body { min-width: 320px; min-height: 100vh; }
+button, input, textarea, select { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+img, svg { display: block; max-width: 100%; }
+a { color: inherit; }
+button { touch-action: manipulation; }
+::selection { color: var(--navy-950); background: var(--teal-200); }

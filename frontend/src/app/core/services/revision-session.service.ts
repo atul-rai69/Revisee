@@ -4,6 +4,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   RevisionSessionCreateRequest,
+  RevisionHistoryPage,
+  RevisionStatus,
+  SmartReadiness,
   RevisionSessionResponse,
   RevisionSessionResult,
   RevisionSubmissionAnswer,
@@ -46,6 +49,29 @@ export class RevisionSessionService {
     return this.http.get<RevisionSessionResult>(
       `${this.apiUrl}/revision-sessions/${sessionId}/result`,
       { context: this.localLoadingContext() },
+    );
+  }
+
+  getHistory(options: {
+    status?: RevisionStatus;
+    limit?: number;
+    offset?: number;
+  } = {}): Observable<RevisionHistoryPage> {
+    const params: Record<string, string> = {
+      limit: String(options.limit ?? 10),
+      offset: String(options.offset ?? 0),
+    };
+    if (options.status) params['status'] = options.status;
+    return this.http.get<RevisionHistoryPage>(`${this.apiUrl}/revision-sessions`, {
+      params,
+      context: this.localLoadingContext(),
+    });
+  }
+
+  getSmartReadiness(questionCount: number): Observable<SmartReadiness> {
+    return this.http.get<SmartReadiness>(
+      `${this.apiUrl}/revision-sessions/smart-readiness`,
+      { params: { question_count: questionCount }, context: this.localLoadingContext() },
     );
   }
 

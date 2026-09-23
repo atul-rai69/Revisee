@@ -1,52 +1,12 @@
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1100;
-  display: grid;
-  place-items: center;
-  padding: var(--space-lg);
-  background: rgba(15, 23, 42, 0.38);
-  backdrop-filter: blur(3px);
-}
-
-.dialog-card {
-  width: min(28rem, 100%);
-  padding: var(--space-2xl);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: white;
-  box-shadow: var(--shadow-lg);
-  text-align: center;
-}
-
-.dialog-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
-  background: var(--teal-100);
-  color: var(--teal-700);
-  font-size: 1.5rem;
-}
-
-.dialog-icon.warning { background: #fff1df; color: #c96a14; }
-h2 { margin: var(--space-lg) 0 var(--space-sm); color: var(--slate-900); }
-p { margin: 0; color: var(--slate-600); line-height: 1.6; }
-.dialog-actions { display: flex; justify-content: center; gap: var(--space-md); margin-top: var(--space-xl); }
-
-.button-spinner {
-  display: inline-block;
-  width: 1rem;
-  height: 1rem;
-  margin-right: var(--space-sm);
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: dialog-spin 0.7s linear infinite;
-}
-
+.dialog-backdrop { position: fixed; z-index: 1100; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(7, 22, 56, .38); backdrop-filter: blur(5px); animation: backdrop-in var(--duration-panel) var(--ease-standard); }
+.dialog-card { width: min(430px, 100%); padding: 30px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-raised); box-shadow: var(--shadow-lg); text-align: center; animation: dialog-in var(--duration-panel) var(--ease-standard); }
+.dialog-icon { width: 48px; height: 48px; display: inline-grid; place-items: center; border-radius: 50%; color: var(--teal-700); background: var(--teal-100); font-size: 23px; }
+.dialog-icon.warning { color: #9a5f0a; background: #fae8c6; }
+h2 { margin: 18px 0 8px; font-size: 23px; }
+p { margin: 0; line-height: 1.6; }
+.dialog-actions { display: flex; justify-content: center; gap: 10px; margin-top: 26px; }
+.button-spinner { display: inline-block; width: 16px; height: 16px; margin-right: 7px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: dialog-spin .7s linear infinite; }
+@keyframes backdrop-in { from { opacity: 0; } }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(12px) scale(.98); } }
 @keyframes dialog-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .button-spinner { animation: none; } }
-@media (max-width: 480px) { .dialog-actions { flex-direction: column-reverse; } }
-
+@media (max-width: 480px) { .dialog-card { padding: 24px; }.dialog-actions { flex-direction: column-reverse; }.dialog-actions button { width: 100%; } }

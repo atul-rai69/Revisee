@@ -8,14 +8,14 @@ from src.modules.auth.models import User
 def test_registration_hashes_password_and_preserves_response(client, db_session) -> None:
     response = client.post(
         "/register",
-        params={
+        json={
             "username": "new-user",
             "email": "new-user@example.test",
             "password": "safe-password",
         },
     )
     assert response.status_code == 200
-    assert response.json()["message"] == "registration successfull"
+    assert response.json()["message"] == "Registration successful"
     assert response.json()["token_type"] == "bearer"
 
     user = db_session.query(User).filter(User.username == "new-user").one()
@@ -30,6 +30,42 @@ def test_registration_hashes_password_and_preserves_response(client, db_session)
     ).one()
     assert session_user_id == user.id
     assert is_active is True
+
+
+def test_registration_rejects_legacy_query_parameter_credentials(client) -> None:
+    response = client.post(
+        "/register",
+        params={
+            "username": "query-user",
+            "email": "query-user@example.test",
+            "password": "safe-password",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_registration_validates_public_account_fields(client) -> None:
+    response = client.post(
+        "/register",
+        json={
+            "username": "x",
+            "email": "not-an-email",
+            "password": "short",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_registration_rejects_duplicate_identity(client) -> None:
+    payload = {
+        "username": "duplicate-user",
+        "email": "duplicate@example.test",
+        "password": "safe-password",
+    }
+    assert client.post("/register", json=payload).status_code == 200
+    response = client.post("/register", json=payload)
+    assert response.status_code == 400
+    assert "username or email" in response.json()["detail"].casefold()
 
 
 def test_login_upgrades_legacy_plaintext(client, db_session) -> None:

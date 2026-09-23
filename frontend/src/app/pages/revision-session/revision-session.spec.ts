@@ -6,6 +6,7 @@ import { RevisionSessionResponse, RevisionSessionResult, RevisionSubmissionAnswe
 import { RevisionSessionService } from '../../core/services/revision-session.service';
 import { ToasterService } from '../../core/services/toaster.service';
 import { RevisionSession } from './revision-session';
+import { environment } from '../../../environments/environment';
 
 const activeSession: RevisionSessionResponse = {
   session_id: 8,
@@ -53,6 +54,7 @@ describe('RevisionSession runner', () => {
   let router: FakeRouter;
 
   beforeEach(async () => {
+    environment.features.phase3Results = true;
     vi.useFakeTimers();
     await TestBed.configureTestingModule({
       imports: [RevisionSession],
@@ -71,6 +73,7 @@ describe('RevisionSession runner', () => {
   });
 
   afterEach(() => {
+    environment.features.phase3Results = true;
     fixture.destroy();
     vi.useRealTimers();
   });
@@ -84,6 +87,14 @@ describe('RevisionSession runner', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).not.toContain('Correct answer');
     expect(text).not.toContain('Explanation');
+  });
+
+  it('shows the submit action on the final question', () => {
+    component.next();
+    fixture.detectChanges();
+
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    expect(buttons.some((button) => button.textContent?.trim() === 'Submit revision')).toBe(true);
   });
 
   it('keys answers by session_question_id and includes measured time', () => {

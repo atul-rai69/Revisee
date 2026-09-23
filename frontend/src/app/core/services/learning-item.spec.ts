@@ -13,6 +13,7 @@ const response: LearningItemResponse = {
     labels: 'Biology, Science',
     image_urls: null,
     pdf_urls: null,
+    pdf_resources: [],
     first_image_url: null,
     image_count: 0,
     pdf_count: 0,
@@ -88,5 +89,66 @@ describe('LearningItem service', () => {
       description: 'Cell notes',
     });
     request.flush({ message: 'Revision content generated successfully.' });
+  });
+
+  it('preserves the stored original PDF filename from the detail contract', () => {
+    let actual: LearningItemResponse | undefined;
+    service.getLearningItem(12).subscribe((value) => { actual = value; });
+    const request = http.expectOne(`${environment.apiUrl}/learning-item/12`);
+    request.flush({
+      ...response,
+      data: {
+        ...response.data,
+        pdf_resources: [{
+          id: 9,
+          url: 'https://res.cloudinary.com/revisee/raw/upload/generated-id.pdf',
+          original_filename: 'Operating Systems Notes.pdf',
+        }],
+      },
+    });
+
+    expect(actual?.data.pdf_resources).toEqual([{
+      id: 9,
+      url: 'https://res.cloudinary.com/revisee/raw/upload/generated-id.pdf',
+      original_filename: 'Operating Systems Notes.pdf',
+    }]);
+  });
+
+  it('creates only a manual question through the owned-item contract', () => {
+    const payload = { question: 'Question?', option_a: 'A', option_b: 'B', option_c: 'C', option_d: 'D', correct_option: 'A' as const, explanation: 'Explanation', difficulty: 2, expected_time_seconds: 30 };
+    service.createQuestion(12, payload).subscribe();
+    const request = http.expectOne(`${environment.apiUrl}/learning-items/12/questions`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(payload);
+    request.flush({ message: 'Question added', question_id: 4 });
+  });
+
+  it('uses the append-only generated-question contract with explicit provider choice', () => {
+    const payload = { generation_source: 'PERSONAL' as const, credential_id: 4, personal_remarks: 'Use examples', question_count: 5 };
+    service.generateQuestions(12, payload).subscribe();
+    const request = http.expectOne(`${environment.apiUrl}/learning-items/12/generated-questions`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(payload);
+    request.flush({ message: 'Questions generated and appended', status: 'COMPLETED', requested_count: 5, saved_count: 5, duplicate_count: 0 });
+  });
+
+  it('uses narrow authenticated PDF-note CRUD contracts', () => {
+    service.listPdfNotes(12).subscribe();
+    expect(http.expectOne(`${environment.apiUrl}/learning-items/12/pdf-notes`).request.method).toBe('GET');
+
+    const create = { media_id: 4, page_number: 2, source_excerpt: 'Source', note_text: 'Mine' };
+    service.createPdfNote(12, create).subscribe();
+    const createRequest = http.expectOne(`${environment.apiUrl}/learning-items/12/pdf-notes`);
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.body).toEqual(create);
+
+    const update = { source_excerpt: null, note_text: 'Revised' };
+    service.updatePdfNote(12, 7, update).subscribe();
+    const updateRequest = http.expectOne(`${environment.apiUrl}/learning-items/12/pdf-notes/7`);
+    expect(updateRequest.request.method).toBe('PATCH');
+    expect(updateRequest.request.body).toEqual(update);
+
+    service.deletePdfNote(12, 7).subscribe();
+    expect(http.expectOne(`${environment.apiUrl}/learning-items/12/pdf-notes/7`).request.method).toBe('DELETE');
   });
 });

@@ -28,6 +28,11 @@ class AIGenerationEvent(Base):
         ForeignKey("label.id", ondelete="SET NULL"),
         nullable=True,
     )
+    credential_id = Column(
+        Integer,
+        ForeignKey("ai_credentials.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     operation_type = Column(String(40), nullable=False)
     provider = Column(String(50), nullable=True)
     model = Column(String(100), nullable=True)
@@ -62,6 +67,7 @@ class AIGenerationEvent(Base):
         CheckConstraint(
             "operation_type IN ("
             "'LEARNING_ITEM_CREATE', 'LEARNING_ITEM_REGENERATE', "
+            "'LEARNING_ITEM_QUESTIONS', "
             "'SESSION_SHORTAGE', 'LABEL_PROACTIVE')",
             name="ck_ai_generation_event_operation",
         ),
@@ -127,6 +133,11 @@ class AIGenerationEvent(Base):
         Index(
             "ix_ai_generation_events_label_created",
             "label_id",
+            "created_at",
+        ),
+        Index(
+            "ix_ai_generation_events_credential_created",
+            "credential_id",
             "created_at",
         ),
     )

@@ -33,6 +33,8 @@ class Settings(BaseSettings):
 
     GOOGLE_API_KEY: str = Field(min_length=1)
     GEMINI_MODEL: str = "gemini-2.5-flash"
+    BYOK_ACTIVE_ENCRYPTION_KEY_VERSION: str | None = None
+    BYOK_ENCRYPTION_KEYS: dict[str, str] = Field(default_factory=dict)
 
     AI_GENERATION_ENABLED: bool = True
     AI_MAX_SOURCE_CHARACTERS: int = Field(default=8_000, gt=0)
@@ -48,10 +50,14 @@ class Settings(BaseSettings):
     AI_OPERATION_DEADLINE_SECONDS: int = Field(default=120, gt=0)
     AI_PROVIDER_ATTEMPTS: int = Field(default=2, ge=1, le=5)
     AI_MAX_EXPECTED_TIME_SECONDS: int = Field(default=3_600, gt=0)
+    AI_MAX_PERSONAL_REMARKS_CHARACTERS: int = Field(default=2_000, ge=100, le=10_000)
+    AI_MAX_CONCURRENT_PROVIDER_REQUESTS: int = Field(default=2, ge=1, le=20)
 
     CLOUDINARY_CLOUD_NAME: str = Field(min_length=1)
     CLOUDINARY_API_KEY: str = Field(min_length=1)
     CLOUDINARY_API_SECRET: str = Field(min_length=1)
+    CLOUDINARY_MAX_IMAGE_BYTES: int = Field(default=10 * 1024 * 1024, gt=0)
+    CLOUDINARY_MAX_RAW_BYTES: int = Field(default=10 * 1024 * 1024, gt=0)
 
     CORS_ORIGINS: list[str] = Field(
         default_factory=lambda: [
@@ -70,6 +76,45 @@ class Settings(BaseSettings):
     def parse_cors_origins(cls, value: object) -> object:
         if isinstance(value, str) and not value.lstrip().startswith("["):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
+    @model_validator(mode="after")
+    def validate_cors_origins(self) -> "Settings":
+        if not self.CORS_ORIGINS:
+            raise ValueError("CORS_ORIGINS must contain at least one origin")
+
+        for origin in self.CORS_ORIGINS:
+            parsed = urlsplit(origin)
+            if (
+                "*" in origin
+                or parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError(
+                    "CORS_ORIGINS entries must be explicit HTTP(S) origins"
+                )
+
+            if self.ENVIRONMENT == "production":
+                hostname = (parsed.hostname or "").casefold()
+                if parsed.scheme != "https" or hostname in {
+                    "localhost",
+                    "127.0.0.1",
+                    "::1",
+                }:
+                    raise ValueError(
+                        "Production CORS_ORIGINS must use HTTPS and cannot "
+                        "contain localhost"
+                    )
+        return self
+
+    @field_validator("BYOK_ENCRYPTION_KEYS", mode="before")
+    @classmethod
+    def parse_byok_encryption_keys(cls, value: object) -> object:
+        if value in (None, ""):
+            return {}
         return value
 
     @model_validator(mode="after")
@@ -102,6 +147,18 @@ class Settings(BaseSettings):
                 "AI_PROVIDER_TIMEOUT_SECONDS must not exceed "
                 "AI_OPERATION_DEADLINE_SECONDS"
             )
+        if bool(self.BYOK_ACTIVE_ENCRYPTION_KEY_VERSION) != bool(
+            self.BYOK_ENCRYPTION_KEYS
+        ):
+            raise ValueError(
+                "BYOK_ACTIVE_ENCRYPTION_KEY_VERSION and BYOK_ENCRYPTION_KEYS "
+                "must be configured together"
+            )
+        if (
+            self.BYOK_ACTIVE_ENCRYPTION_KEY_VERSION
+            and self.BYOK_ACTIVE_ENCRYPTION_KEY_VERSION not in self.BYOK_ENCRYPTION_KEYS
+        ):
+            raise ValueError("Active BYOK encryption key version is not in the keyring")
         if self.ENVIRONMENT != "test":
             if not self.DATABASE_URL:
                 raise ValueError("DATABASE_URL is required outside test mode")

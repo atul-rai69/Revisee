@@ -3,9 +3,10 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { Observable, of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
-import { LearningItem, LearningItemResponse } from '../../core/services/learning-item';
+import { GeneratedQuestionsResponse, LearningItem, LearningItemResponse } from '../../core/services/learning-item';
 import { ToasterService } from '../../core/services/toaster.service';
 import { LearningItemQuestions } from './learning-item-questions';
+import { AICredentialsService } from '../../core/services/ai-credentials.service';
 
 const response: LearningItemResponse = {
   message: 'ok',
@@ -16,8 +17,8 @@ const response: LearningItemResponse = {
     updated_at: '2026-09-01T10:00:00Z', hours_ago: 2,
     questions: [
       {
-        number: 1, question: 'What is a primary key?', difficulty: 2,
-        expected_time_seconds: 30, explanation: 'It uniquely identifies a row.',
+        question_id: 11, number: 1, question: 'What is a primary key?', difficulty: 2,
+        expected_time_seconds: 30, explanation: 'It uniquely identifies a row.', total_attempts: 2, correct_attempts: 1, accuracy_percent: 50,
         options: [
           { label: 'A', text: 'A row identifier', isCorrect: true },
           { label: 'B', text: 'A duplicate field', isCorrect: false },
@@ -26,8 +27,8 @@ const response: LearningItemResponse = {
         ],
       },
       {
-        number: 2, question: 'What does a foreign key reference?', difficulty: 1,
-        expected_time_seconds: 20, explanation: 'It references a key in another table.',
+        question_id: 12, number: 2, question: 'What does a foreign key reference?', difficulty: 1,
+        expected_time_seconds: 20, explanation: 'It references a key in another table.', total_attempts: 0, correct_attempts: 0, accuracy_percent: null,
         options: [
           { label: 'A', text: 'A CSS class', isCorrect: false },
           { label: 'B', text: 'Another table key', isCorrect: true },
@@ -42,12 +43,16 @@ const response: LearningItemResponse = {
 class FakeLearningItemService {
   getCalls = 0;
   detailResponse: Observable<LearningItemResponse> = of(response);
-  readonly generation = new Subject<{ message: string }>();
-  generateRevisionContent = vi.fn(() => this.generation.asObservable());
+  readonly generation = new Subject<GeneratedQuestionsResponse>();
+  generateQuestions = vi.fn(() => this.generation.asObservable());
   getLearningItem() {
     this.getCalls += 1;
     return this.detailResponse;
   }
+  createQuestion = vi.fn(() => of({ message: 'Question added', question_id: 13 }));
+}
+class FakeAICredentialsService {
+  list() { return of({ credentials: [], provider_console_url: 'https://aistudio.google.com/usage', quota_remaining_available: false as const }); }
 }
 
 describe('LearningItemQuestions', () => {
@@ -63,6 +68,7 @@ describe('LearningItemQuestions', () => {
       providers: [
         ToasterService,
         { provide: LearningItem, useClass: FakeLearningItemService },
+        { provide: AICredentialsService, useClass: FakeAICredentialsService },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => routeId } } } },
       ],
     }).compileComponents();
@@ -86,15 +92,34 @@ describe('LearningItemQuestions', () => {
     fixture.detectChanges();
     expect(element.querySelector('.option--correct')?.textContent).toContain('A row identifier');
     expect(element.textContent).toContain('It uniquely identifies a row.');
+    expect(element.textContent).toContain('50%');
+    expect(element.textContent).toContain('Not attempted yet');
+  });
+
+  it('prevents duplicate manual-question submissions while saving', () => {
+    createComponent();
+    const pending = new Subject<{ message: string; question_id: number }>();
+    service.createQuestion.mockReturnValue(pending.asObservable());
+    component.questionForm.setValue({
+      question: 'A manual question?', optionA: 'One', optionB: 'Two', optionC: 'Three', optionD: 'Four',
+      correctOption: 'A', explanation: 'Because one is correct.', difficulty: 2, expectedTime: 30,
+    });
+    component.createQuestion();
+    component.createQuestion();
+    expect(service.createQuestion).toHaveBeenCalledTimes(1);
+    expect(component.savingQuestion()).toBe(true);
   });
 
   it('prevents duplicate generation and refreshes the bank after success', () => {
     createComponent();
     component.generateMoreQuestions();
-    component.generateMoreQuestions();
-    expect(service.generateRevisionContent).toHaveBeenCalledTimes(1);
-    expect(service.generateRevisionContent).toHaveBeenCalledWith(5, 'Databases', 'Owned notes');
-    service.generation.next({ message: 'ok' });
+    component.submitGeneration();
+    component.submitGeneration();
+    expect(service.generateQuestions).toHaveBeenCalledTimes(1);
+    expect(service.generateQuestions).toHaveBeenCalledWith(5, {
+      generation_source: 'REVISEE', credential_id: null, personal_remarks: null, question_count: 5,
+    });
+    service.generation.next({ message: 'ok', status: 'PARTIAL', requested_count: 5, saved_count: 1, duplicate_count: 0 });
     service.generation.complete();
     expect(service.getCalls).toBe(2);
   });
@@ -103,10 +128,11 @@ describe('LearningItemQuestions', () => {
     createComponent();
     const toaster = TestBed.inject(ToasterService);
     component.generateMoreQuestions();
+    component.submitGeneration();
     service.generation.error({ status: 422 });
     expect(component.generating()).toBe(false);
-    expect(toaster.toasts()[0]?.title).toBe('Generation failed');
-    expect(toaster.toasts()[0]?.message).not.toContain('422');
+    expect(component.generationError()).not.toContain('422');
+    expect(toaster.toasts()).toHaveLength(0);
   });
 
   it('reactively ends loading when an asynchronous resume response arrives', async () => {

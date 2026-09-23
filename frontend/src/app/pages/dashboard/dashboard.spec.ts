@@ -6,7 +6,13 @@ import { DashboardService, DashboardSummary, LearningItemsSummaryResponse } from
 import { Label, LabelService } from '../../core/services/label-service';
 import { LearningItem } from '../../core/services/learning-item';
 import { ToasterService } from '../../core/services/toaster.service';
+import {
+  MasteryService,
+  RevisionAnalyticsResponse,
+} from '../../core/services/mastery.service';
+import { RevisionSessionService } from '../../core/services/revision-session.service';
 import { Dashboard, greetingForHour } from './dashboard';
+import { AICredentialsService } from '../../core/services/ai-credentials.service';
 
 class FakeDashboardService {
   summary: Observable<DashboardSummary> = of({ username: 'Atul', total_items: 1, total_labels: 2, login_streak: 4 });
@@ -43,6 +49,34 @@ class FakeLabelService {
 
 class FakeLearningItemService { deleteLearningItem(_id: number) { return of(null); } }
 class FakeRouter { navigate = vi.fn().mockResolvedValue(true); }
+class FakeRevisionSessionService {
+  getHistory() {
+    return of({ offset: 0, limit: 4, total: 0, items: [] });
+  }
+}
+class FakeMasteryService {
+  revisionCalls = 0;
+  revisionResult: Observable<RevisionAnalyticsResponse> = of({
+    completed_session_count: 0,
+    activity: [],
+    requested_session_limit: 30,
+    sessions_used: 0,
+    measured_learning_item_count: 0,
+    weak_area_ready: false,
+    minimum_attempts: 3,
+    topic_attribution: 'CURRENT_LEARNING_ITEM_TOPICS',
+    attribution_note: 'Totals can overlap.',
+    topic_practice: [],
+  });
+  getAnalytics(entityType: 'LABEL' | 'LEARNING_ITEM') { return of({ entity_type: entityType, minimum_attempts: 3, offset: 0, limit: 100, total: 0, items: [] }); }
+  getRevisionAnalytics(_sessionLimit: 7 | 30 | 50) {
+    this.revisionCalls += 1;
+    return this.revisionResult;
+  }
+}
+class FakeAICredentialsService {
+  list() { return of({ credentials: [], provider_console_url: 'https://aistudio.google.com/usage', quota_remaining_available: false as const }); }
+}
 
 describe('Dashboard', () => {
   let fixture: ComponentFixture<Dashboard>;
@@ -58,6 +92,9 @@ describe('Dashboard', () => {
         { provide: DashboardService, useClass: FakeDashboardService },
         { provide: LabelService, useClass: FakeLabelService },
         { provide: LearningItem, useClass: FakeLearningItemService },
+        { provide: RevisionSessionService, useClass: FakeRevisionSessionService },
+        { provide: MasteryService, useClass: FakeMasteryService },
+        { provide: AICredentialsService, useClass: FakeAICredentialsService },
         { provide: Router, useClass: FakeRouter },
       ],
     }).compileComponents();
@@ -126,6 +163,7 @@ describe('Dashboard', () => {
     create();
     expect(fixture.nativeElement.textContent).toContain('No Topics yet');
     expect(fixture.nativeElement.textContent).toContain('Add your first learning item');
+    expect(fixture.nativeElement.textContent).toContain('No completed revisions yet');
   });
 
   it('keeps independent section dimensions while requests are pending', () => {
@@ -151,5 +189,42 @@ describe('Dashboard', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Recovered');
     expect(dashboardService.summaryCalls).toBe(2);
+  });
+
+  it('stops the analytics loader after an error and retries only on request', () => {
+    const masteryService = TestBed.inject(MasteryService) as unknown as FakeMasteryService;
+    masteryService.revisionResult = throwError(() => new Error('contract failure'));
+    create();
+
+    expect(component.analysisLoading()).toBe(false);
+    expect(component.analysisError()).toBe(true);
+    expect(masteryService.revisionCalls).toBe(1);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Revision analysis could not be loaded.',
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Retry');
+
+    fixture.detectChanges();
+    fixture.detectChanges();
+    expect(masteryService.revisionCalls).toBe(1);
+
+    masteryService.revisionResult = of({
+      completed_session_count: 0,
+      activity: [],
+      requested_session_limit: 30,
+      sessions_used: 0,
+      measured_learning_item_count: 0,
+      weak_area_ready: false,
+      minimum_attempts: 3,
+      topic_attribution: 'CURRENT_LEARNING_ITEM_TOPICS',
+      attribution_note: 'No completed sessions.',
+      topic_practice: [],
+    });
+    component.loadAnalysis();
+    fixture.detectChanges();
+
+    expect(masteryService.revisionCalls).toBe(2);
+    expect(component.analysisLoading()).toBe(false);
+    expect(component.analysisError()).toBe(false);
   });
 });

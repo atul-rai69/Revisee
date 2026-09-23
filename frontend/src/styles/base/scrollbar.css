@@ -17,7 +17,7 @@
 *::-webkit-scrollbar-thumb {
 
   background:
-    rgba(15, 23, 42, 0.12);
+    rgba(29, 41, 40, 0.16);
 
   border-radius: 999px;
 
@@ -32,7 +32,7 @@
 *::-webkit-scrollbar-thumb:hover {
 
   background:
-    rgba(20, 184, 166, 0.28);
+    rgba(20, 125, 115, 0.32);
 
   background-clip: content-box;
 }
@@ -51,6 +51,6 @@
   scrollbar-width: thin;
 
   scrollbar-color:
-    rgba(15, 23, 42, 0.16)
+    rgba(29, 41, 40, 0.18)
     transparent;
 }

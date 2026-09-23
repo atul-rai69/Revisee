@@ -1,0 +1,98 @@
+<main class="content-card analytics-page">
+  <header class="analytics-header">
+    <span class="eyebrow">Learning evidence</span>
+    <h1>Mastery analytics</h1>
+    <p>Mastery and accuracy come only from your persisted revision answers.</p>
+  </header>
+
+  <div class="analytics-tabs" role="tablist" aria-label="Mastery entity type">
+    <button type="button" role="tab" [attr.aria-selected]="entityType() === 'LABEL'" [class.active]="entityType() === 'LABEL'" (click)="selectType('LABEL')">Topics</button>
+    <button type="button" role="tab" [attr.aria-selected]="entityType() === 'LEARNING_ITEM'" [class.active]="entityType() === 'LEARNING_ITEM'" (click)="selectType('LEARNING_ITEM')">Learning items</button>
+  </div>
+
+  @if (loading()) {
+    <section class="analytics-state" role="status"><span class="study-spinner"></span><p>Loading mastery evidence…</p></section>
+  } @else if (error()) {
+    <section class="analytics-state error" role="alert"><i class="ph ph-warning-circle" aria-hidden="true"></i><h2>Analytics unavailable</h2><button type="button" class="primary-btn-outlined" (click)="load()">Try again</button></section>
+  } @else if (items().length === 0) {
+    <section class="analytics-state"><i class="ph ph-chart-bar" aria-hidden="true"></i><h2>No {{ entityType() === 'LABEL' ? 'Topics' : 'learning items' }} yet</h2><p>Add learning material to begin.</p></section>
+  } @else {
+    <section class="analytics-table-wrap" [attr.aria-label]="entityType() === 'LABEL' ? 'Topic mastery details' : 'Learning item mastery details'">
+      <table>
+        <thead><tr><th>{{ entityType() === 'LABEL' ? 'Topic' : 'Learning item' }}</th><th>Evidence</th><th>Mastery</th><th>Attempts</th><th>Accuracy</th><th>Last practised</th><th>Next review</th><th>Actions</th></tr></thead>
+        <tbody>
+          @for (item of items(); track item.entity_id) {
+            <tr>
+              <td><strong>{{ item.display_name }}</strong><small>{{ item.question_count }} {{ item.question_count === 1 ? 'question' : 'questions' }}</small></td>
+              <td>
+                <details class="evidence-help">
+                  <summary><span class="evidence" [attr.data-status]="item.evidence_status">{{ statusLabel(item) }}</span><i class="ph ph-info" aria-hidden="true"></i></summary>
+                  <p>{{ evidenceGuidance(item) }}@if (item.evidence_status === 'INSUFFICIENT_EVIDENCE') { <strong>{{ remainingAttempts(item) }} more persisted {{ remainingAttempts(item) === 1 ? 'attempt is' : 'attempts are' }} required by the current backend threshold.</strong> }</p>
+                </details>
+              </td>
+              <td>{{ item.evidence_status === 'MEASURED' && item.mastery_score !== null ? item.mastery_score + '%' : 'Locked' }}</td>
+              <td>{{ item.total_attempts }}</td>
+              <td>{{ item.accuracy_percent === null ? 'Not attempted' : item.accuracy_percent + '%' }}</td>
+              <td>{{ formatDate(item.last_practised_at) }}</td>
+              <td>{{ item.evidence_status === 'MEASURED' ? formatDate(item.next_review_at) : 'Not available' }}</td>
+              <td class="row-actions"><button type="button" (click)="openAction(item)">{{ actionLabel(item) }}</button><button type="button" [attr.aria-expanded]="expandedIds().has(item.entity_id)" (click)="toggleTrend(item.entity_id)">{{ expandedIds().has(item.entity_id) ? 'Hide growth' : 'View growth' }}</button></td>
+            </tr>
+            @if (expandedIds().has(item.entity_id)) {
+              <tr class="trend-detail"><td colspan="8">
+                <section [attr.aria-label]="item.display_name + ' mastery growth'">
+                  <header><div><h3>{{ item.display_name }} mastery growth</h3><p>Persisted mastery snapshots after relevant completed revisions.</p></div><span>{{ measuredTrendCount(item) }} measured {{ measuredTrendCount(item) === 1 ? 'snapshot' : 'snapshots' }}</span></header>
+                  @if (item.evidence_status !== 'MEASURED') {
+                    <div class="trend-message"><i class="ph ph-lock-key" aria-hidden="true"></i><p>Mastery growth remains locked until this {{ entityType() === 'LABEL' ? 'Topic' : 'learning item' }} has sufficient evidence. Existing sub-threshold scores are not displayed as mastery.</p></div>
+                  } @else if (measuredTrendCount(item) === 0) {
+                    <div class="trend-message"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i><p>Current mastery is measured, but no eligible historical snapshots exist yet. Trends become available after new completed revisions; nothing is backfilled.</p></div>
+                  } @else {
+                    <div class="individual-chart"><app-echart [option]="individualOption(item)" [ariaLabel]="item.display_name + ' persisted mastery growth chart'"></app-echart></div>
+                    <ul class="snapshot-list" aria-label="Mastery snapshot values">@for (point of item.trend; track point.session_id) { @if (point.total_attempts >= minimumAttempts()) { <li><strong>{{ formatDate(point.recorded_at) }}</strong><span>Session {{ point.session_id }}</span><span>{{ point.score_after }}% mastery</span><span>{{ point.correct_attempts }}/{{ point.total_attempts }} cumulative correct attempts</span></li> } }</ul>
+                  }
+                </section>
+              </td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </section>
+    <p class="method-note"><i class="ph ph-info" aria-hidden="true"></i> At least {{ minimumAttempts() }} persisted answers are required before mastery is displayed. The internal default score is never presented as measured mastery.</p>
+    @if (total() > limit) { <nav class="pagination" aria-label="Analytics pages"><button type="button" [disabled]="offset() === 0" (click)="previous()">Previous</button><span>{{ offset() + 1 }}–{{ pageEnd() }} of {{ total() }}</span><button type="button" [disabled]="offset() + limit >= total()" (click)="next()">Next</button></nav> }
+  }
+
+  <section class="insight-section" aria-labelledby="topic-distribution-title">
+    <header class="insight-header"><div><span class="eyebrow">Completed revisions</span><h2 id="topic-distribution-title">Topics practised most</h2><p>Bubble size represents distinct selected sessions containing attempts attributed to that Topic.</p></div><div class="window-filter" aria-label="Completed revision window">@for (limit of distributionLimits; track limit) { <button type="button" [class.active]="distributionLimit() === limit" [attr.aria-pressed]="distributionLimit() === limit" (click)="selectDistributionLimit(limit)">Last {{ limit }}</button> }</div></header>
+    @if (insightsLoading()) {
+      <div class="chart-state" role="status">Loading Topic practice…</div>
+    } @else if (insightsError()) {
+      <div class="chart-state error" role="alert"><p>Topic practice analysis could not be loaded.</p><button type="button" (click)="loadInsights()">Retry</button></div>
+    } @else if (bubbleOption(); as option) {
+      <p class="window-note">Using {{ revisionAnalytics()!.sessions_used }} available completed {{ revisionAnalytics()!.sessions_used === 1 ? 'session' : 'sessions' }} from the requested last {{ distributionLimit() }}.</p>
+      <div class="bubble-chart"><app-echart [option]="option" ariaLabel="Topic question attempts by weighted accuracy and number of completed revision sessions"></app-echart></div>
+      <div class="distribution-table"><table><caption>Topic practice distribution values</caption><thead><tr><th>Topic</th><th>Attempts</th><th>Correct</th><th>Accuracy</th><th>Sessions</th></tr></thead><tbody>@for (topic of revisionAnalytics()!.topic_practice; track topic.topic_id) { <tr><td>{{ topic.topic_name }}</td><td>{{ topic.attempt_count }}</td><td>{{ topic.correct_count }}</td><td>{{ topic.accuracy_percent }}%</td><td>{{ topic.session_count }}</td></tr> }</tbody></table></div>
+      <p class="attribution-note"><i class="ph ph-info" aria-hidden="true"></i>{{ revisionAnalytics()!.attribution_note }}</p>
+    } @else {
+      <div class="chart-state"><i class="ph ph-chart-scatter" aria-hidden="true"></i><h3>No attributable Topic attempts</h3><p>Complete revision sessions using learning items assigned to Topics to populate this chart.</p></div>
+    }
+  </section>
+
+  <section class="insight-section weak-section" aria-labelledby="weak-title">
+    <header class="insight-header"><div><span class="eyebrow">Personalised evidence</span><h2 id="weak-title">Weak-area analysis</h2></div></header>
+    @if (insightsLoading()) {
+      <div class="chart-state" role="status">Checking weak-area readiness…</div>
+    } @else if (insightsError()) {
+      <div class="chart-state error" role="alert"><p>Weak-area readiness could not be checked.</p><button type="button" (click)="loadInsights()">Retry</button></div>
+    } @else if (!revisionAnalytics()?.weak_area_ready) {
+      <div class="locked-preview"><div><span class="locked-badge"><i class="ph ph-lock-key" aria-hidden="true"></i>Locked — illustrative preview</span><h3>Example data—not your results.</h3><p>Complete more relevant practice to reveal your weak areas.</p><p>The preview is static and is never included in your analytics calculations.</p></div><div class="preview-chart"><app-echart [option]="weakChartOption()" ariaLabel="Illustrative example weak-area chart; this is not user data"></app-echart></div></div>
+    } @else if (weakLoading()) {
+      <div class="chart-state" role="status">Loading verified weak areas…</div>
+    } @else if (weakError()) {
+      <div class="chart-state error" role="alert"><p>Weak-area results could not be loaded.</p><button type="button" (click)="loadWeakAreas()">Retry</button></div>
+    } @else if (weakAreas().length === 0) {
+      <div class="chart-state"><i class="ph ph-check-circle" aria-hidden="true"></i><h3>No demonstrated weak areas</h3><p>You have sufficient evidence for analysis, but no learning item is currently below the backend’s weak-mastery threshold.</p></div>
+    } @else {
+      <div class="weak-chart"><app-echart [option]="weakChartOption()" ariaLabel="Verified learning-item weak areas by measured mastery"></app-echart></div>
+      <ul class="weak-list" aria-label="Verified weak-area values">@for (item of weakAreas(); track item.classification + '-' + item.entity_id) { <li><strong>{{ item.display_name }}</strong><span>{{ item.classification === 'DUE_REVIEW' ? 'Due for review' : 'Demonstrated weakness' }}</span><span>{{ item.mastery_score }}% mastery</span><span>{{ item.correct_attempts }}/{{ item.total_attempts }} correct attempts</span></li> }</ul>
+    }
+  </section>
+</main>

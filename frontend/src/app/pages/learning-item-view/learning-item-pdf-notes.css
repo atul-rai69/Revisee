@@ -1,0 +1,40 @@
+.pdf-notes-section { display: grid; gap: var(--space-md); }
+.pdf-notes-section .section-heading-row button { display: inline-flex; align-items: center; gap: 7px; }
+.pdf-notes-state { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text-secondary); background: var(--slate-50); }
+.pdf-notes-state .spinner { width: 20px; height: 20px; border: 2px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: note-spin .8s linear infinite; }
+.pdf-notes-state--error { justify-content: space-between; color: var(--danger); background: #fff2ef; }
+.pdf-notes-state button { min-height: 36px; padding: 6px 10px; border: 1px solid currentColor; border-radius: var(--radius-sm); color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.pdf-note-list { display: grid; gap: var(--space-md); }
+.pdf-note-card { padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--paper-50); box-shadow: var(--shadow-sm); }
+.pdf-note-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md); }
+.pdf-note-card > header > div:first-child { display: grid; gap: 3px; }
+.pdf-note-card > header span { color: var(--color-text-secondary); font-size: var(--text-xs); }
+.pdf-note-card blockquote { margin: var(--space-md) 0 var(--space-sm); padding: 9px 12px; border-left: 3px solid var(--amber-400); color: var(--color-text-secondary); background: rgba(233, 173, 67, .08); font-family: var(--font-reading); font-size: var(--text-sm); line-height: 1.5; white-space: pre-wrap; }
+.pdf-note-card > p { margin: var(--space-sm) 0 0; color: var(--color-text-primary); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pdf-note-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+.pdf-note-actions button { min-height: 34px; display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-primary); background: var(--color-bg-secondary); font: inherit; font-size: var(--text-xs); cursor: pointer; }
+.pdf-note-actions button.danger { color: var(--danger); }
+.pdf-note-actions button:focus-visible { outline: 3px solid rgba(20, 125, 115, .22); outline-offset: 2px; }
+.pdf-note-delete { margin-top: var(--space-md); display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: var(--space-sm); border-radius: var(--radius-sm); color: var(--danger); background: #fff0ed; }
+.pdf-note-delete > div { display: flex; gap: 6px; }
+.pdf-note-delete button { min-height: 34px; padding: 5px 9px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg-secondary); font: inherit; cursor: pointer; }
+.pdf-note-delete .danger-solid { border-color: var(--danger); color: #fff; background: var(--danger); }
+.pdf-note-editor-backdrop { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: var(--space-md); background: rgba(7, 22, 56, .46); }
+.pdf-note-editor { width: min(660px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: var(--space-lg); border-radius: var(--radius-lg); background: var(--color-bg-secondary); box-shadow: var(--shadow-xl); }
+.pdf-note-editor > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md); }
+.pdf-note-editor h2 { margin: 3px 0 var(--space-md); font-size: var(--text-xl); }
+.pdf-note-editor form { display: grid; gap: var(--space-md); }
+.pdf-note-editor label { display: grid; gap: 6px; color: var(--color-text-primary); font-weight: var(--font-semibold); }
+.pdf-note-editor label small { color: var(--color-text-secondary); font-weight: var(--font-normal); }
+.pdf-note-editor textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-primary); background: var(--color-bg-primary); font: inherit; line-height: 1.5; }
+.pdf-note-editor footer { display: flex; justify-content: flex-end; gap: var(--space-sm); }
+.pdf-note-editor button:focus-visible, .pdf-note-editor textarea:focus-visible { outline: 3px solid rgba(20, 125, 115, .22); outline-offset: 2px; }
+.pdf-note-editor button:disabled, .pdf-note-delete button:disabled { opacity: .55; cursor: not-allowed; }
+@keyframes note-spin { to { transform: rotate(360deg); } }
+@media (max-width: 760px) {
+  .pdf-note-card > header, .pdf-note-delete { align-items: stretch; flex-direction: column; }
+  .pdf-note-actions { justify-content: flex-start; }
+  .pdf-note-editor-backdrop { align-items: end; padding: 0; }
+  .pdf-note-editor { width: 100%; max-height: 92dvh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+}
+@media (prefers-reduced-motion: reduce) { .pdf-notes-state .spinner { animation: none; } }

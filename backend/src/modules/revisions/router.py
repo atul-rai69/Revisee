@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from src.api.dependencies import get_ai_provider, get_current_user
@@ -9,6 +11,8 @@ from src.modules.revisions.schemas import (
     GenerateRevisionRequest,
     RevisionSessionRequest,
     RevisionSessionResponse,
+    RevisionSessionHistoryPage,
+    SmartReadinessResponse,
     RevisionSessionShortageResponse,
     RevisionGenerationResponse,
 )
@@ -66,6 +70,39 @@ def create_revision_session(
             status_code=status.HTTP_409_CONFLICT,
             detail=exc.detail,
         ) from exc
+
+
+@router.get("/revision-sessions", response_model=RevisionSessionHistoryPage)
+def list_revision_sessions(
+    session_status: Annotated[
+        Literal["IN_PROGRESS", "COMPLETED"] | None,
+        Query(alias="status"),
+    ] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+    offset: Annotated[int, Query(ge=0, le=10000)] = 0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RevisionSessionHistoryPage:
+    return RevisionSessionService(db).history(
+        current_user.id,
+        status=session_status,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/revision-sessions/smart-readiness",
+    response_model=SmartReadinessResponse,
+)
+def get_smart_readiness(
+    question_count: Annotated[int, Query(ge=1, le=50)] = 10,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SmartReadinessResponse:
+    return RevisionSessionService(db).smart_readiness(
+        current_user.id, question_count
+    )
 
 
 @router.get(

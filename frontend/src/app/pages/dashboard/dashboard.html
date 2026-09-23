@@ -48,6 +48,67 @@
     </div>
   </section>
 
+  <section class="byok-card" aria-labelledby="byok-card-title">
+    <div class="byok-icon" aria-hidden="true"><i class="ph ph-key"></i></div>
+    <div class="byok-copy"><span class="section-kicker">Optional personalization</span><h2 id="byok-card-title">Use your own Gemini key for personalized learning content.</h2>
+      @if (aiCredentialsLoading()) { <p role="status">Checking your configured credentials…</p> }
+      @else if (aiCredentialsError()) { <p>Your personal-key status is unavailable. Revisee-provided generation remains available.</p> }
+      @else if (aiCredentials().length === 0) { <p>Add an encrypted personal credential and optionally guide generation with your learning goals or preferred explanation style.</p> }
+      @else { <p>{{ aiCredentials().length }} {{ aiCredentials().length === 1 ? 'credential' : 'credentials' }} configured.@if (defaultAICredential(); as selected) { Default: <strong>{{ selected.name }}</strong> ({{ selected.masked_identifier }}). }</p>@if (defaultAICredential(); as selected) { <small>Usage recorded in Revisee: {{ selected.usage.total_tokens === null ? 'Not available' : (selected.usage.total_tokens | number) + ' tokens' }}@if (selected.usage.updated_at) { · updated {{ selected.usage.updated_at | date:'medium' }} }. This is not remaining quota.</small> } }
+    </div>
+    <div class="byok-actions">@if (aiCredentials().length === 0) { <button type="button" class="primary-btn" (click)="manageAICredentials()">Set up Gemini key</button> } @else { <button type="button" class="primary-btn-outlined" (click)="manageAICredentials()">Change default</button><button type="button" class="text-action" (click)="manageAICredentials()">Manage credentials</button> }</div>
+  </section>
+
+  <section class="analysis-panel" aria-labelledby="revision-activity-title">
+    <header class="section-heading">
+      <div><span class="section-kicker">Completed practice</span><h2 id="revision-activity-title">Revision activity and accuracy</h2></div>
+      <button type="button" (click)="viewAnalytics()">Explore analytics <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+    </header>
+    @if (analysisLoading()) {
+      <div class="analysis-skeleton" role="status" aria-label="Loading revision activity"></div>
+    } @else if (analysisError()) {
+      <div class="section-error" role="alert"><p>Revision analysis could not be loaded.</p><button type="button" (click)="loadAnalysis()">Retry</button></div>
+    } @else if (analysis()?.completed_session_count === 0) {
+      <div class="empty-state"><i class="ph ph-chart-line-up" aria-hidden="true"></i><h3>No completed revisions yet</h3><p>Start practising to build your revision activity and weighted accuracy.</p><button type="button" class="primary-btn" (click)="startRevision('RANDOM')">Start revision</button></div>
+    } @else if (activityChartOption(); as option) {
+      <div class="chart-frame activity-chart"><app-echart [option]="option" ariaLabel="Completed revision sessions and weighted answer accuracy grouped by date"></app-echart></div>
+      <div class="analysis-table-wrap"><table><caption>Revision activity values</caption><thead><tr><th>Date</th><th>Completed sessions</th><th>Correct / answered</th><th>Weighted accuracy</th></tr></thead><tbody>@for (point of analysis()!.activity; track point.date) { <tr><td>{{ formatActivityDate(point.date) }}</td><td>{{ point.completed_session_count }}</td><td>{{ point.correct_count }} / {{ point.answered_count }}</td><td>{{ point.accuracy_percent === null ? 'Not available' : point.accuracy_percent + '%' }}</td></tr> }</tbody></table></div>
+    }
+  </section>
+
+  @if (!analysisLoading() && !analysisError() && analysis()?.completed_session_count) {
+    <section class="analysis-panel" aria-labelledby="topic-growth-title">
+      <header class="section-heading growth-heading">
+        <div><span class="section-kicker">Mastery—not quiz marks</span><h2 id="topic-growth-title">Topic mastery growth</h2></div>
+        <details class="topic-selector"><summary>Select Topics (up to 5)</summary><div>@for (topic of topicAnalytics(); track topic.entity_id) { <label [class.unavailable]="!hasMeasuredTrend(topic)"><input type="checkbox" [checked]="selectedTopicIds().has(topic.entity_id)" [disabled]="!hasMeasuredTrend(topic)" (change)="toggleGrowthTopic(topic.entity_id)"><span>{{ topic.display_name }}</span>@if (!hasMeasuredTrend(topic)) { <small>No measured history</small> }</label> }</div></details>
+      </header>
+      @if (topicGrowthChartOption(); as option) {
+        <div class="chart-frame growth-chart"><app-echart [option]="option" ariaLabel="Persisted Topic mastery after relevant completed revision sessions"></app-echart></div>
+        <ul class="growth-summary" aria-label="Selected Topic mastery text summary">@for (topic of selectedTopicAnalytics(); track topic.entity_id) { <li><strong>{{ topic.display_name }}</strong><span>{{ topic.trend.length }} recorded {{ topic.trend.length === 1 ? 'snapshot' : 'snapshots' }}</span></li> }</ul>
+      } @else {
+        <div class="empty-state compact-analysis"><i class="ph ph-lock-key" aria-hidden="true"></i><h3>No measured Topic history to chart</h3><p>Complete relevant practice until Topic mastery has sufficient evidence. New history is never backfilled or invented.</p></div>
+      }
+    </section>
+  }
+
+  <section class="insight-grid">
+    <article class="recent-panel" aria-labelledby="recent-revisions-title">
+      <header class="section-heading"><div><span class="section-kicker">Your practice</span><h2 id="recent-revisions-title">Recent revisions</h2></div><button type="button" (click)="viewRevisionHistory()">View all revision sessions <i class="ph ph-arrow-right"></i></button></header>
+      @if (revisionsLoading()) { <div class="compact-skeleton" role="status" aria-label="Loading recent revisions"><span></span><span></span><span></span></div> }
+      @else if (revisionsError()) { <div class="section-error"><p>Recent revisions could not be loaded.</p><button type="button" (click)="loadRecentRevisions()">Retry</button></div> }
+      @else if (recentRevisions().length === 0) { <div class="empty-state"><i class="ph ph-clock-counter-clockwise"></i><h3>You haven’t started a revision session yet.</h3><p>Practise your saved material to begin building your revision history.</p><button type="button" class="primary-btn" (click)="startRevision('RANDOM')">Start revision</button></div> }
+      @else { <ul class="recent-list">@for (session of recentRevisions(); track session.session_id) { <li><div><span class="revision-status" [class.complete]="session.status === 'COMPLETED'">{{ session.status === 'COMPLETED' ? 'Completed' : 'In progress' }}</span><strong>{{ strategyLabel(session.requested_strategy) }} revision</strong><small>{{ formatRevisionDate(session.started_at) }} · {{ session.question_count }} questions@if (session.labels?.length) { · {{ session.labels![0].label_name }} }</small></div>@if (session.status === 'COMPLETED') { <span class="recent-score"><strong>{{ session.score_percentage }}%</strong><small>{{ session.correct_count }}/{{ session.question_count }} correct</small></span> }<button type="button" (click)="openRevision(session)">{{ session.status === 'COMPLETED' ? 'View result' : 'Resume revision' }}</button></li> }</ul> }
+    </article>
+
+    <article class="mastery-panel" aria-labelledby="mastery-summary-title">
+      <header class="section-heading"><div><span class="section-kicker">Verified evidence</span><h2 id="mastery-summary-title">Mastery summary</h2></div><button type="button" (click)="viewAnalytics()">View analytics <i class="ph ph-arrow-right"></i></button></header>
+      @if (masteryLoading()) { <div class="compact-skeleton" role="status" aria-label="Loading mastery summary"><span></span><span></span><span></span></div> }
+      @else if (masteryError()) { <div class="section-error"><p>Mastery evidence could not be loaded.</p><button type="button" (click)="loadMasterySummary()">Retry</button></div> }
+      @else if (masteryItems().length === 0) { <div class="empty-state"><i class="ph ph-chart-bar"></i><h3>No learning evidence yet</h3><p>Add learning material and questions to begin.</p><button type="button" (click)="addMaterial()">Add material</button></div> }
+      @else { <ul class="mastery-list">@for (item of masteryItems(); track $index) { <li><div><strong>{{ item.display_name }}</strong><small>{{ item.question_count }} {{ item.question_count === 1 ? 'question' : 'questions' }} · {{ item.total_attempts }} attempts</small></div><span [attr.data-evidence]="item.evidence_status">{{ masteryStatus(item) }}</span></li> }</ul><p class="mastery-note">Default mastery values are not shown as achievement before practice evidence exists.</p> }
+    </article>
+  </section>
+
   <section class="dashboard-grid">
     <article class="topics-panel" aria-labelledby="topics-title">
       <header class="section-heading">

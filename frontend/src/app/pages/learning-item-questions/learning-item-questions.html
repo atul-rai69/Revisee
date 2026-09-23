@@ -27,6 +27,7 @@
         </p>
       </div>
       <div class="question-bank-actions">
+        <button class="primary-btn-outlined" type="button" (click)="openQuestionForm()"><i class="ph ph-plus"></i> Add question</button>
         <button
           class="primary-btn-outlined"
           type="button"
@@ -41,6 +42,43 @@
       </div>
     </header>
 
+    @if (showGenerationForm()) {
+      <section class="question-dialog generation-dialog" role="dialog" aria-modal="true" aria-labelledby="generate-questions-title">
+        <form [formGroup]="generationForm" (ngSubmit)="submitGeneration()" novalidate>
+          <header><div><span class="eyebrow">Question-only generation</span><h2 id="generate-questions-title">Generate and append questions</h2></div><button type="button" class="dialog-close" aria-label="Close generation options" (click)="closeGenerationForm()" [disabled]="generating()"><i class="ph ph-x"></i></button></header>
+          <p class="generation-safety">Only newly validated, non-duplicate questions are appended. Existing theory, notes and stored questions are not replaced.</p>
+          <fieldset><legend>Generation option</legend><div class="generation-choices"><label [class.selected]="generationForm.controls.generationSource.value === 'REVISEE'"><input type="radio" formControlName="generationSource" value="REVISEE"><span><strong>Revisee-provided</strong><small>Use Revisee’s existing generation service.</small></span></label><label [class.selected]="generationForm.controls.generationSource.value === 'PERSONAL'"><input type="radio" formControlName="generationSource" value="PERSONAL"><span><strong>My Gemini key</strong><small>Use an encrypted personal credential.</small></span></label></div></fieldset>
+          <label>Number of questions<input type="number" min="1" max="10" formControlName="questionCount"></label>
+          @if (generationForm.controls.generationSource.value === 'PERSONAL') {
+            <div class="personal-generation">
+              <label>Gemini credential<select formControlName="credentialId"><option [ngValue]="null">Choose a credential</option>@for (credential of credentials(); track credential.id) { <option [ngValue]="credential.id">{{ credential.name }} · {{ credential.masked_identifier }}{{ credential.is_default ? ' (default)' : '' }}</option> }</select></label>
+              <label>Personal remarks <span>Optional</span><textarea formControlName="personalRemarks" maxlength="2000" rows="4" placeholder="For example: focus on practical examples and explain why each distractor is wrong"></textarea><small>{{ generationForm.controls.personalRemarks.value.length }}/2000</small></label>
+              <p class="provider-disclosure"><i class="ph ph-info" aria-hidden="true"></i> This item’s saved learning content and your remarks will be sent to Gemini. Your project’s quota and possible charges apply. A failed personal-key request will not fall back automatically.</p>
+              @if (credentialsLoading()) { <p role="status">Loading credentials…</p> }
+              @if (credentialsError()) { <p role="alert">Credentials could not be loaded. <button type="button" (click)="loadCredentials()">Retry</button></p> }
+              @if (!credentialsLoading() && !credentialsError() && credentials().length === 0) { <p>No valid personal key is configured. <a routerLink="/app/settings">Set one up in Settings</a>.</p> }
+            </div>
+          }
+          @if (generationError()) { <p class="form-error" role="alert">{{ generationError() }}</p> }
+          <footer><button type="button" class="primary-btn-outlined" (click)="closeGenerationForm()" [disabled]="generating()">Cancel</button><button type="submit" class="primary-btn" [disabled]="generating()">{{ generating() ? 'Generating…' : 'Generate and append' }}</button></footer>
+        </form>
+      </section>
+    }
+
+    @if (showQuestionForm()) {
+      <section class="question-dialog" role="dialog" aria-modal="true" aria-labelledby="add-question-title">
+        <form [formGroup]="questionForm" (ngSubmit)="createQuestion()" novalidate>
+          <header><div><span class="eyebrow">Manual question</span><h2 id="add-question-title">Add a stored question</h2></div><button type="button" class="dialog-close" aria-label="Close add question form" (click)="closeQuestionForm()"><i class="ph ph-x"></i></button></header>
+          <label>Question text<textarea formControlName="question" maxlength="5000" rows="3"></textarea></label>
+          <div class="option-fields">@for (option of [{ key: 'optionA', label: 'A' }, { key: 'optionB', label: 'B' }, { key: 'optionC', label: 'C' }, { key: 'optionD', label: 'D' }]; track option.key) { <label>Option {{ option.label }}<input [formControlName]="$any(option.key)" maxlength="255"></label> }</div>
+          <div class="detail-fields"><label>Correct option<select formControlName="correctOption"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></label><label>Difficulty<select formControlName="difficulty"><option [ngValue]="1">Easy</option><option [ngValue]="2">Medium</option><option [ngValue]="3">Hard</option></select></label><label>Expected time (seconds)<input type="number" min="1" max="3600" formControlName="expectedTime"></label></div>
+          <label>Explanation<textarea formControlName="explanation" maxlength="10000" rows="3"></textarea></label>
+          @if (questionError()) { <p class="form-error" role="alert">{{ questionError() }}</p> }
+          <footer><button type="button" class="primary-btn-outlined" (click)="closeQuestionForm()" [disabled]="savingQuestion()">Cancel</button><button type="submit" class="primary-btn" [disabled]="savingQuestion()">{{ savingQuestion() ? 'Saving…' : 'Save question' }}</button></footer>
+        </form>
+      </section>
+    }
+
     <section class="question-list" *ngIf="learningItem.questions.length; else emptyQuestionBank">
       <article class="question-card" *ngFor="let question of learningItem.questions">
         <div class="question-card-heading">
@@ -49,6 +87,7 @@
             <div class="question-meta">
               <span>{{ difficultyLabel(question.difficulty) }}</span>
               <span>{{ question.expected_time_seconds }} seconds</span>
+              @if (question.total_attempts > 0) { <span>{{ question.total_attempts }} attempts · {{ question.correct_attempts }} correct · {{ question.accuracy_percent }}% accuracy</span> } @else { <span>Not attempted yet</span> }
             </div>
             <h2>{{ question.question }}</h2>
           </div>

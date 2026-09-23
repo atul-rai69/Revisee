@@ -138,3 +138,39 @@ export interface RevisionSessionErrorDetail {
 export interface BackendErrorResponse<TDetail = unknown> {
   detail: TDetail;
 }
+
+export interface RevisionHistoryItem {
+  session_id: number;
+  status: RevisionStatus;
+  requested_strategy: RevisionStrategy;
+  strategy_used: RevisionStrategy;
+  started_at: string | null;
+  completed_at: string | null;
+  question_count: number;
+  labels: RevisionSessionLabel[] | null;
+  correct_count: number | null;
+  score_percentage: number | null;
+  total_time_taken_seconds: number | null;
+}
+
+export interface RevisionHistoryPage {
+  offset: number;
+  limit: number;
+  total: number;
+  items: RevisionHistoryItem[];
+}
+
+export interface SmartReadiness {
+  requested_question_count: number;
+  eligible_question_count: number;
+  question_count_ready: boolean;
+  actionable_learning_item_count: number;
+  practised_learning_item_count: number;
+  evidence_ready_learning_item_count: number;
+  minimum_attempts_per_item: number;
+  smart_targeting_available: boolean;
+  can_start: boolean;
+  strategy_if_started: 'SMART' | 'RANDOM' | null;
+  explanation: string;
+  suggested_action: 'ADD_QUESTIONS' | 'PRACTISE' | 'START_SMART';
+}

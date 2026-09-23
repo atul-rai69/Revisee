@@ -119,12 +119,25 @@
         </div>
 
         <div class="pdf-grid" *ngIf="pdfResources().length; else noPdfs">
-          <article class="pdf-card" *ngFor="let resource of pdfResources(); let index = index">
+          <nav class="pdf-selector" *ngIf="pdfResources().length > 1" aria-label="Attached PDFs">
+            <button
+              type="button"
+              *ngFor="let resource of pdfResources(); let index = index"
+              [class.active]="selectedPdfIndex() === index"
+              [attr.aria-pressed]="selectedPdfIndex() === index"
+              (click)="selectPdf(index)"
+            >
+              <i class="ph ph-file-pdf" aria-hidden="true"></i>
+              <span>{{ resource.name }}</span>
+            </button>
+          </nav>
+
+          <article class="pdf-card" *ngIf="selectedPdf() as resource">
             <div class="resource-row">
               <span class="resource-icon"><i class="ph ph-file-pdf" aria-hidden="true"></i></span>
               <div>
                 <strong>{{ resource.name }}</strong>
-                <span>PDF {{ index + 1 }} of {{ pdfResources().length }}</span>
+                <span>PDF {{ selectedPdfIndex() + 1 }} of {{ pdfResources().length }}</span>
               </div>
               <a
                 class="primary-btn-outlined resource-download-btn"
@@ -136,19 +149,105 @@
                 <span>Open PDF</span>
               </a>
             </div>
-            <iframe
-              class="pdf-preview"
-              [src]="resource.safeUrl"
-              [title]="'Preview of ' + resource.name"
-              loading="lazy"
-              sandbox
-            ></iframe>
+            <app-pdf-viewer
+              [url]="resource.url"
+              [title]="resource.name"
+              [attachmentId]="resource.id"
+              [pageRequest]="pageRequest()"
+              [noteEditorOpen]="noteEditorOpen() && editingNoteId() === null"
+              [noteEditorTitle]="pdfName(noteAttachmentId()) + ' · Page ' + notePageNumber()"
+              [noteForm]="noteForm"
+              [noteSaving]="noteSaving()"
+              [noteSaveError]="noteSaveError()"
+              (noteRequested)="openNoteEditor($event)"
+              (noteEditorClosed)="closeNoteEditor()"
+              (noteSaveRequested)="savePdfNote()"
+            ></app-pdf-viewer>
           </article>
+
+          <p class="rejected-media-note" *ngIf="rejectedPdfCount()">
+            <i class="ph ph-shield-warning" aria-hidden="true"></i>
+            {{ rejectedPdfCount() }} PDF {{ rejectedPdfCount() === 1 ? 'address was' : 'addresses were' }}
+            rejected because they are not from approved Revisee storage.
+          </p>
         </div>
         <ng-template #noPdfs>
-          <div class="section-empty-state">
+          <div class="section-empty-state" *ngIf="!rejectedPdfCount(); else rejectedPdfs">
             <i class="ph ph-file-pdf" aria-hidden="true"></i>
             <p>No PDF has been attached to this learning item.</p>
+          </div>
+          <ng-template #rejectedPdfs>
+            <div class="section-empty-state section-empty-state--warning" role="alert">
+              <i class="ph ph-shield-warning" aria-hidden="true"></i>
+              <p>The attached PDF address is not from approved Revisee storage.</p>
+            </div>
+          </ng-template>
+        </ng-template>
+      </div>
+
+      <div class="detail-section pdf-notes-section">
+        <div class="section-heading-row">
+          <div>
+            <h2>My PDF notes <span>({{ pdfNotes().length }})</span></h2>
+            <p>Your own page-linked notes, kept separate from generated theory and key points.</p>
+          </div>
+          <button
+            type="button"
+            class="primary-btn-outlined"
+            *ngIf="selectedPdf() as resource"
+            [disabled]="resource.id <= 0"
+            (click)="openNoteEditor({ attachmentId: resource.id, pageNumber: 1, text: '' })"
+          >
+            <i class="ph ph-note-pencil" aria-hidden="true"></i>
+            Add note manually
+          </button>
+        </div>
+
+        <div class="pdf-notes-state" *ngIf="notesLoading()" role="status">
+          <span class="spinner" aria-hidden="true"></span>
+          Loading your PDF notes…
+        </div>
+        <div class="pdf-notes-state pdf-notes-state--error" *ngIf="!notesLoading() && notesError()" role="alert">
+          <span>{{ notesError() }}</span>
+          <button type="button" (click)="loadItem()">Retry</button>
+        </div>
+
+        <div class="pdf-note-list" *ngIf="!notesLoading() && pdfNotes().length; else noPdfNotes">
+          <article class="pdf-note-card" *ngFor="let note of pdfNotes()">
+            <header>
+              <div>
+                <strong>{{ pdfName(note.media_id) }}</strong>
+                <span>Page {{ note.page_number }} · Updated {{ note.updated_at | date:'medium' }}</span>
+              </div>
+              <div class="pdf-note-actions">
+                <button type="button" (click)="goToPdfNote(note)">
+                  <i class="ph ph-arrow-square-in" aria-hidden="true"></i> Go to page
+                </button>
+                <button type="button" (click)="editPdfNote(note)">
+                  <i class="ph ph-pencil-simple" aria-hidden="true"></i> Edit
+                </button>
+                <button type="button" class="danger" (click)="requestDeletePdfNote(note.id)">
+                  <i class="ph ph-trash" aria-hidden="true"></i> Delete
+                </button>
+              </div>
+            </header>
+            <blockquote *ngIf="note.source_excerpt">{{ note.source_excerpt }}</blockquote>
+            <p>{{ note.note_text }}</p>
+            <div class="pdf-note-delete" *ngIf="confirmDeleteNoteId() === note.id" role="alertdialog" aria-label="Delete PDF note">
+              <span>Delete this personal note?</span>
+              <div>
+                <button type="button" (click)="cancelDeletePdfNote()" [disabled]="deletingNoteId() !== null">Cancel</button>
+                <button type="button" class="danger-solid" (click)="deletePdfNote(note.id)" [disabled]="deletingNoteId() !== null">
+                  {{ deletingNoteId() === note.id ? 'Deleting…' : 'Delete note' }}
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+        <ng-template #noPdfNotes>
+          <div class="section-empty-state" *ngIf="!notesLoading() && !notesError()">
+            <i class="ph ph-note-blank" aria-hidden="true"></i>
+            <p>No personal PDF notes yet. Select text in a PDF or add one manually.</p>
           </div>
         </ng-template>
       </div>
@@ -181,11 +280,9 @@
               class="primary-btn-outlined"
               type="button"
               (click)="generateMoreQuestions()"
-              [disabled]="generating()"
             >
-              <span class="compact-spinner" *ngIf="generating()" aria-hidden="true"></span>
-              <i class="ph ph-sparkle" *ngIf="!generating()" aria-hidden="true"></i>
-              <span>{{ generating() ? 'Generating questions…' : 'Generate more questions' }}</span>
+              <i class="ph ph-sparkle" aria-hidden="true"></i>
+              <span>Generate more questions</span>
             </button>
             <a
               class="primary-btn"
@@ -222,6 +319,43 @@
       </div>
     </section>
   </ng-container>
+
+  <div class="pdf-note-editor-backdrop" *ngIf="noteEditorOpen() && editingNoteId() !== null" (click)="closeNoteEditor()">
+    <section
+      class="pdf-note-editor"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pdf-note-editor-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <div>
+          <span class="eyebrow">Edit personal note</span>
+          <h2 id="pdf-note-editor-title">{{ pdfName(noteAttachmentId()) }} · Page {{ notePageNumber() }}</h2>
+        </div>
+        <button type="button" class="icon-btn" (click)="closeNoteEditor()" [disabled]="noteSaving()" aria-label="Close note editor">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </header>
+      <form [formGroup]="noteForm" (ngSubmit)="savePdfNote()">
+        <label>
+          <span>Source excerpt <small>Optional · 500 characters</small></span>
+          <textarea formControlName="sourceExcerpt" rows="3" maxlength="500"></textarea>
+        </label>
+        <label>
+          <span>Your note <small>Required · 4,000 characters</small></span>
+          <textarea formControlName="noteText" rows="7" maxlength="4000" autofocus></textarea>
+        </label>
+        <p class="form-error" *ngIf="noteSaveError()" role="alert">{{ noteSaveError() }}</p>
+        <footer>
+          <button type="button" class="primary-btn-outlined" (click)="closeNoteEditor()" [disabled]="noteSaving()">Cancel</button>
+          <button type="submit" class="primary-btn" [disabled]="noteSaving()">
+            {{ noteSaving() ? 'Saving…' : 'Save changes' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
 
   <div class="lightbox-overlay" *ngIf="lightboxOpen" (click)="closeLightbox()">
     <div class="lightbox-modal" role="dialog" aria-modal="true" aria-label="Image gallery" (click)="$event.stopPropagation()">

@@ -4,7 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "npm run build:production",
+    "build:production": "node scripts/write-environment.mjs && ng build --configuration production",
+    "build:development": "ng build --configuration development",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
@@ -34,6 +36,8 @@
     "@tiptap/pm": "^3.23.4",
     "@tiptap/starter-kit": "^3.23.4",
     "bootstrap": "^5.3.8",
+    "echarts": "^6.1.0",
+    "pdfjs-dist": "^6.3.289",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "^0.16.2"

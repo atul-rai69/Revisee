@@ -332,7 +332,7 @@ def test_foreign_label_and_session_are_concealed(
 ) -> None:
     second_user = client.post(
         "/register",
-        params={
+        json={
             "username": "second",
             "email": "second@example.test",
             "password": "safe-password",

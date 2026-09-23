@@ -36,8 +36,8 @@
                     Save Draft
                 </button>
 
-                <button type="submit" class="primary-btn">
-                    Publish
+                <button type="submit" class="primary-btn" [disabled]="saving()">
+                    {{ saving() ? 'Generating and saving…' : 'Publish' }}
                 </button>
 
                 </div>
@@ -45,6 +45,25 @@
             </div>
 
         </div>
+
+        <section class="card generation-card" aria-labelledby="generation-option-title">
+            <div class="generation-heading">
+                <div><span class="generation-kicker"><i class="ph ph-sparkle" aria-hidden="true"></i> Learning-content generation</span><h2 id="generation-option-title">Choose how Revisee generates this item</h2></div>
+                <a href="/app/settings">Manage Gemini keys</a>
+            </div>
+            <div class="generation-choices" role="radiogroup" aria-label="Generation provider">
+                <label [class.selected]="generationSourceControl.value === 'REVISEE'"><input type="radio" formControlName="generationSource" value="REVISEE"><span><strong>Revisee-provided generation</strong><small>Use the existing Revisee generation service.</small></span></label>
+                <label [class.selected]="generationSourceControl.value === 'PERSONAL'"><input type="radio" formControlName="generationSource" value="PERSONAL"><span><strong>My Gemini key</strong><small>Use one of your encrypted personal credentials.</small></span></label>
+            </div>
+            <p class="generation-disclosure">Generation sends this item’s title and text notes to the selected provider. Gemini quotas and possible charges still apply; Revisee does not estimate remaining tokens.</p>
+            <div class="personal-options" *ngIf="generationSourceControl.value === 'PERSONAL'">
+                <label>Gemini credential<select formControlName="credentialId"><option [ngValue]="null">Choose a credential</option><option *ngFor="let credential of credentials()" [ngValue]="credential.id">{{ credential.name }} · {{ credential.masked_identifier }}{{ credential.is_default ? ' (default)' : '' }}</option></select></label>
+                <label>Personal remarks <span>Optional</span><textarea formControlName="personalRemarks" maxlength="2000" rows="4" placeholder="Focus areas, learning goals or preferred explanation style"></textarea><small>{{ learningItemForm.value.personalRemarks?.length || 0 }}/2000. Remarks cannot override safety or output validation.</small></label>
+                <p class="credential-state" *ngIf="credentialsLoading()">Loading your credentials…</p>
+                <p class="credential-state error-text" *ngIf="credentialsError()">Credentials could not be loaded. <button type="button" (click)="loadCredentials()">Retry</button></p>
+                <p class="credential-state" *ngIf="!credentialsLoading() && !credentialsError() && credentials().length === 0">No valid personal key is configured. <a href="/app/settings">Set up a Gemini key</a>.</p>
+            </div>
+        </section>
 
         <div class="card">
             <div class="topic-field-wrapper">
@@ -324,7 +343,7 @@
                     </button>
 
                     <p class="upload-subtitle">
-                    JPG, PNG, WEBP up to 10MB each
+                    JPG, PNG, WEBP up to {{ maxImageUploadMegabytes }}MB each
                     </p>
 
                 </div>
@@ -389,12 +408,12 @@
             <div class="labels-header">
 
                 <h3>
-                Labels (Topic group)
+                Topics
                 </h3>
 
                 <p>
-                Add labels to classify this item
-                under relevant topics.
+                Add Topics to organise this item
+                for focused revision.
                 </p>
 
             </div>
@@ -432,7 +451,7 @@
                 <input
                 type="text"
 
-                placeholder="Add or search labels"
+                placeholder="Add or search Topics"
 
                 [(ngModel)]="labelSearch"
                 [ngModelOptions]="{ standalone: true }"
@@ -444,7 +463,7 @@
             <div class="popular-labels-section">
 
                 <h4>
-                Popular labels
+                Available Topics
                 </h4>
 
                 <div class="popular-labels-list">
@@ -543,7 +562,7 @@
                     </button>
 
                     <p class="pdf-upload-subtitle">
-                    PDF up to 25MB each
+                    PDF up to {{ maxPdfUploadMegabytes }}MB each
                     </p>
 
                 </div>

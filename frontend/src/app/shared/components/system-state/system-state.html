@@ -1,0 +1,8 @@
+<section class="system-state" [attr.role]="role" [attr.aria-live]="role === 'alert' ? 'assertive' : 'polite'">
+  <span class="system-state__icon" aria-hidden="true"><i [class]="'ph ' + icon"></i></span>
+  <h2>{{ title }}</h2>
+  <p>{{ message }}</p>
+  @if (actionLabel) {
+    <button type="button" class="btn-primary" (click)="action.emit()">{{ actionLabel }}</button>
+  }
+</section>

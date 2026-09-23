@@ -1,4 +1,5 @@
-/* You can add global styles to this file, and also import other style files */
+@import './styles/base/fonts.css';
+@import './styles/vendor/phosphor.css';
 @import './styles/abstracts/breakpoints.css';
 @import './styles/abstracts/colors.css';
 @import './styles/abstracts/radius.css';
@@ -21,4 +22,5 @@
 @import './styles/utilities/text-utils.css';
 @import './styles/utilities/visibility-utils.css';
 @import './styles/utilities/reusables.css';
+@import './styles/utilities/motion.css';
 

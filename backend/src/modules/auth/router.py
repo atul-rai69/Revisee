@@ -8,6 +8,7 @@ from src.modules.auth.schemas import (
     RegistrationResponse,
     TokenResponse,
     UserLogin,
+    UserRegistration,
 )
 from src.modules.auth.service import AuthContext, AuthService
 
@@ -17,12 +18,10 @@ router = APIRouter(tags=["auth"])
 
 @router.post("/register", response_model=RegistrationResponse)
 def register(
-    username: str,
-    email: str,
-    password: str,
+    data: UserRegistration,
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    return AuthService(db).register(username, email, password)
+    return AuthService(db).register(data.username, data.email, data.password)
 
 
 @router.post("/login", response_model=TokenResponse)

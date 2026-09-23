@@ -23,7 +23,7 @@
       </button>
       <button type="button" class="primary-btn" [disabled]="busy" (click)="confirm()">
         @if (busy) { <span class="button-spinner" aria-hidden="true"></span> }
-        {{ busy ? 'Please wait…' : confirmLabel }}
+        {{ busy ? 'Please wait...' : confirmLabel }}
       </button>
     </div>
   </section>

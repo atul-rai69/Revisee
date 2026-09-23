@@ -1,68 +1,166 @@
-<main class="login-page">
-  <section class="login-card" aria-labelledby="login-title">
-    <div class="login-visual">
-      <img class="visual-background" src="/assets/login/login-panel-background.svg" alt="">
-      <app-knowledge-particles />
-      <img class="knowledge-illustration" src="/assets/login/login-knowledge-illustration.png" alt="">
-      <div class="visual-message">
-        <span>Learn. Review.</span>
-        <strong>Remember.</strong>
-        <span class="marker-line" aria-hidden="true"></span>
-        <img src="/assets/login/revisee-sparkle.svg" alt="" aria-hidden="true">
+<div class="landing-page">
+  <header class="public-header" [class.scrolled]="headerScrolled()">
+    <a class="public-brand" href="#top" aria-label="Revisee home">
+      <img src="/assets/revisee-brand-kit/revisee-logo-primary.svg" alt="Revisee">
+    </a>
+    <nav aria-label="Public navigation">
+      <a href="#journey">How it works</a>
+      <a class="header-sign-in" href="#login-form" (click)="showLogin()">Sign in</a>
+      <a class="header-sign-up" href="#login-form" (click)="showRegistration()">Create account</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <!-- TEMPORARY MARKETING COPY: replace after product-copy approval. -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy" appReveal>
+        <span class="eyebrow"><i class="ph ph-sparkle" aria-hidden="true"></i> Living Study Notes</span>
+        <h1 id="hero-title">Turn learning material into knowledge that stays.</h1>
+        <p>Bring your notes, images and PDFs together. Revisee shapes them into clear theory, key points and focused practice.</p>
+        <div class="hero-actions">
+          <a class="btn-primary" href="#login-form" (click)="showRegistration()">Create your account <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+          <a class="btn-quiet" href="#login-form" (click)="showLogin()">Already have an account?</a>
+          <a class="btn-quiet" href="#journey">See the study flow</a>
+        </div>
       </div>
-    </div>
 
-    <div class="login-form-panel">
-      <div class="form-shell">
-        <img class="wordmark" src="/assets/login/revisee-logo.svg" alt="Revisee">
-        <header>
-          <h1 id="login-title">Welcome back</h1>
-          <p>Continue building stronger memories.</p>
-        </header>
-
-        <form [formGroup]="form" (ngSubmit)="onLogin()" novalidate>
-          <div class="field-group">
-            <label for="username">Username</label>
-            <div class="field-control" [class.invalid]="form.controls.username.touched && form.controls.username.invalid">
-              <i class="ph ph-user" aria-hidden="true"></i>
-              <input id="username" type="text" formControlName="username" autocomplete="username" placeholder="Enter your username" [attr.aria-invalid]="form.controls.username.touched && form.controls.username.invalid" [attr.aria-describedby]="form.controls.username.touched && form.controls.username.invalid ? 'username-error' : null">
-            </div>
-            @if (form.controls.username.touched && form.controls.username.invalid) {
-              <small id="username-error" class="field-error">Username is required.</small>
-            }
+      <div class="product-composition" [class.registration-mode]="authMode() === 'register'" appReveal [revealIndex]="1">
+        <!-- Original, decorative Revisee preview using temporary sample content. -->
+        <div class="app-preview" aria-hidden="true">
+          <aside class="preview-rail">
+            <img src="/assets/revisee-brand-kit/revisee-mark.svg" alt="">
+            <i class="ph-fill ph-house"></i><i class="ph ph-books active"></i><i class="ph ph-pencil-line"></i><i class="ph ph-tag"></i>
+          </aside>
+          <div class="preview-library">
+            <header><span>Library</span><i class="ph ph-magnifying-glass"></i></header>
+            <div class="preview-tabs"><b>All</b><span>Recent</span><span>Topics</span></div>
+            <article class="selected"><span class="file-icon coral"><i class="ph ph-file-pdf"></i></span><div><b>Neural networks</b><small>Computer Science · 5 key points</small></div></article>
+            <article><span class="file-icon amber"><i class="ph ph-image"></i></span><div><b>Cell structure</b><small>Biology · 8 questions</small></div></article>
+            <article><span class="file-icon teal"><i class="ph ph-note"></i></span><div><b>Industrial revolution</b><small>History · Study notes</small></div></article>
           </div>
+          <section class="preview-reader">
+            <div class="reader-meta"><span>Computer Science</span><i class="ph ph-dots-three"></i></div>
+            <h2>How neural networks learn</h2>
+            <p>Training adjusts the strength of connections so predictions gradually become more accurate.</p>
+            <mark>Key idea: feedback guides each small adjustment.</mark>
+            <div class="paper-lines"><span></span><span></span><span></span></div>
+          </section>
+        </div>
 
-          <div class="field-group">
-            <label for="password">Password</label>
-            <div class="field-control" [class.invalid]="form.controls.password.touched && form.controls.password.invalid">
-              <i class="ph ph-lock" aria-hidden="true"></i>
-              <input id="password" [type]="passwordVisible() ? 'text' : 'password'" formControlName="password" autocomplete="current-password" placeholder="Enter your password" [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid" [attr.aria-describedby]="form.controls.password.touched && form.controls.password.invalid ? 'password-error' : null">
-              <button type="button" class="password-toggle" [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'" [disabled]="submitting()" (click)="togglePasswordVisibility()">
-                <i class="ph" [class.ph-eye]="!passwordVisible()" [class.ph-eye-slash]="passwordVisible()" aria-hidden="true"></i>
+        <section id="login-form" class="auth-card" [attr.aria-labelledby]="authMode() === 'login' ? 'login-title' : 'register-title'">
+          <div class="auth-switch" role="tablist" aria-label="Account access">
+            <button type="button" role="tab" [attr.aria-selected]="authMode() === 'login'" [class.active]="authMode() === 'login'" [disabled]="submitting()" (click)="showLogin()">Sign in</button>
+            <button type="button" role="tab" [attr.aria-selected]="authMode() === 'register'" [class.active]="authMode() === 'register'" [disabled]="submitting()" (click)="showRegistration()">Create account</button>
+          </div>
+          @if (authMode() === 'login') {
+            <span class="auth-kicker">Welcome back</span>
+            <h2 id="login-title">Continue your revision.</h2>
+            <p>Use your existing Revisee account.</p>
+            <form [formGroup]="form" (ngSubmit)="onLogin()" novalidate>
+            <div class="field-group">
+              <label for="username">Username</label>
+              <div class="field-control" [class.invalid]="form.controls.username.touched && form.controls.username.invalid">
+                <i class="ph ph-user" aria-hidden="true"></i>
+                <input id="username" type="text" formControlName="username" autocomplete="username" placeholder="Enter your username" [attr.aria-invalid]="form.controls.username.touched && form.controls.username.invalid" [attr.aria-describedby]="form.controls.username.touched && form.controls.username.invalid ? 'username-error' : null">
+              </div>
+              @if (form.controls.username.touched && form.controls.username.invalid) { <small id="username-error" class="field-error">Username is required.</small> }
+            </div>
+            <div class="field-group">
+              <label for="password">Password</label>
+              <div class="field-control" [class.invalid]="form.controls.password.touched && form.controls.password.invalid">
+                <i class="ph ph-lock" aria-hidden="true"></i>
+                <input id="password" [type]="passwordVisible() ? 'text' : 'password'" formControlName="password" autocomplete="current-password" placeholder="Enter your password" [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid" [attr.aria-describedby]="form.controls.password.touched && form.controls.password.invalid ? 'password-error' : null">
+                <button type="button" class="password-toggle" [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'" [disabled]="submitting()" (click)="togglePasswordVisibility()">
+                  <i class="ph" [class.ph-eye]="!passwordVisible()" [class.ph-eye-slash]="passwordVisible()" aria-hidden="true"></i>
+                </button>
+              </div>
+              @if (form.controls.password.touched && form.controls.password.invalid) { <small id="password-error" class="field-error">Password is required.</small> }
+            </div>
+            @if (loginError()) {
+              <div class="login-error" role="alert" aria-live="assertive"><i class="ph ph-warning-circle" aria-hidden="true"></i><span>{{ loginError() }}</span></div>
+            }
+            <button type="submit" class="login-button" [disabled]="submitting()">
+              @if (submitting()) { <span class="button-spinner" aria-hidden="true"></span>Logging in... } @else { Log in <i class="ph ph-arrow-right" aria-hidden="true"></i> }
+            </button>
+            </form>
+            <p class="auth-alternate">New to Revisee? <button type="button" (click)="showRegistration()">Create an account</button></p>
+          } @else {
+            <span class="auth-kicker">Start learning</span>
+            <h2 id="register-title">Create your Revisee account.</h2>
+            <p>Set up a private learning space for your material and revision history.</p>
+            <form [formGroup]="registrationForm" (ngSubmit)="onRegister()" novalidate>
+              <div class="field-group">
+                <label for="register-username">Username</label>
+                <div class="field-control" [class.invalid]="registrationForm.controls.username.touched && registrationForm.controls.username.invalid">
+                  <i class="ph ph-user" aria-hidden="true"></i>
+                  <input id="register-username" type="text" formControlName="username" autocomplete="username" placeholder="Choose a username" [attr.aria-invalid]="registrationForm.controls.username.touched && registrationForm.controls.username.invalid" [attr.aria-describedby]="registrationForm.controls.username.touched && registrationForm.controls.username.invalid ? 'register-username-error' : null">
+                </div>
+                @if (registrationForm.controls.username.touched && registrationForm.controls.username.invalid) { <small id="register-username-error" class="field-error">Use 3–100 letters, numbers, dots, underscores or hyphens.</small> }
+              </div>
+              <div class="field-group">
+                <label for="register-email">Email</label>
+                <div class="field-control" [class.invalid]="registrationForm.controls.email.touched && registrationForm.controls.email.invalid">
+                  <i class="ph ph-envelope-simple" aria-hidden="true"></i>
+                  <input id="register-email" type="email" formControlName="email" autocomplete="email" placeholder="you@example.com" [attr.aria-invalid]="registrationForm.controls.email.touched && registrationForm.controls.email.invalid" [attr.aria-describedby]="registrationForm.controls.email.touched && registrationForm.controls.email.invalid ? 'register-email-error' : null">
+                </div>
+                @if (registrationForm.controls.email.touched && registrationForm.controls.email.invalid) { <small id="register-email-error" class="field-error">Enter a valid email address.</small> }
+              </div>
+              <div class="field-group">
+                <label for="register-password">Password</label>
+                <div class="field-control" [class.invalid]="registrationForm.controls.password.touched && registrationForm.controls.password.invalid">
+                  <i class="ph ph-lock" aria-hidden="true"></i>
+                  <input id="register-password" [type]="passwordVisible() ? 'text' : 'password'" formControlName="password" autocomplete="new-password" placeholder="At least 8 characters" [attr.aria-invalid]="registrationForm.controls.password.touched && registrationForm.controls.password.invalid" [attr.aria-describedby]="registrationForm.controls.password.touched && registrationForm.controls.password.invalid ? 'register-password-error' : null">
+                  <button type="button" class="password-toggle" [attr.aria-label]="passwordVisible() ? 'Hide passwords' : 'Show passwords'" [disabled]="submitting()" (click)="togglePasswordVisibility()"><i class="ph" [class.ph-eye]="!passwordVisible()" [class.ph-eye-slash]="passwordVisible()" aria-hidden="true"></i></button>
+                </div>
+                @if (registrationForm.controls.password.touched && registrationForm.controls.password.invalid) { <small id="register-password-error" class="field-error">Use between 8 and 128 characters.</small> }
+              </div>
+              <div class="field-group">
+                <label for="register-confirm-password">Confirm password</label>
+                <div class="field-control" [class.invalid]="passwordsDoNotMatch() || (registrationForm.controls.confirmPassword.touched && registrationForm.controls.confirmPassword.invalid)">
+                  <i class="ph ph-lock-key" aria-hidden="true"></i>
+                  <input id="register-confirm-password" [type]="passwordVisible() ? 'text' : 'password'" formControlName="confirmPassword" autocomplete="new-password" placeholder="Repeat your password" [attr.aria-invalid]="passwordsDoNotMatch() || (registrationForm.controls.confirmPassword.touched && registrationForm.controls.confirmPassword.invalid)" [attr.aria-describedby]="passwordsDoNotMatch() ? 'register-confirm-password-error' : null">
+                </div>
+                @if (passwordsDoNotMatch()) { <small id="register-confirm-password-error" class="field-error">Passwords do not match.</small> }
+              </div>
+              @if (registrationError()) {
+                <div class="login-error" role="alert" aria-live="assertive"><i class="ph ph-warning-circle" aria-hidden="true"></i><span>{{ registrationError() }}</span></div>
+              }
+              <button type="submit" class="login-button" [disabled]="submitting()">
+                @if (submitting()) { <span class="button-spinner" aria-hidden="true"></span>Creating account... } @else { Create account <i class="ph ph-arrow-right" aria-hidden="true"></i> }
               </button>
-            </div>
-            @if (form.controls.password.touched && form.controls.password.invalid) {
-              <small id="password-error" class="field-error">Password is required.</small>
-            }
-          </div>
-
-          @if (loginError()) {
-            <div class="login-error" role="alert" aria-live="assertive">
-              <i class="ph ph-warning-circle" aria-hidden="true"></i>
-              <span>{{ loginError() }}</span>
-            </div>
+            </form>
+            <p class="auth-alternate">Already registered? <button type="button" (click)="showLogin()">Sign in</button></p>
           }
-
-          <button type="submit" class="login-button" [disabled]="submitting()">
-            @if (submitting()) {
-              <span class="button-spinner" aria-hidden="true"></span>
-              Logging in...
-            } @else {
-              Log in
-            }
-          </button>
-        </form>
+        </section>
       </div>
-    </div>
-  </section>
-</main>
+    </section>
+
+    <section id="journey" class="journey" aria-labelledby="journey-title">
+      <div class="section-intro" appReveal>
+        <span class="eyebrow">One calm study space</span>
+        <h2 id="journey-title">From source material to focused practice.</h2>
+        <p>Revisee keeps each step connected, so you spend less time organising and more time understanding.</p>
+      </div>
+      <article class="feature-story" appReveal>
+        <div class="story-copy"><span>01 · Collect</span><h3>Add the material you already use.</h3><p>Store notes, images and PDFs with Topics that make them easy to return to.</p></div>
+        <div class="story-visual library-visual" aria-hidden="true"><i class="ph ph-plus"></i><b>Photosynthesis notes</b><span>Biology</span><span>2 PDFs · 4 images</span></div>
+      </article>
+      <article class="feature-story reverse" appReveal>
+        <div class="story-copy"><span>02 · Understand</span><h3>Read a clear, connected explanation.</h3><p>Generated theory and key points sit beside the original material, like a thoughtful notebook.</p></div>
+        <div class="story-visual theory-visual" aria-hidden="true"><small>KEY POINT</small><p class="reader-copy">Energy changes form, but the total amount remains constant.</p><i class="ph ph-pencil-simple"></i></div>
+      </article>
+      <article class="feature-story" appReveal>
+        <div class="story-copy"><span>03 · Practise</span><h3>Revise from your own question bank.</h3><p>Start a random or Topic-based session and return to an in-progress session when you need a break.</p></div>
+        <div class="story-visual quiz-visual" aria-hidden="true"><small>QUESTION 3 OF 8</small><b>Which statement best explains the concept?</b><span>A</span><span class="chosen">B</span></div>
+      </article>
+    </section>
+
+    <section class="final-cta" appReveal>
+      <img src="/assets/revisee-brand-kit/revisee-mark.svg" alt="">
+      <h2>Your next focused revision starts here.</h2>
+      <p>Learn. Revise. Remember.</p>
+      <a class="btn-primary" href="#login-form" (click)="showRegistration()">Create your account</a>
+    </section>
+  </main>
+  <footer><span>Revisee</span><span>Living Study Notes</span></footer>
+</div>

@@ -180,6 +180,10 @@ def _configure_integration_environment() -> None:
     os.environ["ENVIRONMENT"] = "test"
     os.environ["SECRET_KEY"] = "test-only-secret-key-that-is-never-used-outside-tests"
     os.environ["GOOGLE_API_KEY"] = "test-google-key"
+    os.environ["BYOK_ACTIVE_ENCRYPTION_KEY_VERSION"] = "test-v1"
+    os.environ["BYOK_ENCRYPTION_KEYS"] = (
+        '{"test-v1":"MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="}'
+    )
     os.environ["CLOUDINARY_CLOUD_NAME"] = "test-cloud"
     os.environ["CLOUDINARY_API_KEY"] = "test-cloudinary-key"
     os.environ["CLOUDINARY_API_SECRET"] = "test-cloudinary-secret"
@@ -208,6 +212,49 @@ class FakeAIProvider:
     def generate(self, _prompt: str) -> str:
         self.calls += 1
         return self.raw_response
+
+    def generate_structured(self, request):
+        from src.integrations.ai.base import AIOperation, AIUsage, StructuredAIResult
+
+        self.calls += 1
+        if request.operation == AIOperation.LEARNING_ITEM_CREATE:
+            text = self.raw_response
+        else:
+            text = json.dumps({
+                "questions": [
+                    {
+                        "question": "Generated append-only question?",
+                        "options": ["One", "Two", "Three", "Four"],
+                        "correct_answer": "0",
+                        "explanation": "One is correct.",
+                        "expected_time_seconds": 30,
+                        "difficulty_level": 2,
+                    }
+                ]
+            })
+        return StructuredAIResult(
+            text=text,
+            provider="gemini",
+            model="gemini-test",
+            response_id="test-response",
+            usage=AIUsage(input_tokens=12, output_tokens=8, total_tokens=20),
+        )
+
+
+class FakePersonalAIProviderFactory:
+    def __init__(self, provider: FakeAIProvider) -> None:
+        self.provider = provider
+        self.validated_keys: list[str] = []
+
+    def validate(self, api_key: str) -> None:
+        from src.core.exceptions import InvalidProviderCredentialError
+
+        if api_key == "invalid-test-key":
+            raise InvalidProviderCredentialError()
+        self.validated_keys.append(api_key)
+
+    def create(self, _api_key: str):
+        return self.provider
 
 
 class FakeStorageProvider:
@@ -304,7 +351,11 @@ def fake_storage() -> FakeStorageProvider:
 def client(db_session, fake_ai, fake_storage):
     from fastapi.testclient import TestClient
 
-    from src.api.dependencies import get_ai_provider, get_storage_provider
+    from src.api.dependencies import (
+        get_ai_provider,
+        get_personal_ai_provider_factory,
+        get_storage_provider,
+    )
     from src.db.session import get_db
     from src.main import app
 
@@ -314,6 +365,8 @@ def client(db_session, fake_ai, fake_storage):
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_ai_provider] = lambda: fake_ai
     app.dependency_overrides[get_storage_provider] = lambda: fake_storage
+    personal_factory = FakePersonalAIProviderFactory(fake_ai)
+    app.dependency_overrides[get_personal_ai_provider_factory] = lambda: personal_factory
     try:
         with TestClient(app, raise_server_exceptions=False) as test_client:
             yield test_client
@@ -325,7 +378,7 @@ def client(db_session, fake_ai, fake_storage):
 def registered_user(client):
     response = client.post(
         "/register",
-        params={
+        json={
             "username": "atul",
             "email": "atul@example.test",
             "password": "safe-password",

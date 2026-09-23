@@ -34,6 +34,9 @@ class FakeRevisionSessionService {
     this.lastRequest = request;
     return this.result;
   }
+  getSmartReadiness(questionCount: number) {
+    return of({ requested_question_count: questionCount, eligible_question_count: 20, question_count_ready: true, actionable_learning_item_count: 1, practised_learning_item_count: 1, evidence_ready_learning_item_count: 1, minimum_attempts_per_item: 3, smart_targeting_available: true, can_start: true, strategy_if_started: 'SMART' as const, explanation: 'Ready', suggested_action: 'START_SMART' as const });
+  }
 }
 
 class FakeRouter { navigate = vi.fn().mockResolvedValue(true); }

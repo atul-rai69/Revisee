@@ -20,6 +20,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/health", tags=["system"])
+def health() -> dict[str, str]:
+    """Lightweight process health check; does not expose configuration."""
+    return {"status": "ok"}
+
 @app.exception_handler(ApplicationError)
 async def application_error_handler(
     _request: Request,
