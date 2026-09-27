@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -13,14 +13,16 @@ import {
   ManualQuestionRequest,
 } from '../../core/services/learning-item';
 import { ToasterService } from '../../core/services/toaster.service';
+import { GenerationPreferencesPanel } from '../../shared/components/generation-preferences/generation-preferences';
 
 @Component({
   selector: 'app-learning-item-questions',
-  imports: [CommonModule, RouterLink, ReactiveFormsModule],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, GenerationPreferencesPanel],
   templateUrl: './learning-item-questions.html',
   styleUrls: ['./learning-item-questions.css', './learning-item-question-generation.css'],
 })
 export class LearningItemQuestions implements OnInit {
+  @ViewChild(GenerationPreferencesPanel) generationPreferencesPanel?: GenerationPreferencesPanel;
   itemId = 0;
   readonly item = signal<LearningItemDetail | null>(null);
   readonly loading = signal(true);
@@ -59,8 +61,6 @@ export class LearningItemQuestions implements OnInit {
     this.generationForm = formBuilder.group({
       generationSource: formBuilder.nonNullable.control<'REVISEE' | 'PERSONAL'>('REVISEE'),
       credentialId: formBuilder.control<number | null>(null),
-      personalRemarks: formBuilder.nonNullable.control('', Validators.maxLength(2000)),
-      questionCount: formBuilder.nonNullable.control(5, [Validators.min(1), Validators.max(10)]),
     });
   }
 
@@ -138,13 +138,17 @@ export class LearningItemQuestions implements OnInit {
     const item = this.item();
     if (!item || this.generating()) return;
     const value = this.generationForm.getRawValue();
+    const preferenceError = this.generationPreferencesPanel?.validationMessage();
     if (
       this.generationForm.invalid
       || (value.generationSource === 'PERSONAL' && value.credentialId === null)
+      || preferenceError
     ) {
-      this.generationError.set('Choose a valid credential and question count.');
+      this.generationPreferencesPanel?.markAllAsTouched();
+      this.generationError.set(preferenceError || 'Choose a valid Gemini credential.');
       return;
     }
+    const preferences = this.generationPreferencesPanel?.buildPreferences();
     this.generating.set(true);
     this.generationError.set(null);
     this.learningItemService.generateQuestions(
@@ -152,10 +156,9 @@ export class LearningItemQuestions implements OnInit {
       {
         generation_source: value.generationSource,
         credential_id: value.generationSource === 'PERSONAL' ? value.credentialId : null,
-        personal_remarks: value.generationSource === 'PERSONAL'
-          ? value.personalRemarks.trim() || null
-          : null,
-        question_count: value.questionCount,
+        personal_remarks: null,
+        question_count: preferences?.question_count ?? 5,
+        ...(preferences ? { preferences } : {}),
       },
     ).pipe(finalize(() => this.generating.set(false)))
       .subscribe({
@@ -230,7 +233,23 @@ export class LearningItemQuestions implements OnInit {
 
   private generationErrorMessage(error: HttpErrorResponse): string {
     if (error.status === 404) return 'The learning item or selected credential is unavailable.';
-    if (error.status === 422) return 'The selected Gemini key, remarks or source material was rejected.';
+    if (error.status === 422) {
+      const detail = error.error?.detail;
+      if (Array.isArray(detail)) {
+        const preferenceIssue = detail.find((issue: unknown) => {
+          if (!issue || typeof issue !== 'object') return false;
+          const location = Reflect.get(issue, 'loc');
+          return Array.isArray(location) && location.includes('preferences');
+        });
+        if (preferenceIssue && typeof preferenceIssue === 'object') {
+          const message = Reflect.get(preferenceIssue, 'msg');
+          if (typeof message === 'string') {
+            return `Check your generation preferences: ${message.replace(/^Value error,\s*/u, '')}`;
+          }
+        }
+      }
+      return 'The generation preferences, selected Gemini key or source material were rejected.';
+    }
     if (error.status === 429) return 'Gemini quota or request limits were reached. Choose another option or try later.';
     if (error.status === 502) return 'Gemini returned malformed content. No questions were saved.';
     if (error.status === 503 || error.status === 0) return 'Gemini is temporarily unavailable. No questions were saved.';

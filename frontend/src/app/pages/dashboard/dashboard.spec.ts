@@ -3,103 +3,57 @@ import { Router } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { DashboardService, DashboardSummary, LearningItemsSummaryResponse } from '../../core/services/dashboard-service';
-import { Label, LabelService } from '../../core/services/label-service';
-import { LearningItem } from '../../core/services/learning-item';
-import { ToasterService } from '../../core/services/toaster.service';
-import {
-  MasteryService,
-  RevisionAnalyticsResponse,
-} from '../../core/services/mastery.service';
-import { RevisionSessionService } from '../../core/services/revision-session.service';
+import { LearningItemRecencyService } from '../../core/services/learning-item-recency.service';
+import { MasteryService } from '../../core/services/mastery.service';
 import { Dashboard, greetingForHour } from './dashboard';
-import { AICredentialsService } from '../../core/services/ai-credentials.service';
+
+const item = (id: number, title: string, labels = 'Biology'): LearningItemsSummaryResponse['data'][number] => ({
+  id, title, description_text: '<p>Real notes preview</p>', labels,
+  first_image_url: null, image_count: 2, pdf_count: 1, hours_ago: id,
+});
 
 class FakeDashboardService {
-  summary: Observable<DashboardSummary> = of({ username: 'Atul', total_items: 1, total_labels: 2, login_streak: 4 });
-  items: Observable<LearningItemsSummaryResponse> = of({
-    message: 'ok',
-    data: [{
-      id: 8, title: 'Long-lived knowledge', description_text: '<p>Real notes preview</p>', labels: 'Biology, Writing',
-      first_image_url: null, image_count: 2, pdf_count: 1, hours_ago: 25,
-    }],
-  });
+  summary: Observable<DashboardSummary> = of({ username: 'Atul', total_items: 5, total_labels: 2, login_streak: 4 });
+  items: Observable<LearningItemsSummaryResponse> = of({ message: 'ok', data: [1, 2, 3, 4, 5].map((id) => item(id, `Item ${id}`)) });
   summaryCalls = 0;
   itemCalls = 0;
-  getDashboardSummary(_options?: { localLoading?: boolean }): Observable<DashboardSummary> {
-    this.summaryCalls += 1;
-    return this.summary;
-  }
-  getLearningItemSummary(_options?: { localLoading?: boolean }): Observable<LearningItemsSummaryResponse> {
-    this.itemCalls += 1;
-    return this.items;
-  }
-}
-
-class FakeLabelService {
-  result: Observable<Label[]> = of([
-    { id: 2, user_id: 1, label_name: 'Biology' },
-    { id: 5, user_id: 1, label_name: 'Writing' },
-  ]);
-  calls = 0;
-  getLabels(_options?: { localLoading?: boolean }): Observable<Label[]> {
-    this.calls += 1;
-    return this.result;
-  }
-}
-
-class FakeLearningItemService { deleteLearningItem(_id: number) { return of(null); } }
-class FakeRouter { navigate = vi.fn().mockResolvedValue(true); }
-class FakeRevisionSessionService {
-  getHistory() {
-    return of({ offset: 0, limit: 4, total: 0, items: [] });
-  }
+  getDashboardSummary(): Observable<DashboardSummary> { this.summaryCalls += 1; return this.summary; }
+  getLearningItemSummary(): Observable<LearningItemsSummaryResponse> { this.itemCalls += 1; return this.items; }
 }
 class FakeMasteryService {
-  revisionCalls = 0;
-  revisionResult: Observable<RevisionAnalyticsResponse> = of({
-    completed_session_count: 0,
-    activity: [],
-    requested_session_limit: 30,
-    sessions_used: 0,
-    measured_learning_item_count: 0,
-    weak_area_ready: false,
-    minimum_attempts: 3,
-    topic_attribution: 'CURRENT_LEARNING_ITEM_TOPICS',
-    attribution_note: 'Totals can overlap.',
-    topic_practice: [],
-  });
-  getAnalytics(entityType: 'LABEL' | 'LEARNING_ITEM') { return of({ entity_type: entityType, minimum_attempts: 3, offset: 0, limit: 100, total: 0, items: [] }); }
-  getRevisionAnalytics(_sessionLimit: 7 | 30 | 50) {
-    this.revisionCalls += 1;
-    return this.revisionResult;
+  getAnalytics(entityType: 'LABEL' | 'LEARNING_ITEM') {
+    return of({ entity_type: entityType, minimum_attempts: 3, offset: 0, limit: 2, total: 1, items: [{
+      entity_id: entityType === 'LABEL' ? 1 : 2, display_name: entityType === 'LABEL' ? 'Biology' : 'Item 2',
+      question_count: 2, evidence_status: 'NOT_ATTEMPTED' as const, mastery_score: null,
+      total_attempts: 0, correct_attempts: 0, accuracy_percent: null, last_practised_at: null,
+      next_review_at: null, trend: [],
+    }] });
   }
 }
-class FakeAICredentialsService {
-  list() { return of({ credentials: [], provider_console_url: 'https://aistudio.google.com/usage', quota_remaining_available: false as const }); }
+class FakeRecencyService {
+  values = new Map<number, number>();
+  exploredAt(id: number): number | null { return this.values.get(id) ?? null; }
 }
+class FakeRouter { navigate = vi.fn().mockResolvedValue(true); }
 
 describe('Dashboard', () => {
   let fixture: ComponentFixture<Dashboard>;
   let component: Dashboard;
   let dashboardService: FakeDashboardService;
-  let labelService: FakeLabelService;
+  let recencyService: FakeRecencyService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Dashboard],
       providers: [
-        ToasterService,
         { provide: DashboardService, useClass: FakeDashboardService },
-        { provide: LabelService, useClass: FakeLabelService },
-        { provide: LearningItem, useClass: FakeLearningItemService },
-        { provide: RevisionSessionService, useClass: FakeRevisionSessionService },
         { provide: MasteryService, useClass: FakeMasteryService },
-        { provide: AICredentialsService, useClass: FakeAICredentialsService },
+        { provide: LearningItemRecencyService, useClass: FakeRecencyService },
         { provide: Router, useClass: FakeRouter },
       ],
     }).compileComponents();
     dashboardService = TestBed.inject(DashboardService) as unknown as FakeDashboardService;
-    labelService = TestBed.inject(LabelService) as unknown as FakeLabelService;
+    recencyService = TestBed.inject(LearningItemRecencyService) as unknown as FakeRecencyService;
   });
 
   function create(): void {
@@ -114,117 +68,62 @@ describe('Dashboard', () => {
     expect(greetingForHour(18)).toBe('Good evening');
   });
 
-  it('renders real summary, Topic, and learning-item responses', () => {
+  it('keeps the dashboard concise with four items and one analytics snapshot', () => {
     create();
-    const text = fixture.nativeElement.textContent;
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Atul');
-    expect(text).toContain('Biology');
-    expect(text).toContain('Long-lived knowledge');
-    expect(text).toContain('Real notes preview');
-    expect(text).toContain('2 images');
-    expect(text).toContain('1 PDF');
-    expect(text).not.toContain('Recently Viewed');
-    expect(text).not.toContain('Items Reviewed');
-    expect(text).not.toContain('Topic Overview');
-    expect(text).not.toContain('Continue revision');
+    expect(text).toContain('Recently added');
+    expect(text).toContain('Mastery snapshot');
+    expect(text).toContain('Item 1');
+    expect(text).toContain('Item 4');
+    expect(text).not.toContain('Item 5');
+    expect(text).not.toContain('Revision activity and accuracy');
+    expect(fixture.nativeElement.querySelectorAll('.learning-card')).toHaveLength(4);
   });
 
-  it('searches the currently loaded items and Topics', () => {
+  it('prioritises items recently explored on this device', () => {
+    recencyService.values.set(1, 1_000);
+    recencyService.values.set(3, 3_000);
     create();
-    const input = fixture.nativeElement.querySelector('#library-search') as HTMLInputElement;
-    input.value = 'writing';
-    input.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Long-lived knowledge');
-    input.value = 'missing';
-    input.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('No matching material');
+    expect(component.visibleItems().map((value) => value.id)).toEqual([3, 1]);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Recent activity on this device.');
   });
 
-  it('routes revision strategies and contextual actions without duplicating setup', () => {
+  it('routes dashboard actions to their dedicated destinations', () => {
     create();
     const router = TestBed.inject(Router) as unknown as FakeRouter;
     component.startRevision('RANDOM');
     component.startRevision('LABEL');
-    component.viewTopics();
+    component.viewLibrary();
+    component.viewAnalytics();
     component.addMaterial();
-    component.viewLearningItem(8);
-    expect(router.navigate).toHaveBeenNthCalledWith(1, ['/app/revise'], { queryParams: { strategy: 'RANDOM' } });
-    expect(router.navigate).toHaveBeenNthCalledWith(2, ['/app/revise'], { queryParams: { strategy: 'LABEL' } });
-    expect(router.navigate).toHaveBeenCalledWith(['/app/labels']);
+    component.viewLearningItem(3);
+    expect(router.navigate).toHaveBeenCalledWith(['/app/library']);
+    expect(router.navigate).toHaveBeenCalledWith(['/app/analytics']);
     expect(router.navigate).toHaveBeenCalledWith(['/app/new-item']);
-    expect(router.navigate).toHaveBeenCalledWith(['/app/learning-items', 8]);
+    expect(router.navigate).toHaveBeenCalledWith(['/app/learning-items', 3]);
   });
 
-  it('renders honest empty states', () => {
-    dashboardService.items = of({ message: 'ok', data: [] });
-    labelService.result = of([]);
-    create();
-    expect(fixture.nativeElement.textContent).toContain('No Topics yet');
-    expect(fixture.nativeElement.textContent).toContain('Add your first learning item');
-    expect(fixture.nativeElement.textContent).toContain('No completed revisions yet');
-  });
-
-  it('keeps independent section dimensions while requests are pending', () => {
+  it('shows honest empty and independent loading states', () => {
     dashboardService.summary = new Subject<DashboardSummary>();
     dashboardService.items = new Subject<LearningItemsSummaryResponse>();
-    labelService.result = new Subject<Label[]>();
     create();
     expect(fixture.nativeElement.querySelector('[aria-label="Loading your dashboard summary"]')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('[aria-label="Loading Topics"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[aria-label="Loading learning material"]')).toBeTruthy();
   });
 
-  it('shows section-level errors and retries independently', () => {
-    dashboardService.summary = throwError(() => new Error('offline'));
+  it('stops failed item loading and retries only when requested', () => {
     dashboardService.items = throwError(() => new Error('offline'));
-    labelService.result = throwError(() => new Error('offline'));
     create();
-    expect(fixture.nativeElement.textContent).toContain('Dashboard totals could not be loaded.');
-    expect(fixture.nativeElement.textContent).toContain('Topics could not be loaded.');
-    expect(fixture.nativeElement.textContent).toContain('learning material could not be loaded.');
-    dashboardService.summary = of({ username: 'Recovered', total_items: 0, total_labels: 0, login_streak: 1 });
-    component.loadSummary();
+    expect(component.itemsLoading()).toBe(false);
+    expect(component.itemsError()).toBe(true);
+    expect(dashboardService.itemCalls).toBe(1);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Recovered');
-    expect(dashboardService.summaryCalls).toBe(2);
-  });
-
-  it('stops the analytics loader after an error and retries only on request', () => {
-    const masteryService = TestBed.inject(MasteryService) as unknown as FakeMasteryService;
-    masteryService.revisionResult = throwError(() => new Error('contract failure'));
-    create();
-
-    expect(component.analysisLoading()).toBe(false);
-    expect(component.analysisError()).toBe(true);
-    expect(masteryService.revisionCalls).toBe(1);
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'Revision analysis could not be loaded.',
-    );
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Retry');
-
+    expect(dashboardService.itemCalls).toBe(1);
+    dashboardService.items = of({ message: 'ok', data: [] });
+    component.loadItems();
     fixture.detectChanges();
-    fixture.detectChanges();
-    expect(masteryService.revisionCalls).toBe(1);
-
-    masteryService.revisionResult = of({
-      completed_session_count: 0,
-      activity: [],
-      requested_session_limit: 30,
-      sessions_used: 0,
-      measured_learning_item_count: 0,
-      weak_area_ready: false,
-      minimum_attempts: 3,
-      topic_attribution: 'CURRENT_LEARNING_ITEM_TOPICS',
-      attribution_note: 'No completed sessions.',
-      topic_practice: [],
-    });
-    component.loadAnalysis();
-    fixture.detectChanges();
-
-    expect(masteryService.revisionCalls).toBe(2);
-    expect(component.analysisLoading()).toBe(false);
-    expect(component.analysisError()).toBe(false);
+    expect(dashboardService.itemCalls).toBe(2);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Add your first learning item');
   });
 });

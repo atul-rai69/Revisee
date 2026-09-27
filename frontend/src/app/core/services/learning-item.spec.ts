@@ -124,7 +124,18 @@ describe('LearningItem service', () => {
   });
 
   it('uses the append-only generated-question contract with explicit provider choice', () => {
-    const payload = { generation_source: 'PERSONAL' as const, credential_id: 4, personal_remarks: 'Use examples', question_count: 5 };
+    const payload = {
+      generation_source: 'PERSONAL' as const,
+      credential_id: 4,
+      personal_remarks: null,
+      question_count: 5,
+      preferences: {
+        question_count: 5,
+        question_types: ['THEORY', 'APPLICATION'] as Array<'THEORY' | 'APPLICATION'>,
+        difficulty_mode: 'HARD' as const,
+        explanations_required: true,
+      },
+    };
     service.generateQuestions(12, payload).subscribe();
     const request = http.expectOne(`${environment.apiUrl}/learning-items/12/generated-questions`);
     expect(request.request.method).toBe('POST');

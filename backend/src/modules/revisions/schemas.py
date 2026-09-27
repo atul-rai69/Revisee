@@ -1,6 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
+import re
 from typing import Annotated, Literal
+import unicodedata
 
 from pydantic import (
     BaseModel,
@@ -12,6 +14,7 @@ from pydantic import (
     model_validator,
 )
 from src.modules.ai_credentials.schemas import GenerationChoice
+from src.modules.revisions.generation.preferences import GenerationPreferences, QuestionType
 
 
 class GenerateRevisionRequest(BaseModel):
@@ -21,12 +24,42 @@ class GenerateRevisionRequest(BaseModel):
 
 
 class GeneratedQuestion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     question: str = Field(min_length=1)
+    question_type: QuestionType | None = None
     options: list[str] = Field(min_length=4, max_length=4)
     correct_answer: str
-    explanation: str
-    expected_time: int = Field(gt=0)
+    explanation: str = ""
+    expected_time: int = Field(gt=0, le=3600)
     difficulty_level: int = Field(ge=1, le=3)
+
+    @field_validator("question")
+    @classmethod
+    def normalize_question(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("question must not be blank")
+        return value
+
+    @field_validator("options")
+    @classmethod
+    def validate_options(cls, value: list[str]) -> list[str]:
+        normalized = [option.strip() for option in value]
+        if any(not option for option in normalized):
+            raise ValueError("options must not be blank")
+        comparison = {
+            re.sub(r"\s+", " ", unicodedata.normalize("NFKC", option).casefold())
+            for option in normalized
+        }
+        if len(comparison) != 4:
+            raise ValueError("options must be distinct")
+        return normalized
+
+    @field_validator("explanation")
+    @classmethod
+    def normalize_explanation(cls, value: str) -> str:
+        return value.strip()
 
     @field_validator("correct_answer", mode="before")
     @classmethod
@@ -38,9 +71,11 @@ class GeneratedQuestion(BaseModel):
 
 
 class GeneratedRevisionResponse(BaseModel):
-    theory: str = Field(min_length=1)
-    key_points: list[str] = Field(min_length=1)
-    questions: list[GeneratedQuestion] = Field(min_length=1)
+    model_config = ConfigDict(extra="forbid")
+
+    theory: str | None = None
+    key_points: list[str] = Field(default_factory=list)
+    questions: list[GeneratedQuestion] = Field(default_factory=list)
 
 
 class RevisionGenerationResponse(BaseModel):
@@ -49,6 +84,20 @@ class RevisionGenerationResponse(BaseModel):
 
 class GenerateQuestionsRequest(GenerationChoice):
     question_count: int = Field(default=5, ge=1, le=10)
+    preferences: GenerationPreferences | None = None
+
+    @model_validator(mode="after")
+    def validate_preferences(self) -> "GenerateQuestionsRequest":
+        if self.preferences is None:
+            return self
+        if (
+            self.preferences.question_count is not None
+            and self.preferences.question_count != self.question_count
+        ):
+            raise ValueError("preferences.question_count must match question_count")
+        self.preferences.validate_question_only()
+        self.preferences.validate_for_question_count(self.question_count)
+        return self
 
 
 class GeneratedQuestionsResponse(BaseModel):

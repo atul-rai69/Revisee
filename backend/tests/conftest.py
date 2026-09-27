@@ -219,6 +219,22 @@ class FakeAIProvider:
         self.calls += 1
         if request.operation == AIOperation.LEARNING_ITEM_CREATE:
             text = self.raw_response
+        elif request.operation == AIOperation.PDF_QUESTION_DRAFTS:
+            text = json.dumps({
+                "questions": [
+                    {
+                        "question": "What is supported by the supplied passage?",
+                        "options": {"A": "Alpha", "B": "Beta", "C": "Gamma", "D": "Delta"},
+                        "correct_option": "A",
+                        "explanation": "The passage states Grounded evidence.",
+                        "difficulty": 2,
+                        "expected_time_seconds": 30,
+                        "source_page": 1,
+                        "source_excerpt": "Grounded evidence",
+                        "confidence": 0.9,
+                    }
+                ]
+            })
         else:
             text = json.dumps({
                 "questions": [

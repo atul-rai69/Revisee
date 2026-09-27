@@ -1,0 +1,25 @@
+.pdf-question-import-section { display: grid; grid-template-columns: minmax(0, .85fr) minmax(420px, 1.15fr); gap: var(--space-2xl); align-items: center; }
+.pdf-question-import-copy h2 { margin: var(--space-xs) 0 var(--space-sm); }
+.pdf-question-import-copy > p { line-height: 1.6; }
+.pdf-question-import-guidance, .pdf-question-import-privacy { display: flex; align-items: flex-start; gap: var(--space-sm); margin-top: var(--space-md) !important; font-size: var(--text-xs); }
+.pdf-question-import-guidance i { color: var(--danger); font-size: 18px; }
+.pdf-question-import-privacy { padding: var(--space-md); border-radius: var(--radius-sm); background: var(--teal-50); }
+.pdf-question-import-privacy i { color: var(--color-primary); font-size: 18px; }
+.pdf-question-import-actions { display: grid; gap: var(--space-md); }
+.pdf-question-import-action { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-md); padding: var(--space-lg); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text-primary); background: var(--color-paper); text-decoration: none; transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast); }
+.pdf-question-import-action:hover { transform: translateY(-2px); border-color: var(--color-primary); box-shadow: var(--shadow-sm); }
+.pdf-question-import-action:focus-visible { outline: 3px solid rgba(20, 125, 115, .22); outline-offset: 3px; }
+.pdf-question-import-action > i:first-child { width: 42px; height: 42px; display: grid; place-items: center; border-radius: var(--radius-sm); color: var(--color-primary); background: var(--color-primary-soft); font-size: 22px; }
+.pdf-question-import-action--generate > i:first-child { color: #9a5b12; background: rgba(233, 173, 67, .16); }
+.pdf-question-import-action > span { min-width: 0; display: grid; gap: 4px; }
+.pdf-question-import-action small { color: var(--color-text-secondary); line-height: 1.45; }
+.pdf-question-import-action > i:last-child { color: var(--color-text-secondary); }
+
+@media (max-width: 760px) {
+  .pdf-question-import-section { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdf-question-import-action { transition: none; }
+  .pdf-question-import-action:hover { transform: none; }
+}

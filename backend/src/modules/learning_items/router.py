@@ -33,6 +33,8 @@ from src.modules.ai_credentials.provider import PersonalAIProviderFactory
 from src.modules.ai_credentials.service import AICredentialService
 from src.modules.revisions.generation.service import QuestionGenerationService
 from src.modules.revisions.schemas import GenerateQuestionsRequest, GeneratedQuestionsResponse
+from src.modules.revisions.generation.preferences import GenerationPreferences
+from pydantic import ValidationError
 from src.core.config import Settings, get_settings
 
 
@@ -93,6 +95,23 @@ def _selected_provider(
         ),
         credential_id,
     )
+
+
+def _parse_generation_preferences(value: str | None) -> GenerationPreferences | None:
+    if value is None or not value.strip():
+        return None
+    try:
+        preferences = GenerationPreferences.model_validate_json(value)
+        preferences.validate_for_question_count(preferences.question_count or 5)
+        return preferences
+    except ValidationError as exc:
+        issues = "; ".join(
+            f"{'.'.join(str(part) for part in issue['loc'])}: {issue['msg']}"
+            for issue in exc.errors(include_input=False, include_url=False)
+        )
+        raise DomainValidationError(f"Invalid generation preferences: {issues}") from exc
+    except ValueError as exc:
+        raise DomainValidationError(f"Invalid generation preferences: {exc}") from exc
 
 
 @router.post(
@@ -182,6 +201,7 @@ def create_learning_item(
     generation_source: Literal["REVISEE", "PERSONAL"] = Form("REVISEE"),
     credential_id: int | None = Form(None),
     personal_remarks: str | None = Form(None),
+    generation_preferences: str | None = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     ai_provider: AIProvider = Depends(get_ai_provider),
@@ -221,6 +241,7 @@ def create_learning_item(
         raise DomainValidationError("personal remarks exceed the configured limit")
     if generation_source == "REVISEE" and personal_remarks:
         raise DomainValidationError("personal remarks require a personal credential")
+    preferences = _parse_generation_preferences(generation_preferences)
     selected_provider, selected_credential_id = _selected_provider(
         user_id=current_user.id,
         generation_source=generation_source,
@@ -240,6 +261,7 @@ def create_learning_item(
         pdfs,
         personal_remarks=personal_remarks,
         credential_id=selected_credential_id,
+        preferences=preferences,
     )
 
 
@@ -279,6 +301,7 @@ def generate_learning_item_questions(
         operation=AIOperation.LEARNING_ITEM_QUESTIONS,
         personal_remarks=request.personal_remarks,
         credential_id=credential_id,
+        preferences=request.preferences,
     )
     return GeneratedQuestionsResponse(
         message="Questions generated and appended",

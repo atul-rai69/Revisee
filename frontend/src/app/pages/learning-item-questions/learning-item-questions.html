@@ -48,17 +48,16 @@
           <header><div><span class="eyebrow">Question-only generation</span><h2 id="generate-questions-title">Generate and append questions</h2></div><button type="button" class="dialog-close" aria-label="Close generation options" (click)="closeGenerationForm()" [disabled]="generating()"><i class="ph ph-x"></i></button></header>
           <p class="generation-safety">Only newly validated, non-duplicate questions are appended. Existing theory, notes and stored questions are not replaced.</p>
           <fieldset><legend>Generation option</legend><div class="generation-choices"><label [class.selected]="generationForm.controls.generationSource.value === 'REVISEE'"><input type="radio" formControlName="generationSource" value="REVISEE"><span><strong>Revisee-provided</strong><small>Use Revisee’s existing generation service.</small></span></label><label [class.selected]="generationForm.controls.generationSource.value === 'PERSONAL'"><input type="radio" formControlName="generationSource" value="PERSONAL"><span><strong>My Gemini key</strong><small>Use an encrypted personal credential.</small></span></label></div></fieldset>
-          <label>Number of questions<input type="number" min="1" max="10" formControlName="questionCount"></label>
           @if (generationForm.controls.generationSource.value === 'PERSONAL') {
             <div class="personal-generation">
               <label>Gemini credential<select formControlName="credentialId"><option [ngValue]="null">Choose a credential</option>@for (credential of credentials(); track credential.id) { <option [ngValue]="credential.id">{{ credential.name }} · {{ credential.masked_identifier }}{{ credential.is_default ? ' (default)' : '' }}</option> }</select></label>
-              <label>Personal remarks <span>Optional</span><textarea formControlName="personalRemarks" maxlength="2000" rows="4" placeholder="For example: focus on practical examples and explain why each distractor is wrong"></textarea><small>{{ generationForm.controls.personalRemarks.value.length }}/2000</small></label>
-              <p class="provider-disclosure"><i class="ph ph-info" aria-hidden="true"></i> This item’s saved learning content and your remarks will be sent to Gemini. Your project’s quota and possible charges apply. A failed personal-key request will not fall back automatically.</p>
+              <p class="provider-disclosure"><i class="ph ph-info" aria-hidden="true"></i> This item’s saved learning content and your preferences will be sent to Gemini. Your project’s quota and possible charges apply. A failed personal-key request will not fall back automatically.</p>
               @if (credentialsLoading()) { <p role="status">Loading credentials…</p> }
               @if (credentialsError()) { <p role="alert">Credentials could not be loaded. <button type="button" (click)="loadCredentials()">Retry</button></p> }
               @if (!credentialsLoading() && !credentialsError() && credentials().length === 0) { <p>No valid personal key is configured. <a routerLink="/app/settings">Set one up in Settings</a>.</p> }
             </div>
           }
+          <app-generation-preferences [fullContent]="false"></app-generation-preferences>
           @if (generationError()) { <p class="form-error" role="alert">{{ generationError() }}</p> }
           <footer><button type="button" class="primary-btn-outlined" (click)="closeGenerationForm()" [disabled]="generating()">Cancel</button><button type="submit" class="primary-btn" [disabled]="generating()">{{ generating() ? 'Generating…' : 'Generate and append' }}</button></footer>
         </form>

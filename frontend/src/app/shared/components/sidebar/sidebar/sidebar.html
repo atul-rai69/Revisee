@@ -9,6 +9,7 @@
         <a
           #activeLink="routerLinkActive"
           class="nav-item"
+          [class.mobile-hidden]="item.hideOnMobile"
           [routerLink]="item.route"
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: true }"

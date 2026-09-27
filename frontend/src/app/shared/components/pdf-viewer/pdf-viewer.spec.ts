@@ -124,6 +124,17 @@ describe('PdfViewer', () => {
     await vi.waitFor(() => expect(component.textAvailable()).toBe(true));
   });
 
+  it('keeps compact toolbar actions accessible when mobile labels are visually hidden', async () => {
+    await create();
+    const host = fixture.nativeElement as HTMLElement;
+    const actions = host.querySelectorAll<HTMLElement>('.toolbar-actions > *');
+    expect(actions).toHaveLength(4);
+    expect(host.querySelector('.reading-tool-button[aria-label="Look up a word"]')).not.toBeNull();
+    expect(host.querySelector('.reading-tool-button[aria-label="Add a personal PDF note"]')).not.toBeNull();
+    expect(host.querySelector('.fullscreen-button[aria-label="View PDF in full screen"]')).not.toBeNull();
+    expect(host.querySelector('.open-pdf-link[aria-label="Open PDF in a new tab"]')).not.toBeNull();
+  });
+
   it('offers define and note actions for selected PDF text', async () => {
     await create();
     await vi.waitFor(() => expect(component.status()).toBe('ready'));
@@ -173,6 +184,29 @@ describe('PdfViewer', () => {
     expect(style.color).toBe('rgba(0, 0, 0, 0)');
     expect(style.whiteSpace).toBe('pre');
     expect(style.userSelect).toBe('text');
+  });
+
+  it('fits the rendered page to the actual narrow viewport without forcing mobile overflow', async () => {
+    await create();
+    await vi.waitFor(() => expect(component.status()).toBe('ready'));
+    const host = fixture.nativeElement as HTMLElement;
+    const viewport = host.querySelector<HTMLElement>('.pdf-viewport');
+    expect(viewport).not.toBeNull();
+    Object.defineProperty(viewport as HTMLElement, 'clientWidth', {
+      configurable: true,
+      value: 240,
+    });
+    (viewport as HTMLElement).style.padding = '12px';
+
+    component.retry();
+    await vi.waitFor(() => expect(loader.calls).toBe(2));
+    await vi.waitFor(() => expect(component.status()).toBe('ready'));
+    await vi.waitFor(() => expect(component.rendering()).toBe(false));
+
+    const canvas = host.querySelector<HTMLCanvasElement>('canvas');
+    const textLayer = host.querySelector<HTMLElement>('.textLayer');
+    expect(canvas?.style.width).toBe('216px');
+    expect(textLayer?.style.width).toBe('216px');
   });
 
   it('keeps manual tools available when a page has no selectable text', async () => {

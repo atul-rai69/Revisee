@@ -16,6 +16,7 @@ import {
   PdfTextSelection,
   PdfViewer,
 } from '../../shared/components/pdf-viewer/pdf-viewer';
+import { LearningItemRecencyService } from '../../core/services/learning-item-recency.service';
 
 interface PdfResource {
   id: number;
@@ -31,6 +32,7 @@ interface PdfResource {
     './learning-item-view.css',
     './learning-item-view-media.css',
     './learning-item-pdf-notes.css',
+    './learning-item-question-import.css',
   ],
 })
 export class LearningItemView implements OnInit, OnDestroy {
@@ -78,6 +80,7 @@ export class LearningItemView implements OnInit, OnDestroy {
 
   constructor(
     private readonly learningItemService: LearningItem,
+    private readonly recencyService: LearningItemRecencyService,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
   ) {}
@@ -353,6 +356,7 @@ export class LearningItemView implements OnInit, OnDestroy {
       key_points: Array.isArray(item.key_points) ? item.key_points : [],
       questions: Array.isArray(item.questions) ? item.questions : [],
     });
+    this.recencyService.markExplored(item.id);
     this.loadPdfNotes(this.itemLoadGeneration);
   }
 

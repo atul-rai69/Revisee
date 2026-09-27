@@ -13,6 +13,8 @@ import {
 import {
   illustrativeWeakAreaOption,
   individualMasteryOption,
+  masteryGrowthOption,
+  revisionActivityOption,
   topicPracticeBubbleOption,
   weakAreaOption,
 } from '../../shared/charts/revisee-chart-options';
@@ -22,7 +24,7 @@ import { EChart } from '../../shared/components/echart/echart';
   selector: 'app-analytics',
   imports: [CommonModule, EChart],
   templateUrl: './analytics.html',
-  styleUrl: './analytics.css',
+  styleUrls: ['./analytics.css', './analytics-overview.css'],
 })
 export class Analytics implements OnInit {
   readonly entityType = signal<MasteryEntityType>('LABEL');
@@ -38,6 +40,9 @@ export class Analytics implements OnInit {
   readonly pageEnd = computed(() => Math.min(this.offset() + this.limit, this.total()));
 
   readonly revisionAnalytics = signal<RevisionAnalyticsResponse | null>(null);
+  readonly topicAnalytics = signal<MasteryAnalyticsItem[]>([]);
+  readonly topicMinimumAttempts = signal(3);
+  readonly selectedTopicIds = signal<ReadonlySet<number>>(new Set());
   readonly distributionLimit = signal<7 | 30 | 50>(30);
   readonly insightsLoading = signal(false);
   readonly insightsError = signal(false);
@@ -46,6 +51,17 @@ export class Analytics implements OnInit {
   readonly weakError = signal(false);
   readonly reducedMotion = typeof matchMedia === 'function'
     && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  readonly selectedTopicAnalytics = computed(() => this.topicAnalytics().filter(
+    (item) => this.selectedTopicIds().has(item.entity_id),
+  ));
+  readonly activityOption = computed<EChartsCoreOption | null>(() => {
+    const points = this.revisionAnalytics()?.activity ?? [];
+    return points.length ? revisionActivityOption(points, this.reducedMotion) : null;
+  });
+  readonly topicGrowthOption = computed<EChartsCoreOption | null>(() => {
+    const items = this.selectedTopicAnalytics();
+    return items.length ? masteryGrowthOption(items, this.topicMinimumAttempts(), this.reducedMotion) : null;
+  });
   readonly bubbleOption = computed<EChartsCoreOption | null>(() => {
     const points = this.revisionAnalytics()?.topic_practice ?? [];
     return points.length ? topicPracticeBubbleOption(points, this.reducedMotion) : null;
@@ -85,11 +101,23 @@ export class Analytics implements OnInit {
     if (this.insightsLoading()) return;
     this.insightsLoading.set(true);
     this.insightsError.set(false);
-    this.service.getRevisionAnalytics(this.distributionLimit())
+    forkJoin([
+      this.service.getRevisionAnalytics(this.distributionLimit()),
+      this.service.getAnalytics('LABEL', 100),
+    ])
       .pipe(finalize(() => this.insightsLoading.set(false)))
       .subscribe({
-        next: (response) => {
+        next: ([response, topics]) => {
           this.revisionAnalytics.set(response);
+          this.topicAnalytics.set(topics.items);
+          this.topicMinimumAttempts.set(topics.minimum_attempts);
+          const availableIds = new Set(topics.items.map((item) => item.entity_id));
+          const retained = [...this.selectedTopicIds()].filter((id) => availableIds.has(id));
+          const defaults = topics.items
+            .filter((item) => this.hasMeasuredTopicTrend(item))
+            .slice(0, 3)
+            .map((item) => item.entity_id);
+          this.selectedTopicIds.set(new Set(retained.length ? retained : defaults));
           if (response.weak_area_ready) this.loadWeakAreas();
           else {
             this.weakAreas.set([]);
@@ -119,6 +147,24 @@ export class Analytics implements OnInit {
     if (limit === this.distributionLimit()) return;
     this.distributionLimit.set(limit);
     this.loadInsights();
+  }
+
+  toggleGrowthTopic(topicId: number): void {
+    this.selectedTopicIds.update((selected) => {
+      const next = new Set(selected);
+      if (next.has(topicId)) next.delete(topicId);
+      else if (next.size < 5) next.add(topicId);
+      return next;
+    });
+  }
+
+  hasMeasuredTopicTrend(item: MasteryAnalyticsItem): boolean {
+    return item.evidence_status === 'MEASURED'
+      && item.trend.some((point) => point.total_attempts >= this.topicMinimumAttempts());
+  }
+
+  formatActivityDate(value: string): string {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value));
   }
 
   selectType(type: MasteryEntityType): void {

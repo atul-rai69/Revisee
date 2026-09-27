@@ -67,7 +67,6 @@ def test_answer_forms_are_normalized(answer, expected: str) -> None:
         {"expected_time_seconds": 0},
         {"expected_time_seconds": 61},
         {"question": " "},
-        {"explanation": " "},
         {"unexpected": "field"},
     ],
 )

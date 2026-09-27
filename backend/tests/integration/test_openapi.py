@@ -28,6 +28,8 @@ def test_legacy_openapi_paths_are_preserved(client) -> None:
         "/learning-items/{item_id}/generated-questions",
         "/learning-items/{item_id}/pdf-notes",
         "/learning-items/{item_id}/pdf-notes/{note_id}",
+        "/learning-items/{item_id}/pdf-question-drafts/generate",
+        "/learning-items/{item_id}/pdf-questions/import",
     }
     current_paths = set(schema["paths"])
 
@@ -57,7 +59,7 @@ def test_legacy_openapi_paths_are_preserved(client) -> None:
         for path in schema["paths"].values()
         for method in path
     )
-    assert operation_count == 33
+    assert operation_count == 35
 
 
 def test_health_endpoint_is_public_and_minimal(client) -> None:

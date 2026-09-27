@@ -8,7 +8,7 @@
     <div class="page-controls" aria-label="PDF page controls">
       <button
         type="button"
-        class="icon-btn"
+        class="icon-btn previous-page-button"
         (click)="previousPage()"
         [disabled]="pageNumber() <= 1 || rendering()"
         aria-label="Previous PDF page"
@@ -24,12 +24,12 @@
           <i class="ph ph-plus" aria-hidden="true"></i>
         </button>
       </div>
-      <span>
+      <span class="page-position">
         Page {{ pageCount() ? pageNumber() : '—' }} of {{ pageCount() || '—' }}
       </span>
       <button
         type="button"
-        class="icon-btn"
+        class="icon-btn next-page-button"
         (click)="nextPage()"
         [disabled]="pageNumber() >= pageCount() || rendering()"
         aria-label="Next PDF page"
@@ -38,7 +38,14 @@
       </button>
     </div>
     <div class="toolbar-actions">
-      <button type="button" class="reading-tool-button" (click)="openManualLookup()" [disabled]="noteEditorOpen">
+      <button
+        type="button"
+        class="reading-tool-button"
+        (click)="openManualLookup()"
+        [disabled]="noteEditorOpen"
+        aria-label="Look up a word"
+        title="Look up a word"
+      >
         <i class="ph ph-book-open-text" aria-hidden="true"></i>
         <span>Look up word</span>
       </button>
@@ -47,6 +54,8 @@
         class="reading-tool-button"
         (click)="addManualNote()"
         [disabled]="attachmentId <= 0 || status() !== 'ready' || noteEditorOpen"
+        aria-label="Add a personal PDF note"
+        title="Add a personal PDF note"
       >
         <i class="ph ph-note-pencil" aria-hidden="true"></i>
         <span>Add note</span>
@@ -68,8 +77,15 @@
         ></i>
         <span>{{ fullscreen() ? 'Exit full screen' : 'Full screen' }}</span>
       </button>
-      <a [href]="url" target="_blank" rel="noopener noreferrer">
-        Open PDF
+      <a
+        class="open-pdf-link"
+        [href]="url"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Open PDF in a new tab"
+        title="Open PDF in a new tab"
+      >
+        <span>Open PDF</span>
         <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
       </a>
     </div>

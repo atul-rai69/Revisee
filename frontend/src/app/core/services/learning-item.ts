@@ -4,6 +4,7 @@ import { map, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SKIP_GLOBAL_LOADER } from '../interceptors/loader-interceptor';
 import { GenerationChoice } from './ai-credentials.service';
+import { GenerationPreferences } from '../models/generation-preferences.models';
 
 export type LearningItemOptionLabel = 'A' | 'B' | 'C' | 'D';
 
@@ -108,6 +109,7 @@ export interface GenerateLearningItemRevisionRequest {
 
 export interface GenerateQuestionsRequest extends GenerationChoice {
   question_count: number;
+  preferences?: GenerationPreferences;
 }
 
 export interface GeneratedQuestionsResponse {

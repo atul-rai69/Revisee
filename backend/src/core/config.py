@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     AI_MAX_PERSONAL_REMARKS_CHARACTERS: int = Field(default=2_000, ge=100, le=10_000)
     AI_MAX_CONCURRENT_PROVIDER_REQUESTS: int = Field(default=2, ge=1, le=20)
 
+    PDF_QUESTION_MAX_PAGES: int = Field(default=50, ge=1, le=200)
+    PDF_QUESTION_MAX_PAGE_CHARACTERS: int = Field(default=20_000, ge=500, le=100_000)
+    PDF_QUESTION_MAX_EXTRACTED_CHARACTERS: int = Field(default=120_000, ge=1_000)
+    PDF_QUESTION_MAX_IMPORT_COUNT: int = Field(default=25, ge=1, le=100)
+    PDF_QUESTION_MAX_COVERAGE_PAGES: int = Field(default=12, ge=1, le=50)
+
     CLOUDINARY_CLOUD_NAME: str = Field(min_length=1)
     CLOUDINARY_API_KEY: str = Field(min_length=1)
     CLOUDINARY_API_SECRET: str = Field(min_length=1)

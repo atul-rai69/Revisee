@@ -219,6 +219,29 @@
   color: var(--color-text-secondary);
   line-height: var(--line-height-relaxed);
 }
+.theory-content {
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  overflow-wrap: anywhere;
+}
+:host ::ng-deep .theory-content > :first-child { margin-top: 0; }
+:host ::ng-deep .theory-content > :last-child { margin-bottom: 0; }
+:host ::ng-deep .theory-content p { margin: 0 0 var(--space-md); }
+:host ::ng-deep .theory-content ul,
+:host ::ng-deep .theory-content ol { margin: 0 0 var(--space-md); padding-left: 1.4rem; }
+:host ::ng-deep .theory-content h1,
+:host ::ng-deep .theory-content h2,
+:host ::ng-deep .theory-content h3 {
+  margin: var(--space-lg) 0 var(--space-sm);
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+:host ::ng-deep .theory-content code {
+  border-radius: 4px;
+  background: var(--teal-50);
+  padding: .1em .35em;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
 .empty-copy { font-style: italic; }
 
 .key-point-list {

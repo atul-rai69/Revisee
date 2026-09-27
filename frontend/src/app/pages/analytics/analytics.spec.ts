@@ -79,6 +79,14 @@ describe('Analytics', () => {
     expect(text).toContain('72% mastery');
   });
 
+  it('owns the revision activity and Topic mastery-growth sections moved off the dashboard', () => {
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Revision activity and accuracy');
+    expect(text).toContain('Topic mastery growth');
+    expect(text).toContain('Mastery is evidence accumulated across revision attempts');
+    expect(component.selectedTopicIds().has(2)).toBe(true);
+  });
+
   it('keeps illustrative weak-area data explicitly separate from personal results', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Locked — illustrative preview');

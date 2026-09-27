@@ -14,6 +14,11 @@ from src.modules.labels.models import Label
 from src.modules.learning_items import repository as learning_item_repository
 from src.modules.revisions import repository
 from src.modules.revisions.prompt import build_revision_prompt
+from src.modules.revisions.generation.preferences import (
+    DEFAULT_CONTENT_SECTIONS,
+    GenerationPreferences,
+    effective_question_count,
+)
 from src.modules.revisions.schemas import GeneratedRevisionResponse
 from src.modules.revisions.models import (
     RevisionSession,
@@ -55,35 +60,96 @@ class RevisionService:
         title: str,
         description: str,
         personal_remarks: str | None = None,
+        preferences: GenerationPreferences | None = None,
     ) -> GeneratedRevisionResponse:
+        settings = get_settings()
         raw_content = self.provider.generate(
-            build_revision_prompt(title, description, personal_remarks)
+            build_revision_prompt(
+                title,
+                description,
+                personal_remarks,
+                preferences,
+                settings.AI_MAX_PROMPT_CHARACTERS,
+            )
         )
-        return self._parse_content(raw_content)
+        return self._parse_content(raw_content, preferences)
 
     def generate_content_with_usage(
         self,
         title: str,
         description: str,
         personal_remarks: str | None = None,
+        preferences: GenerationPreferences | None = None,
     ) -> tuple[GeneratedRevisionResponse, StructuredAIResult]:
         settings = get_settings()
         result = self.provider.generate_structured(
             StructuredAIRequest(
-                prompt=build_revision_prompt(title, description, personal_remarks),
+                prompt=build_revision_prompt(
+                    title,
+                    description,
+                    personal_remarks,
+                    preferences,
+                    settings.AI_MAX_PROMPT_CHARACTERS,
+                ),
                 operation=AIOperation.LEARNING_ITEM_CREATE,
                 max_output_tokens=settings.AI_MAX_OUTPUT_TOKENS,
             )
         )
-        return self._parse_content(result.text), result
+        return self._parse_content(result.text, preferences), result
 
     @staticmethod
-    def _parse_content(raw_content: str) -> GeneratedRevisionResponse:
+    def _parse_content(
+        raw_content: str,
+        preferences: GenerationPreferences | None = None,
+    ) -> GeneratedRevisionResponse:
         try:
             decoded = json.loads(raw_content)
-            return GeneratedRevisionResponse.model_validate(decoded)
+            content = GeneratedRevisionResponse.model_validate(decoded)
         except (json.JSONDecodeError, ValidationError, TypeError) as exc:
             raise ProviderOutputError("Revision provider returned invalid data") from exc
+        sections = set(
+            preferences.content_sections
+            if preferences and preferences.content_sections
+            else DEFAULT_CONTENT_SECTIONS
+        )
+        narrative_sections = {
+            "THEORY", "REVISION_NOTES", "EXAMPLES", "FORMULA_SUMMARY", "CODE_EXAMPLES"
+        }
+        if sections & narrative_sections and not (content.theory or "").strip():
+            raise ProviderOutputError("Revision provider returned invalid data")
+        if "KEY_POINTS" in sections and not content.key_points:
+            raise ProviderOutputError("Revision provider returned invalid data")
+        requested_count = effective_question_count(preferences)
+        if "QUESTIONS" in sections and not content.questions:
+            raise ProviderOutputError("Revision provider returned invalid data")
+        questions = content.questions[:requested_count] if "QUESTIONS" in sections else []
+        if preferences and preferences.question_types:
+            questions = [
+                question for question in questions
+                if question.question_type in preferences.question_types
+            ]
+            if "QUESTIONS" in sections and not questions:
+                raise ProviderOutputError("Revision provider returned invalid data")
+        if preferences and preferences.explanations_required is not False:
+            if any(not question.explanation.strip() for question in questions):
+                raise ProviderOutputError("Revision provider returned invalid data")
+        elif preferences is None and any(not question.explanation.strip() for question in questions):
+            raise ProviderOutputError("Revision provider returned invalid data")
+        expected_difficulty = {"EASY": 1, "MEDIUM": 2, "HARD": 3}.get(
+            preferences.difficulty_mode if preferences else ""
+        )
+        if expected_difficulty is not None:
+            questions = [
+                question for question in questions
+                if question.difficulty_level == expected_difficulty
+            ]
+            if "QUESTIONS" in sections and not questions:
+                raise ProviderOutputError("Revision provider returned invalid data")
+        return content.model_copy(update={
+            "theory": content.theory if sections & narrative_sections else None,
+            "key_points": content.key_points if "KEY_POINTS" in sections else [],
+            "questions": questions,
+        })
 
     def generate_for_owned_item(
         self,

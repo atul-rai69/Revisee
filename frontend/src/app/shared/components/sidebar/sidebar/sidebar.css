@@ -40,4 +40,5 @@
   :host.is-collapsed .nav-item span, .nav-item span { width: auto; opacity: 1; overflow: visible; }
   .nav-item i { width: auto; font-size: 20px; }
   .nav-item.active::before { inset: -7px 28% auto; width: 44%; height: 3px; border-radius: 0 0 3px 3px; }
+  .nav-item.mobile-hidden { display: none; }
 }

@@ -26,9 +26,8 @@ export const routes: Routes = [
             title: 'Home · Revisee'
         },
         {
-            // Temporary route alias until the dedicated Library redesign phase.
             path: 'library',
-            loadComponent: () => import('./pages/dashboard/dashboard').then((module) => module.Dashboard),
+            loadComponent: () => import('./pages/library/library').then((module) => module.Library),
             title: 'Library · Revisee'
         },
         {
@@ -40,6 +39,11 @@ export const routes: Routes = [
             path: 'labels',
             loadComponent: () => import('./pages/labels/labels').then((module) => module.Labels),
             title: 'Topics · Revisee'
+        },
+        {
+            path: 'learning-items/:learningItemId/questions/import-pdf',
+            loadComponent: () => import('./pages/pdf-question-import/pdf-question-import').then((module) => module.PdfQuestionImport),
+            title: 'Create questions from PDF · Revisee'
         },
         {
             path: 'learning-items/:id/questions',

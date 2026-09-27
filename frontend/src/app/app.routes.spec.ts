@@ -1,4 +1,5 @@
 import { routes } from './app.routes';
+import { Library } from './pages/library/library';
 
 describe('application revision routes', () => {
   it('keeps product routes under the guarded application shell', () => {
@@ -12,6 +13,8 @@ describe('application revision routes', () => {
     expect(childPaths).toContain('analytics');
     expect(childPaths).toContain('settings');
     expect(childPaths).toContain('learning-items/:id/questions');
+    expect(childPaths).toContain('learning-items/:learningItemId/questions/import-pdf');
+    expect(childPaths).not.toContain('learning-items/:learningItemId/pdfs/:mediaId/questions/import');
     expect(childPaths).toContain('library');
     expect(childPaths).not.toContain('playground');
     expect(childPaths).not.toContain('canvas');
@@ -29,5 +32,12 @@ describe('application revision routes', () => {
     const appRoute = routes.find((route) => route.path === 'app');
     const resultsRoute = appRoute?.children?.find((route) => route.path?.endsWith('/result'));
     expect(resultsRoute?.canMatch).toBeUndefined();
+  });
+
+  it('loads the dedicated Library instead of aliasing the dashboard', async () => {
+    const appRoute = routes.find((route) => route.path === 'app');
+    const libraryRoute = appRoute?.children?.find((route) => route.path === 'library');
+    const component = await libraryRoute?.loadComponent?.();
+    expect(component).toBe(Library);
   });
 });

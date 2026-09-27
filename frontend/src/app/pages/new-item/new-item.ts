@@ -10,6 +10,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { LabelService } from '../../core/services/label-service';
 import { AICredential, AICredentialsService } from '../../core/services/ai-credentials.service';
 import { finalize } from 'rxjs';
+import { GenerationPreferencesPanel } from '../../shared/components/generation-preferences/generation-preferences';
 
 
 // to store the uploaded images
@@ -43,7 +44,8 @@ export const MAX_PDF_UPLOAD_BYTES = 10 * 1024 * 1024;
   imports: [
     ReactiveFormsModule,
     CommonModule,
-    FormsModule
+    FormsModule,
+    GenerationPreferencesPanel,
   ],
 
   templateUrl: './new-item.html',
@@ -60,6 +62,7 @@ export class NewItem implements OnInit, OnDestroy {
   @ViewChild('editorElement', { static: true })
 
   editorElement!: ElementRef;
+  @ViewChild(GenerationPreferencesPanel) generationPreferencesPanel?: GenerationPreferencesPanel;
   editor!: Editor;
   wordCount = 0;
 
@@ -302,7 +305,6 @@ export class NewItem implements OnInit, OnDestroy {
       ],
       generationSource: ['REVISEE'],
       credentialId: [null as number | null],
-      personalRemarks: ['', [Validators.maxLength(2000)]],
 
     });
   }
@@ -414,8 +416,8 @@ export class NewItem implements OnInit, OnDestroy {
     this.learningItemForm.patchValue({
       generationSource: 'REVISEE',
       credentialId: this.credentials().find((credential) => credential.is_default)?.id ?? null,
-      personalRemarks: '',
     });
+    this.generationPreferencesPanel?.reset();
 
     // clear uploaded images
     this.uploadedImages.forEach(image => {
@@ -472,6 +474,13 @@ export class NewItem implements OnInit, OnDestroy {
 
     if (!this.uploadSizesAreValid()) return;
 
+    const preferenceError = this.generationPreferencesPanel?.validationMessage();
+    if (preferenceError) {
+      this.generationPreferencesPanel?.markAllAsTouched();
+      this.toaster.warning(preferenceError);
+      return;
+    }
+
     const formData = new FormData();
 
     // text fields
@@ -497,9 +506,9 @@ export class NewItem implements OnInit, OnDestroy {
     formData.append('generation_source', this.learningItemForm.value.generationSource);
     if (this.learningItemForm.value.generationSource === 'PERSONAL') {
       formData.append('credential_id', String(this.learningItemForm.value.credentialId));
-      const remarks = this.learningItemForm.value.personalRemarks?.trim();
-      if (remarks) formData.append('personal_remarks', remarks);
     }
+    const preferences = this.generationPreferencesPanel?.buildPreferences();
+    if (preferences) formData.append('generation_preferences', JSON.stringify(preferences));
 
     // images
     this.uploadedImages.forEach(image => {
@@ -564,9 +573,14 @@ export class NewItem implements OnInit, OnDestroy {
     if (
       error.status === 422
       && typeof detail === 'string'
+      && detail.startsWith('Invalid generation preferences:')
+    ) return detail;
+    if (
+      error.status === 422
+      && typeof detail === 'string'
       && (detail.includes('image must be') || detail.includes('PDF must be'))
     ) return detail;
-    if (error.status === 422) return 'The selected Gemini key or learning material was rejected. Check the credential and input limits.';
+    if (error.status === 422) return 'The generation preferences, selected Gemini key or learning material were rejected. Check the highlighted controls and input limits.';
     if (error.status === 429) return 'Gemini quota or request limits were reached. Choose another option or try later.';
     if (error.status === 502) return 'Gemini returned content Revisee could not safely validate. Nothing was saved.';
     if (error.status === 503) return 'The selected generation provider is temporarily unavailable. Nothing was saved.';

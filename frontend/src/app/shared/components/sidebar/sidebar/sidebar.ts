@@ -8,6 +8,7 @@ interface PrimaryNavigationItem {
   readonly label: string;
   readonly icon: string;
   readonly route: string;
+  readonly hideOnMobile?: boolean;
 }
 
 @Component({
@@ -22,6 +23,7 @@ export class Sidebar {
     { label: 'Library', icon: 'ph-books', route: '/app/library' },
     { label: 'Revise', icon: 'ph-pencil-line', route: '/app/revise' },
     { label: 'Topics', icon: 'ph-tag', route: '/app/labels' },
+    { label: 'Analytics', icon: 'ph-chart-bar', route: '/app/analytics', hideOnMobile: true },
   ];
   readonly collapsed = signal(false);
 

@@ -1,0 +1,41 @@
+<main class="content-card library-page">
+  <header class="library-header">
+    <div><span class="eyebrow">Your collection</span><h1>Learning Library</h1><p>Find, filter and manage all of your saved learning material.</p></div>
+    <button type="button" class="primary-btn" (click)="addMaterial()"><i class="ph ph-plus" aria-hidden="true"></i> Add material</button>
+  </header>
+
+  <section class="library-controls" aria-label="Search and filter learning items">
+    <label class="search-control" for="library-search"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span class="visually-hidden">Search learning items</span><input id="library-search" type="search" [value]="searchQuery()" (input)="updateSearch($event)" placeholder="Search titles, notes or Topics" /></label>
+    <label class="topic-control" for="topic-filter"><span>Topic</span><select id="topic-filter" [value]="topicFilter()" (change)="updateTopicFilter($event)"><option value="">All Topics</option>@for (topic of topicOptions(); track topic) { <option [value]="topic">{{ topic }}</option> }</select></label>
+  </section>
+
+  @if (loading()) {
+    <section class="library-state" role="status"><span class="study-spinner"></span><p>Loading your Library…</p></section>
+  } @else if (error()) {
+    <section class="library-state" role="alert"><i class="ph ph-warning-circle" aria-hidden="true"></i><h2>Library unavailable</h2><p>Your learning items could not be loaded.</p><button type="button" class="primary-btn-outlined" (click)="loadItems()">Try again</button></section>
+  } @else if (items().length === 0) {
+    <section class="library-state"><i class="ph ph-books" aria-hidden="true"></i><h2>Your Library is empty</h2><p>Add learning material to begin building your collection.</p><button type="button" class="primary-btn" (click)="addMaterial()">Add material</button></section>
+  } @else {
+    <div class="results-heading" aria-live="polite"><p><strong>{{ filteredItems().length }}</strong> of {{ items().length }} {{ items().length === 1 ? 'item' : 'items' }}</p></div>
+    @if (filteredItems().length === 0) {
+      <section class="library-state"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><h2>No matching material</h2><p>Try a different search or Topic filter.</p><button type="button" class="primary-btn-outlined" (click)="clearFilters()">Clear filters</button></section>
+    } @else {
+      <section class="library-grid" aria-label="Learning items">
+        @for (item of filteredItems(); track item.id) {
+          <article class="library-card">
+            <div class="item-visual">
+              @if (hasUsableImage(item)) { <img [src]="item.image" alt="" (error)="imageFailed(item.id)" /> }
+              @else { <div class="item-fallback" aria-hidden="true"><i class="ph ph-book-open-text"></i><span></span><span></span></div> }
+            </div>
+            <div class="item-copy"><span class="recency">{{ itemRecency(item) }}</span><h2>{{ item.title }}</h2><p>{{ item.description }}</p><div class="topic-chips" aria-label="Topics">@for (topic of item.topics; track topic) { <span>{{ topic }}</span> }</div><div class="item-meta"><span><i class="ph ph-image" aria-hidden="true"></i> {{ item.images }}</span><span><i class="ph ph-file-pdf" aria-hidden="true"></i> {{ item.pdfs }}</span></div></div>
+            <footer><button type="button" class="open-item" (click)="viewLearningItem(item.id)">Open item <i class="ph ph-arrow-right" aria-hidden="true"></i></button><button type="button" class="delete-item" (click)="requestDelete(item.id)" [attr.aria-label]="'Delete ' + item.title"><i class="ph ph-trash" aria-hidden="true"></i></button></footer>
+          </article>
+        }
+      </section>
+    }
+  }
+
+  @if (pendingDeleteItem(); as item) {
+    <app-confirmation-dialog title="Delete learning item?" [message]="'Delete “' + item.title + '” and its associated content? This cannot be undone.'" confirmLabel="Delete item" tone="warning" [busy]="deleting()" (confirmed)="confirmDelete()" (cancelled)="cancelDelete()"></app-confirmation-dialog>
+  }
+</main>

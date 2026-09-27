@@ -112,6 +112,21 @@ input:focus-visible {
 .summary-strip strong { font-size: 1.35rem; }
 .summary-strip span { color: var(--slate-500); font-size: var(--text-sm); }
 
+.dashboard-library,
+.dashboard-analysis {
+  margin-bottom: 20px;
+}
+
+.section-description {
+  margin: 5px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+}
+
+.dashboard-analysis {
+  max-width: none;
+}
+
 .revision-hero {
   min-height: 260px;
   position: relative;

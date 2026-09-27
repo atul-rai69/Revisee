@@ -36,6 +36,7 @@ from src.modules.revisions.generation.prompt import (
     calculate_max_output_tokens,
 )
 from src.modules.revisions.generation.schemas import parse_question_response
+from src.modules.revisions.generation.preferences import GenerationPreferences
 from src.modules.revisions.generation.source import (
     SourceContentUnavailableError,
     SourceBudgets,
@@ -83,8 +84,15 @@ class QuestionGenerationService:
         call_order: int = 1,
         personal_remarks: str | None = None,
         credential_id: int | None = None,
+        preferences: GenerationPreferences | None = None,
     ) -> QuestionGenerationResult:
         self._validate_request(question_count, call_order)
+        if preferences is not None:
+            try:
+                preferences.validate_question_only()
+                preferences.validate_for_question_count(question_count)
+            except ValueError as exc:
+                raise DomainValidationError(str(exc)) from exc
         source_record = generation_repository.find_owned_source(
             self.db,
             user_id,
@@ -125,6 +133,7 @@ class QuestionGenerationService:
             question_count,
             self.settings.AI_MAX_PROMPT_CHARACTERS,
             personal_remarks,
+            preferences,
         )
         self.db.rollback()
 
@@ -198,6 +207,7 @@ class QuestionGenerationService:
                 maximum_expected_time_seconds=(
                     self.settings.AI_MAX_EXPECTED_TIME_SECONDS
                 ),
+                preferences=preferences,
             )
         except ProviderOutputError:
             self._record_failure(

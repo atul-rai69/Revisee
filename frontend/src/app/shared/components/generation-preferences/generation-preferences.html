@@ -1,0 +1,129 @@
+<section class="preferences" [formGroup]="form" aria-labelledby="generation-preferences-title">
+  <div class="preferences__heading">
+    <div>
+      <span class="preferences__kicker">Generation preferences</span>
+      <h3 id="generation-preferences-title">{{ customized() ? 'Customize generation' : 'Generate automatically' }}</h3>
+      <p>Automatic mode keeps Revisee's current balanced defaults. Customize only what matters for this request.</p>
+    </div>
+    <button type="button" class="preferences__toggle" (click)="toggleCustomization()" [attr.aria-expanded]="customized()">
+      {{ customized() ? 'Use automatic defaults' : 'Customize generation' }}
+    </button>
+  </div>
+
+  <ul class="preferences__summary" aria-label="Generation summary">
+    @for (item of summary(); track item) { <li>{{ item }}</li> }
+  </ul>
+
+  @if (customized()) {
+    <div class="preferences__body">
+      @if (fullContent) {
+        <fieldset>
+          <legend>Content to produce</legend>
+          <p class="field-help">Choose at least one. Unselected sections will not be generated.</p>
+          <div class="check-grid">
+            <label><input type="checkbox" formControlName="contentTheory"> Theory / overview</label>
+            <label><input type="checkbox" formControlName="contentKeyPoints"> Key points</label>
+            <label><input type="checkbox" formControlName="contentRevisionNotes"> Revision notes</label>
+            <label><input type="checkbox" formControlName="contentQuestions"> Questions</label>
+            <label><input type="checkbox" formControlName="contentExamples"> Examples</label>
+            <label><input type="checkbox" formControlName="contentFormulaSummary"> Formula summary</label>
+            <label><input type="checkbox" formControlName="contentCodeExamples"> Code examples</label>
+          </div>
+        </fieldset>
+      }
+
+      @if (questionsEnabled()) {
+        <fieldset>
+          <legend>Question mix</legend>
+          <div class="field-grid field-grid--compact">
+            <label>Number of questions
+              <input type="number" min="1" max="10" formControlName="questionCount">
+              <small>1–10 questions</small>
+            </label>
+            <label>Difficulty
+              <select formControlName="difficultyMode">
+                <option value="DEFAULT">Automatic</option><option value="EASY">Easy</option>
+                <option value="MEDIUM">Medium</option><option value="HARD">Hard</option>
+                <option value="MIXED">Mixed</option>
+              </select>
+            </label>
+            <label>Preferred answer time (seconds)
+              <input type="number" min="1" max="3600" formControlName="expectedTime">
+            </label>
+          </div>
+          @if (mixedDifficulty()) {
+            <div class="distribution" aria-label="Mixed difficulty percentages">
+              <label>Easy %<input type="number" min="0" max="100" formControlName="easyPercent"></label>
+              <label>Medium %<input type="number" min="0" max="100" formControlName="mediumPercent"></label>
+              <label>Hard %<input type="number" min="0" max="100" formControlName="hardPercent"></label>
+            </div>
+          }
+          <p class="field-help">Choose one or more types. Multiple choices are balanced where the source supports them.</p>
+          <div class="check-grid">
+            <label><input type="checkbox" formControlName="typeTheory"> Theory / conceptual</label>
+            <label><input type="checkbox" formControlName="typeNumerical"> Numerical / problem-solving</label>
+            <label><input type="checkbox" formControlName="typeCoding"> Coding / programming</label>
+            <label><input type="checkbox" formControlName="typeApplication"> Application / scenario-based</label>
+            <label><input type="checkbox" formControlName="typeFactRecall"> Definition / fact-recall</label>
+            <label><input type="checkbox" formControlName="typePyqStyle"> Previous-year exam style</label>
+          </div>
+          @if (form.controls.typePyqStyle.value) {
+            <p class="notice"><i class="ph ph-info" aria-hidden="true"></i> These are newly generated exam-style questions, not verified previous-year questions. Revisee will not invent an exam, year, paper, marks or attribution.</p>
+          }
+          <label class="inline-check"><input type="checkbox" formControlName="explanationsRequired"> Require explanations for answers</label>
+        </fieldset>
+
+        @if (numericalSelected()) {
+          <fieldset>
+            <legend>Numerical questions</legend>
+            <div class="field-grid">
+              <label>Calculation complexity<select formControlName="numericalComplexity"><option value="BASIC">Basic</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option></select></label>
+            </div>
+            <div class="check-grid">
+              <label><input type="checkbox" formControlName="numericalFormulas"> Formula-based questions</label>
+              <label><input type="checkbox" formControlName="numericalUnitConversions"> Unit conversions</label>
+              <label><input type="checkbox" formControlName="numericalStepByStep"> Step-by-step working</label>
+              <label><input type="checkbox" formControlName="numericalAllowCalculator"> Calculator-oriented problems</label>
+            </div>
+            <p class="field-help">Numerical questions are returned only when the source provides enough facts, values, formulas or concepts.</p>
+          </fieldset>
+        }
+
+        @if (codingSelected()) {
+          <fieldset>
+            <legend>Coding questions</legend>
+            <div class="field-grid">
+              <label>Programming language<select formControlName="codingLanguage"><option value="INFER_FROM_SOURCE">Infer from source</option><option value="PYTHON">Python</option><option value="JAVASCRIPT">JavaScript</option><option value="TYPESCRIPT">TypeScript</option><option value="JAVA">Java</option><option value="C_SHARP">C#</option><option value="C_PLUS_PLUS">C++</option><option value="GO">Go</option><option value="RUST">Rust</option><option value="SQL">SQL</option></select></label>
+              <label>Experience level<select formControlName="codingExperience"><option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option></select></label>
+            </div>
+            <p class="field-help">Questions remain four-option MCQs; this does not create executable coding challenges.</p>
+            <div class="check-grid">
+              <label><input type="checkbox" formControlName="codingOutputPrediction"> Output prediction</label>
+              <label><input type="checkbox" formControlName="codingDebugging"> Debugging</label>
+              <label><input type="checkbox" formControlName="codingConceptual"> Conceptual code</label>
+              <label><input type="checkbox" formControlName="codingComplexity"> Complexity analysis</label>
+              <label><input type="checkbox" formControlName="codingImplementation"> Implementation / problem-solving</label>
+              <label><input type="checkbox" formControlName="codingExplanations"> Require code explanations</label>
+            </div>
+          </fieldset>
+        }
+      }
+
+      <fieldset>
+        <legend>Learning purpose and style</legend>
+        <div class="field-grid">
+          <label>Primary goal<select formControlName="generationGoal"><option value="DEFAULT">Automatic</option><option value="UNDERSTANDING">Understanding</option><option value="EXAM_PREPARATION">Exam preparation</option><option value="REVISION">Revision</option><option value="INTERVIEWS">Interviews</option><option value="PRACTICAL_APPLICATION">Practical application</option></select></label>
+          <label>Audience level<select formControlName="audienceLevel"><option value="DEFAULT">Automatic</option><option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option></select></label>
+          <label>Explanation depth<select formControlName="detailLevel"><option value="DEFAULT">Automatic</option><option value="CONCISE">Concise</option><option value="STANDARD">Standard</option><option value="DETAILED">Detailed</option></select></label>
+          <label>Tone<select formControlName="tone"><option value="DEFAULT">Automatic</option><option value="ACADEMIC">Academic</option><option value="EXAM_FOCUSED">Exam-focused</option><option value="INTERVIEW_FOCUSED">Interview-focused</option><option value="PRACTICAL">Practical</option></select></label>
+        </div>
+        <label>Focus areas <span>Optional</span><textarea rows="2" maxlength="1200" formControlName="focusAreas" placeholder="One per line or separated by commas"></textarea></label>
+        <label>Areas to avoid <span>Optional</span><textarea rows="2" maxlength="1200" formControlName="avoidAreas" placeholder="One per line or separated by commas"></textarea></label>
+        <label>Additional instructions <span>Optional</span><textarea rows="3" maxlength="2000" formControlName="additionalInstructions" placeholder="Add emphasis or style guidance for this generation only"></textarea><small>{{ form.controls.additionalInstructions.value.length }}/2000. Instructions cannot override grounding, safety, ownership or output validation.</small></label>
+      </fieldset>
+
+      @if (validationMessage()) { <p class="preferences__error" role="alert">{{ validationMessage() }}</p> }
+      <p class="notice"><i class="ph ph-shield-check" aria-hidden="true"></i> Your source material and these request-scoped preferences are sent to the selected Gemini provider. Preferences are not saved as a personal profile.</p>
+    </div>
+  }
+</section>

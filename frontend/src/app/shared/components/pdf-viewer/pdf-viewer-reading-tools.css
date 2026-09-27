@@ -1,4 +1,4 @@
-.pdf-page { position: relative; line-height: 0; background: #fff; box-shadow: var(--shadow-md); }
+.pdf-page { position: relative; width: max-content; max-width: none; line-height: 0; background: #fff; box-shadow: var(--shadow-md); }
 .pdf-page canvas { display: block; box-shadow: none; }
 .textLayer { position: absolute; inset: 0; z-index: 1; overflow: clip; color-scheme: only light; line-height: 1; text-align: initial; letter-spacing: normal; word-spacing: normal; transform-origin: 0 0; caret-color: CanvasText; forced-color-adjust: none; -webkit-text-size-adjust: none; text-size-adjust: none; }
 /*
@@ -53,10 +53,15 @@
 .pdf-note-editor button:focus-visible, .pdf-note-editor textarea:focus-visible { outline: 3px solid rgba(20, 125, 115, .22); outline-offset: 2px; }
 .pdf-note-editor button:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 760px) {
-  .toolbar-actions { flex-wrap: wrap; }
-  .reading-tool-button span, .fullscreen-button span { display: none; }
   .selection-menu { max-width: calc(100vw - 16px); }
-  .definition-panel { top: 120px; right: var(--space-sm); width: calc(100% - (2 * var(--space-sm))); max-height: calc(100% - 136px); }
-  .pdf-note-editor { top: 120px; right: var(--space-sm); width: calc(100% - (2 * var(--space-sm))); max-height: calc(100% - 136px); }
+  .definition-panel,
+  .pdf-note-editor { inset: auto var(--space-sm) var(--space-sm); width: auto; max-height: min(70dvh, calc(100% - (2 * var(--space-sm)))); }
   .definition-panel form > div { align-items: stretch; flex-direction: column; }
+  .pdf-note-editor footer { flex-wrap: wrap; }
+}
+@media (max-width: 420px) {
+  .definition-panel,
+  .pdf-note-editor { padding: var(--space-sm); }
+  .pdf-note-editor footer button { flex: 1 1 100%; }
+  .selection-menu { left: 8px !important; right: 8px; width: auto; justify-content: center; transform: none; }
 }

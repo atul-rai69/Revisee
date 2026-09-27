@@ -7,9 +7,9 @@
       } @else {
         <h1>{{ greeting }}{{ username() ? ', ' + username() : '' }}</h1>
       }
-      <p>Ready for a focused revision?</p>
+      <p>Continue learning or begin a focused revision.</p>
     </div>
-    <button type="button" class="add-material-button" (click)="addMaterial()">
+    <button type="button" class="add-material-button d-none" (click)="addMaterial()">
       <i class="ph ph-plus" aria-hidden="true"></i> Add material
     </button>
   </header>
@@ -31,165 +31,70 @@
     <div class="hero-copy">
       <span class="hero-kicker"><i class="ph ph-pencil-line" aria-hidden="true"></i> Focused practice</span>
       <h2 id="revision-hero-title">Start a revision session</h2>
-      <p>Practice questions prepared from your own saved learning material.</p>
+      <p>Practise questions prepared from your own saved learning material.</p>
       <div class="hero-actions">
-        <button type="button" class="primary-btn" (click)="startRevision('RANDOM')">
-          <i class="ph ph-lightning" aria-hidden="true"></i> Quick revision
-        </button>
-        <button type="button" class="primary-btn-outlined" (click)="startRevision('LABEL')">
-          <i class="ph ph-tag" aria-hidden="true"></i> Choose Topics
-        </button>
+        <button type="button" class="primary-btn" (click)="startRevision('RANDOM')"><i class="ph ph-lightning" aria-hidden="true"></i> Quick revision</button>
+        <button type="button" class="primary-btn-outlined" (click)="startRevision('LABEL')"><i class="ph ph-tag" aria-hidden="true"></i> Choose Topics</button>
       </div>
     </div>
-    <div class="notebook-art" aria-hidden="true">
-      <div class="notebook-page"><span></span><span></span><span></span><i class="ph ph-check"></i></div>
-      <div class="notebook-page right"><span></span><span></span><span></span><i class="ph ph-star"></i></div>
-      <div class="pencil"></div>
-    </div>
+    <div class="notebook-art" aria-hidden="true"></div>
   </section>
 
-  <section class="byok-card" aria-labelledby="byok-card-title">
-    <div class="byok-icon" aria-hidden="true"><i class="ph ph-key"></i></div>
-    <div class="byok-copy"><span class="section-kicker">Optional personalization</span><h2 id="byok-card-title">Use your own Gemini key for personalized learning content.</h2>
-      @if (aiCredentialsLoading()) { <p role="status">Checking your configured credentials…</p> }
-      @else if (aiCredentialsError()) { <p>Your personal-key status is unavailable. Revisee-provided generation remains available.</p> }
-      @else if (aiCredentials().length === 0) { <p>Add an encrypted personal credential and optionally guide generation with your learning goals or preferred explanation style.</p> }
-      @else { <p>{{ aiCredentials().length }} {{ aiCredentials().length === 1 ? 'credential' : 'credentials' }} configured.@if (defaultAICredential(); as selected) { Default: <strong>{{ selected.name }}</strong> ({{ selected.masked_identifier }}). }</p>@if (defaultAICredential(); as selected) { <small>Usage recorded in Revisee: {{ selected.usage.total_tokens === null ? 'Not available' : (selected.usage.total_tokens | number) + ' tokens' }}@if (selected.usage.updated_at) { · updated {{ selected.usage.updated_at | date:'medium' }} }. This is not remaining quota.</small> } }
-    </div>
-    <div class="byok-actions">@if (aiCredentials().length === 0) { <button type="button" class="primary-btn" (click)="manageAICredentials()">Set up Gemini key</button> } @else { <button type="button" class="primary-btn-outlined" (click)="manageAICredentials()">Change default</button><button type="button" class="text-action" (click)="manageAICredentials()">Manage credentials</button> }</div>
-  </section>
-
-  <section class="analysis-panel" aria-labelledby="revision-activity-title">
+  <section class="library-panel dashboard-library" aria-labelledby="dashboard-library-title">
     <header class="section-heading">
-      <div><span class="section-kicker">Completed practice</span><h2 id="revision-activity-title">Revision activity and accuracy</h2></div>
-      <button type="button" (click)="viewAnalytics()">Explore analytics <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+      <div>
+        <span class="section-kicker">Your material</span>
+        <h2 id="dashboard-library-title">{{ hasExplorationHistory() ? 'Recently explored' : 'Recently added' }}</h2>
+        @if (hasExplorationHistory()) { <p class="section-description">Recent activity on this device.</p> }
+      </div>
+      <button type="button" (click)="viewLibrary()">View all items <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
     </header>
-    @if (analysisLoading()) {
-      <div class="analysis-skeleton" role="status" aria-label="Loading revision activity"></div>
-    } @else if (analysisError()) {
-      <div class="section-error" role="alert"><p>Revision analysis could not be loaded.</p><button type="button" (click)="loadAnalysis()">Retry</button></div>
-    } @else if (analysis()?.completed_session_count === 0) {
-      <div class="empty-state"><i class="ph ph-chart-line-up" aria-hidden="true"></i><h3>No completed revisions yet</h3><p>Start practising to build your revision activity and weighted accuracy.</p><button type="button" class="primary-btn" (click)="startRevision('RANDOM')">Start revision</button></div>
-    } @else if (activityChartOption(); as option) {
-      <div class="chart-frame activity-chart"><app-echart [option]="option" ariaLabel="Completed revision sessions and weighted answer accuracy grouped by date"></app-echart></div>
-      <div class="analysis-table-wrap"><table><caption>Revision activity values</caption><thead><tr><th>Date</th><th>Completed sessions</th><th>Correct / answered</th><th>Weighted accuracy</th></tr></thead><tbody>@for (point of analysis()!.activity; track point.date) { <tr><td>{{ formatActivityDate(point.date) }}</td><td>{{ point.completed_session_count }}</td><td>{{ point.correct_count }} / {{ point.answered_count }}</td><td>{{ point.accuracy_percent === null ? 'Not available' : point.accuracy_percent + '%' }}</td></tr> }</tbody></table></div>
+
+    @if (itemsLoading()) {
+      <div class="item-skeletons" role="status" aria-label="Loading learning material">
+        @for (_ of [1, 2, 3, 4]; track $index) { <div><span></span><span></span><span></span></div> }
+      </div>
+    } @else if (itemsError()) {
+      <div class="section-error" role="alert"><p>Your learning material could not be loaded.</p><button type="button" (click)="loadItems()">Try again</button></div>
+    } @else if (items().length === 0) {
+      <div class="empty-state library-empty"><i class="ph ph-books" aria-hidden="true"></i><h3>Add your first learning item</h3><p>Your recent material will appear here.</p><button type="button" (click)="addMaterial()">Add material</button></div>
+    } @else {
+      <div class="learning-grid">
+        @for (item of visibleItems(); track item.id) {
+          <article class="learning-card">
+            <div class="item-visual">
+              @if (hasUsableImage(item)) { <img [src]="item.image" alt="" (error)="imageFailed(item.id)" /> }
+              @else { <div class="item-fallback" aria-hidden="true"><i class="ph ph-book-open-text"></i><span></span><span></span></div> }
+            </div>
+            <div class="item-copy">
+              <span class="recency">{{ itemRecency(item) }}</span>
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.description }}</p>
+              <div class="topic-chips" aria-label="Topics">@for (topic of item.topics.slice(0, 3); track topic) { <span>{{ topic }}</span> }</div>
+              <div class="item-meta"><span><i class="ph ph-image" aria-hidden="true"></i> {{ item.images }} {{ item.images === 1 ? 'image' : 'images' }}</span><span><i class="ph ph-file-pdf" aria-hidden="true"></i> {{ item.pdfs }} {{ item.pdfs === 1 ? 'PDF' : 'PDFs' }}</span></div>
+            </div>
+            <footer><button type="button" class="open-item" (click)="viewLearningItem(item.id)">Open item <i class="ph ph-arrow-right" aria-hidden="true"></i></button></footer>
+          </article>
+        }
+      </div>
     }
   </section>
 
-  @if (!analysisLoading() && !analysisError() && analysis()?.completed_session_count) {
-    <section class="analysis-panel" aria-labelledby="topic-growth-title">
-      <header class="section-heading growth-heading">
-        <div><span class="section-kicker">Mastery—not quiz marks</span><h2 id="topic-growth-title">Topic mastery growth</h2></div>
-        <details class="topic-selector"><summary>Select Topics (up to 5)</summary><div>@for (topic of topicAnalytics(); track topic.entity_id) { <label [class.unavailable]="!hasMeasuredTrend(topic)"><input type="checkbox" [checked]="selectedTopicIds().has(topic.entity_id)" [disabled]="!hasMeasuredTrend(topic)" (change)="toggleGrowthTopic(topic.entity_id)"><span>{{ topic.display_name }}</span>@if (!hasMeasuredTrend(topic)) { <small>No measured history</small> }</label> }</div></details>
-      </header>
-      @if (topicGrowthChartOption(); as option) {
-        <div class="chart-frame growth-chart"><app-echart [option]="option" ariaLabel="Persisted Topic mastery after relevant completed revision sessions"></app-echart></div>
-        <ul class="growth-summary" aria-label="Selected Topic mastery text summary">@for (topic of selectedTopicAnalytics(); track topic.entity_id) { <li><strong>{{ topic.display_name }}</strong><span>{{ topic.trend.length }} recorded {{ topic.trend.length === 1 ? 'snapshot' : 'snapshots' }}</span></li> }</ul>
-      } @else {
-        <div class="empty-state compact-analysis"><i class="ph ph-lock-key" aria-hidden="true"></i><h3>No measured Topic history to chart</h3><p>Complete relevant practice until Topic mastery has sufficient evidence. New history is never backfilled or invented.</p></div>
-      }
-    </section>
-  }
-
-  <section class="insight-grid">
-    <article class="recent-panel" aria-labelledby="recent-revisions-title">
-      <header class="section-heading"><div><span class="section-kicker">Your practice</span><h2 id="recent-revisions-title">Recent revisions</h2></div><button type="button" (click)="viewRevisionHistory()">View all revision sessions <i class="ph ph-arrow-right"></i></button></header>
-      @if (revisionsLoading()) { <div class="compact-skeleton" role="status" aria-label="Loading recent revisions"><span></span><span></span><span></span></div> }
-      @else if (revisionsError()) { <div class="section-error"><p>Recent revisions could not be loaded.</p><button type="button" (click)="loadRecentRevisions()">Retry</button></div> }
-      @else if (recentRevisions().length === 0) { <div class="empty-state"><i class="ph ph-clock-counter-clockwise"></i><h3>You haven’t started a revision session yet.</h3><p>Practise your saved material to begin building your revision history.</p><button type="button" class="primary-btn" (click)="startRevision('RANDOM')">Start revision</button></div> }
-      @else { <ul class="recent-list">@for (session of recentRevisions(); track session.session_id) { <li><div><span class="revision-status" [class.complete]="session.status === 'COMPLETED'">{{ session.status === 'COMPLETED' ? 'Completed' : 'In progress' }}</span><strong>{{ strategyLabel(session.requested_strategy) }} revision</strong><small>{{ formatRevisionDate(session.started_at) }} · {{ session.question_count }} questions@if (session.labels?.length) { · {{ session.labels![0].label_name }} }</small></div>@if (session.status === 'COMPLETED') { <span class="recent-score"><strong>{{ session.score_percentage }}%</strong><small>{{ session.correct_count }}/{{ session.question_count }} correct</small></span> }<button type="button" (click)="openRevision(session)">{{ session.status === 'COMPLETED' ? 'View result' : 'Resume revision' }}</button></li> }</ul> }
-    </article>
-
-    <article class="mastery-panel" aria-labelledby="mastery-summary-title">
-      <header class="section-heading"><div><span class="section-kicker">Verified evidence</span><h2 id="mastery-summary-title">Mastery summary</h2></div><button type="button" (click)="viewAnalytics()">View analytics <i class="ph ph-arrow-right"></i></button></header>
-      @if (masteryLoading()) { <div class="compact-skeleton" role="status" aria-label="Loading mastery summary"><span></span><span></span><span></span></div> }
-      @else if (masteryError()) { <div class="section-error"><p>Mastery evidence could not be loaded.</p><button type="button" (click)="loadMasterySummary()">Retry</button></div> }
-      @else if (masteryItems().length === 0) { <div class="empty-state"><i class="ph ph-chart-bar"></i><h3>No learning evidence yet</h3><p>Add learning material and questions to begin.</p><button type="button" (click)="addMaterial()">Add material</button></div> }
-      @else { <ul class="mastery-list">@for (item of masteryItems(); track $index) { <li><div><strong>{{ item.display_name }}</strong><small>{{ item.question_count }} {{ item.question_count === 1 ? 'question' : 'questions' }} · {{ item.total_attempts }} attempts</small></div><span [attr.data-evidence]="item.evidence_status">{{ masteryStatus(item) }}</span></li> }</ul><p class="mastery-note">Default mastery values are not shown as achievement before practice evidence exists.</p> }
-    </article>
-  </section>
-
-  <section class="dashboard-grid">
-    <article class="topics-panel" aria-labelledby="topics-title">
-      <header class="section-heading">
-        <div><span class="section-kicker">Organise your learning</span><h2 id="topics-title">Your Topics</h2></div>
-        <button type="button" (click)="viewTopics()">View all <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
-      </header>
-
-      @if (topicsLoading()) {
-        <div class="topic-skeletons" role="status" aria-label="Loading Topics">
-          @for (placeholder of [1, 2, 3, 4]; track placeholder) { <span></span> }
-        </div>
-      } @else if (topicsError()) {
-        <div class="section-error" role="alert"><p>Topics could not be loaded.</p><button type="button" (click)="loadTopics()">Retry</button></div>
-      } @else if (visibleTopics().length === 0) {
-        <div class="empty-state"><i class="ph ph-tag" aria-hidden="true"></i><h3>No Topics yet</h3><p>Create a Topic when organising your learning material.</p><button type="button" (click)="viewTopics()">Manage Topics</button></div>
-      } @else {
-        <ul class="topic-list">
-          @for (topic of visibleTopics(); track topic.id) {
-            <li>
-              <span class="topic-marker" [attr.data-tone]="topicTone(topic)">{{ topicInitials(topic) }}</span>
-              <span>{{ topic.label_name }}</span>
-            </li>
-          }
-        </ul>
-      }
-    </article>
-
-    <section id="learning-library" class="library-panel" aria-labelledby="library-title">
-      <header class="section-heading library-heading">
-        <div><span class="section-kicker">Saved material</span><h2 id="library-title">My Learning</h2></div>
-        <label class="library-search" for="library-search">
-          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-          <input id="library-search" type="search" placeholder="Search loaded items or Topics" [value]="searchQuery()" (input)="updateSearch($event)">
-        </label>
-      </header>
-
-      @if (itemsLoading()) {
-        <div class="item-skeletons" role="status" aria-label="Loading learning material">
-          @for (placeholder of [1, 2, 3]; track placeholder) { <div><span></span><span></span><span></span></div> }
-        </div>
-      } @else if (itemsError()) {
-        <div class="section-error" role="alert"><p>Your learning material could not be loaded.</p><button type="button" (click)="loadItems()">Retry</button></div>
-      } @else if (items().length === 0) {
-        <div class="empty-state library-empty"><i class="ph ph-notebook" aria-hidden="true"></i><h3>Add your first learning item</h3><p>Saved notes become the source for future revision questions.</p><button type="button" class="primary-btn" (click)="addMaterial()">Add material</button></div>
-      } @else if (filteredItems().length === 0) {
-        <div class="empty-state"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><h3>No matching material</h3><p>Try a different title, note, or Topic.</p></div>
-      } @else {
-        <div class="learning-grid">
-          @for (item of filteredItems(); track item.id) {
-            <article class="learning-card">
-              <div class="item-visual">
-                @if (hasUsableImage(item)) {
-                  <img [src]="item.image" [alt]="item.title" (error)="imageFailed(item.id)">
-                } @else {
-                  <div class="item-fallback" aria-hidden="true"><i class="ph ph-book-open"></i><span></span><span></span><span></span></div>
-                }
-              </div>
-              <div class="item-copy">
-                <span class="recency">{{ item.recency }}</span>
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.description }}</p>
-                @if (item.topics.length) {
-                  <div class="topic-chips" aria-label="Topics">
-                    @for (topic of item.topics; track topic) { <span>{{ topic }}</span> }
-                  </div>
-                }
-                <div class="item-meta">
-                  @if (item.images > 0) { <span><i class="ph ph-image" aria-hidden="true"></i>{{ item.images }} {{ item.images === 1 ? 'image' : 'images' }}</span> }
-                  @if (item.pdfs > 0) { <span><i class="ph ph-file-pdf" aria-hidden="true"></i>{{ item.pdfs }} {{ item.pdfs === 1 ? 'PDF' : 'PDFs' }}</span> }
-                </div>
-              </div>
-              <footer>
-                <button type="button" class="open-item" (click)="viewLearningItem(item.id)">Open <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
-                <button type="button" class="delete-item" [disabled]="deletingIds().has(item.id)" [attr.aria-label]="'Delete ' + item.title" (click)="deleteItem($event, item.id)">
-                  <i class="ph ph-trash" aria-hidden="true"></i>
-                </button>
-              </footer>
-            </article>
-          }
-        </div>
-      }
-    </section>
+  <section class="mastery-panel dashboard-analysis" aria-labelledby="dashboard-analysis-title">
+    <header class="section-heading"><div><span class="section-kicker">Learning evidence</span><h2 id="dashboard-analysis-title">Mastery snapshot</h2></div><button type="button" (click)="viewAnalytics()">View analytics <i class="ph ph-arrow-right" aria-hidden="true"></i></button></header>
+    @if (masteryLoading()) {
+      <div class="compact-skeleton" role="status" aria-label="Loading mastery summary"><span></span><span></span></div>
+    } @else if (masteryError()) {
+      <div class="section-error compact" role="alert"><span>Mastery evidence could not be loaded.</span><button type="button" (click)="loadMasterySummary()">Retry</button></div>
+    } @else if (masteryItems().length === 0) {
+      <div class="empty-state compact-analysis"><i class="ph ph-chart-line-up" aria-hidden="true"></i><h3>No mastery evidence yet</h3><p>Add questions and practise to reveal mastery.</p><button type="button" (click)="startRevision('RANDOM')">Start revision</button></div>
+    } @else {
+      <ul class="mastery-list">
+        @for (item of masteryItems(); track item.entity_id + '-' + item.display_name) {
+          <li><div><strong>{{ item.display_name }}</strong><small>{{ item.total_attempts }} persisted {{ item.total_attempts === 1 ? 'attempt' : 'attempts' }}</small></div><span [attr.data-evidence]="item.evidence_status">{{ masteryStatus(item) }}</span></li>
+        }
+      </ul>
+      <p class="mastery-note">Unattempted items remain neutral; the internal default score is not shown as measured mastery.</p>
+    }
   </section>
 </main>

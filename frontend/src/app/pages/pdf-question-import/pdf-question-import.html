@@ -1,0 +1,292 @@
+<main class="pdf-import-page">
+  <a class="back-link" [routerLink]="['/app/learning-items', itemId]">
+    <i class="ph ph-caret-left" aria-hidden="true"></i>
+    Back to learning item
+  </a>
+
+  @if (loading()) {
+    <section class="workflow-state" role="status" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Loading the PDF import workflow…</p>
+    </section>
+  } @else if (loadError()) {
+    <section class="workflow-state workflow-state--error" role="alert">
+      <i class="ph ph-warning-circle" aria-hidden="true"></i>
+      <h1>PDF import unavailable</h1>
+      <p>{{ loadError() }}</p>
+      <a class="primary-btn-outlined" [routerLink]="['/app/learning-items', itemId]">Return to learning item</a>
+    </section>
+  } @else if (item(); as learningItem) {
+    <header class="workflow-header">
+      <div>
+        <span class="eyebrow">Review-first question import</span>
+        <h1>Create questions from a new PDF</h1>
+        <p>Choose a PDF from your device. It stays separate from this learning item’s permanent attachments.</p>
+      </div>
+      <div class="source-identity">
+        <i class="ph ph-question" aria-hidden="true"></i>
+        <div>
+          <span>Default destination</span>
+          <strong>{{ learningItem.title }}</strong>
+          <small>The uploaded PDF will not be saved as media.</small>
+        </div>
+      </div>
+    </header>
+
+    <section class="setup-card" aria-labelledby="setup-heading">
+        <form [formGroup]="setupForm" (ngSubmit)="startWorkflow()" novalidate>
+          <div class="section-title">
+            <span>1</span>
+            <div><h2 id="setup-heading">Upload a PDF and prepare drafts</h2><p>Nothing is added to your question bank until you explicitly import reviewed drafts.</p></div>
+          </div>
+
+          <section class="local-pdf-source" aria-labelledby="local-pdf-heading">
+            <div>
+              <h3 id="local-pdf-heading">PDF from your device</h3>
+              <p>PDF only, up to {{ maxFileMegabytes }} MB. The file is read locally and is not uploaded to Cloudinary or added to this learning item.</p>
+            </div>
+            <input
+              id="pdf-question-source"
+              class="visually-hidden-file"
+              type="file"
+              accept=".pdf,application/pdf"
+              [disabled]="isBusy()"
+              (change)="onFileInput($event)"
+            >
+            <div
+              class="pdf-drop-zone"
+              [class.pdf-drop-zone--active]="dragActive()"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onFileDrop($event)"
+            >
+              <i class="ph ph-upload-simple" aria-hidden="true"></i>
+              <div>
+                <strong>Drag and drop a PDF here</strong>
+                <span>or use the accessible file picker</span>
+              </div>
+              <label class="primary-btn-outlined" for="pdf-question-source">Choose PDF</label>
+            </div>
+            @if (inspectingFile()) {
+              <p class="file-status" role="status" aria-live="polite"><span class="spinner spinner--small" aria-hidden="true"></span> Checking PDF pages…</p>
+            } @else if (selectedFile(); as file) {
+              <div class="selected-file" role="status" aria-live="polite">
+                <i class="ph ph-file-pdf" aria-hidden="true"></i>
+                <div><strong>{{ file.name }}</strong><span>{{ file.size / 1024 / 1024 | number:'1.1-1' }} MB · {{ filePageCount() }} {{ filePageCount() === 1 ? 'page' : 'pages' }}</span></div>
+                <button type="button" class="remove-button" (click)="removeSelectedFile()">Remove</button>
+              </div>
+            }
+            @if (fileError()) { <p class="form-error" role="alert">{{ fileError() }}</p> }
+            <p class="local-privacy-note"><i class="ph ph-shield-check" aria-hidden="true"></i> The PDF file stays on this device. Extracted text is sent to Revisee only for grounded validation and final import, and to Gemini only for generation or explicit AI-assisted parsing. Leaving this page discards the file, extracted text, and unimported drafts.</p>
+          </section>
+
+          <fieldset class="mode-options">
+            <legend>Question mode</legend>
+            <label [class.selected]="setupForm.controls.mode.value === 'EXTRACT'">
+              <input type="radio" formControlName="mode" value="EXTRACT">
+              <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+              <span><strong>Extract existing questions</strong><small>Finds MCQs already written in the PDF. It does not invent new questions.</small></span>
+            </label>
+            <label [class.selected]="setupForm.controls.mode.value === 'GENERATE'">
+              <input type="radio" formControlName="mode" value="GENERATE">
+              <i class="ph ph-sparkle" aria-hidden="true"></i>
+              <span><strong>Generate from PDF only</strong><small>Creates new MCQs supported exclusively by selected PDF passages.</small></span>
+            </label>
+          </fieldset>
+
+          <aside class="best-results-guide" aria-labelledby="best-results-heading">
+            <div class="best-results-guide__heading">
+              <i class="ph ph-lightbulb" aria-hidden="true"></i>
+              <div>
+                <h3 id="best-results-heading">How to get the best results</h3>
+                <p>Use a text-based PDF where you can select and copy the words. Scans, photographs of pages, and text stored only inside images require OCR and are not supported yet.</p>
+              </div>
+            </div>
+
+            @if (setupForm.controls.mode.value === 'EXTRACT') {
+              <div class="best-results-guide__content">
+                <div>
+                  <strong>Best format for extracting existing questions</strong>
+                  <ul>
+                    <li>Use clearly numbered questions with four options labelled A–D.</li>
+                    <li>Include <em>Answer:</em>, <em>Ans:</em>, or <em>Correct option:</em> wherever possible.</li>
+                    <li>An answer key on a later page is supported, but include that page in your selected range.</li>
+                    <li>Simple, single-column layouts work better than complex tables or multi-column pages.</li>
+                  </ul>
+                </div>
+                <pre aria-label="Recommended question format">1. Which statement is correct?
+A. First option
+B. Second option
+C. Third option
+D. Fourth option
+Answer: B
+Explanation: Optional supporting explanation.</pre>
+              </div>
+            } @else {
+              <div class="best-results-guide__content best-results-guide__content--generation">
+                <div>
+                  <strong>Best PDF content for grounded generation</strong>
+                  <ul>
+                    <li>Use pages with complete explanations, definitions, facts, or worked concepts—not headings alone.</li>
+                    <li>Select a focused page range when the PDF covers several unrelated chapters.</li>
+                    <li>Use focus instructions to name the concept or learning goal you want emphasised.</li>
+                    <li>Revisee returns fewer drafts when the selected pages do not contain enough supporting evidence.</li>
+                  </ul>
+                </div>
+              </div>
+            }
+            <p class="best-results-guide__note"><strong>Tip:</strong> Open the PDF first and try selecting a sentence. If it cannot be selected, Revisee will probably identify the page as scanned.</p>
+          </aside>
+
+          <fieldset>
+            <legend>Pages to read</legend>
+            <div class="inline-options">
+              <label><input type="radio" formControlName="pageSelection" value="ENTIRE"> Entire PDF</label>
+              <label><input type="radio" formControlName="pageSelection" value="CUSTOM"> Custom range</label>
+            </div>
+            @if (setupForm.controls.pageSelection.value === 'CUSTOM') {
+              <div class="range-fields">
+                <label>First page<input type="number" min="1" formControlName="firstPage"></label>
+                <label>Last page<input type="number" min="1" formControlName="lastPage"></label>
+              </div>
+            }
+            <small>Up to 50 pages and 120,000 extracted characters can be processed at once.</small>
+          </fieldset>
+
+          @if (setupForm.controls.mode.value === 'GENERATE') {
+            <div class="generation-fields">
+              <label>Requested drafts<input type="number" min="1" max="10" formControlName="questionCount"></label>
+              <label>Difficulty<select formControlName="difficulty"><option [ngValue]="1">Easy</option><option [ngValue]="2">Medium</option><option [ngValue]="3">Hard</option></select></label>
+              <label class="focus-field">Focus instructions <span>Optional</span><textarea rows="4" maxlength="2000" formControlName="focusInstructions" placeholder="For example: focus on causes and effects, with concise explanations"></textarea><small>{{ setupForm.controls.focusInstructions.value.length }}/2000 · Instructions cannot authorize facts outside the PDF.</small></label>
+            </div>
+          }
+
+          <fieldset>
+            <legend>{{ setupForm.controls.mode.value === 'GENERATE' ? 'Generation source' : 'Optional AI-assisted parsing source' }}</legend>
+            <div class="inline-options">
+              <label><input type="radio" formControlName="generationSource" value="REVISEE"> Revisee-provided Gemini</label>
+              <label><input type="radio" formControlName="generationSource" value="PERSONAL"> My Gemini key</label>
+            </div>
+            @if (setupForm.controls.generationSource.value === 'PERSONAL') {
+              <label class="credential-field">Gemini credential
+                <select formControlName="credentialId">
+                  <option [ngValue]="null">Choose a valid credential</option>
+                  @for (credential of credentials(); track credential.id) {
+                    <option [ngValue]="credential.id">{{ credential.name }} · {{ credential.masked_identifier }}{{ credential.is_default ? ' (default)' : '' }}</option>
+                  }
+                </select>
+              </label>
+              @if (credentials().length === 0) { <p>No valid Gemini key is configured. <a routerLink="/app/settings">Manage credentials in Settings</a>.</p> }
+            }
+            <p class="provider-disclosure"><i class="ph ph-info" aria-hidden="true"></i> If you generate questions or choose optional AI-assisted parsing, only extracted text from the selected pages and your instructions are sent to Gemini—not the PDF file. @if (setupForm.controls.generationSource.value === 'PERSONAL') { Your quota and possible charges apply. A failed personal-key request never falls back to Revisee’s key. }</p>
+          </fieldset>
+
+          @if (workflowError()) { <p class="form-error" role="alert">{{ workflowError() }}</p> }
+          <footer>
+            @if (isBusy()) {
+              <button type="button" class="primary-btn-outlined" (click)="cancelExtraction()">Cancel</button>
+            }
+            <button type="submit" class="primary-btn" [disabled]="isBusy() || !selectedFile() || !filePageCount()">
+              @if (isBusy()) { <span class="spinner spinner--small" aria-hidden="true"></span> }
+              {{ setupForm.controls.mode.value === 'EXTRACT' ? 'Extract question drafts' : 'Generate grounded drafts' }}
+            </button>
+          </footer>
+        </form>
+      </section>
+
+      @if (workflowState() === 'EXTRACTING') {
+        <section class="progress-card" aria-live="polite">
+          <div><span>Reading PDF text</span><strong>{{ progressCompleted() }} / {{ progressTotal() || '…' }} pages</strong></div>
+          <progress [value]="progressCompleted()" [max]="progressTotal() || 1"></progress>
+          <p>Text stays in this browser until it is submitted for grounded generation or final import.</p>
+        </section>
+      } @else if (workflowState() === 'GENERATING') {
+        <section class="progress-card" role="status" aria-live="polite">
+          <div><span>Preparing grounded drafts</span><strong>Checking PDF evidence</strong></div>
+          <progress></progress>
+          <p>Drafts are not saved automatically.</p>
+        </section>
+      } @else if (workflowState() === 'OCR_REQUIRED') {
+        <section class="workflow-state workflow-state--notice">
+          <i class="ph ph-scan" aria-hidden="true"></i>
+          <h2>This PDF needs OCR</h2>
+          <p>The selected pages contain no usable text layer and appear to be scanned images. Revisee does not currently run OCR, so it cannot safely extract or ground questions from these pages.</p>
+          <p>You can choose another text-based PDF or add questions manually from the learning-item question bank.</p>
+          <div><button type="button" class="primary-btn-outlined" (click)="removeSelectedFile()">Choose another PDF</button><a class="primary-btn" [routerLink]="['/app/learning-items', itemId, 'questions']">Add questions manually</a></div>
+        </section>
+      } @else if (workflowState() === 'NO_RESULTS') {
+        <section class="workflow-state workflow-state--notice">
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <h2>No supported questions were found</h2>
+          <p>{{ setupForm.controls.mode.value === 'EXTRACT' ? 'The deterministic parser did not find a complete MCQ pattern. This does not prove the PDF contains no questions.' : 'The selected text did not support safe grounded questions. No drafts were fabricated.' }}</p>
+          @if (setupForm.controls.mode.value === 'EXTRACT') {
+            <button type="button" class="primary-btn" (click)="tryAiAssistedParsing()" [disabled]="isBusy()">Try optional AI-assisted parsing</button>
+          }
+        </section>
+      }
+
+      @if (workflowNotice()) { <p class="workflow-notice" role="status"><i class="ph ph-info" aria-hidden="true"></i>{{ workflowNotice() }}</p> }
+
+      @if (workflowState() === 'REVIEW') {
+        <section class="review-section" aria-labelledby="review-heading">
+          <div class="section-title">
+            <span>2</span>
+            <div><h2 id="review-heading" #reviewHeading tabindex="-1">Review and edit every draft</h2><p>Select only questions you want to import. Evidence remains visible for verification.</p></div>
+          </div>
+
+          <div class="draft-list">
+            @for (draft of drafts(); track draft.clientId; let index = $index) {
+              <article class="draft-card" [class.draft-card--unselected]="!draft.selected">
+                <header>
+                  <label class="draft-select"><input type="checkbox" [checked]="draft.selected" (change)="toggleDraft(draft.clientId, $any($event.target).checked)"><span>Select draft {{ index + 1 }}</span></label>
+                  <button type="button" class="remove-button" (click)="removeDraft(draft.clientId)" aria-label="Remove draft"><i class="ph ph-trash" aria-hidden="true"></i> Remove</button>
+                </header>
+                <label>Question<textarea rows="3" maxlength="5000" [value]="draft.question" (input)="updateDraft(draft.clientId, 'question', $event)"></textarea></label>
+                <div class="option-grid">
+                  @for (label of optionLabels; track label) {
+                    <label>Option {{ label }}<input maxlength="255" [value]="draft.options[label]" (input)="updateOption(draft.clientId, label, $event)"></label>
+                  }
+                </div>
+                <div class="draft-details">
+                  <label>Correct option<select [value]="draft.correct_option || ''" (change)="updateDraft(draft.clientId, 'correct_option', $event)"><option value="">Choose…</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></label>
+                  <label>Difficulty<select [value]="draft.difficulty" (change)="updateDraft(draft.clientId, 'difficulty', $event)"><option value="1">Easy</option><option value="2">Medium</option><option value="3">Hard</option></select></label>
+                  <label>Expected time<input type="number" min="1" max="3600" [value]="draft.expected_time_seconds" (input)="updateDraft(draft.clientId, 'expected_time_seconds', $event)"><span>seconds</span></label>
+                </div>
+                <label>Explanation<textarea rows="3" maxlength="10000" [value]="draft.explanation || ''" (input)="updateDraft(draft.clientId, 'explanation', $event)"></textarea></label>
+                <details class="evidence" open>
+                  <summary>PDF evidence · Page {{ draft.source_page }} · {{ draft.confidence * 100 | number:'1.0-0' }}% confidence</summary>
+                  <blockquote>{{ draft.source_excerpt }}</blockquote>
+                </details>
+                @if (draftIssues(draft); as issues) {
+                  @if (issues.length) {
+                    <ul class="validation-list" aria-label="Draft validation warnings">@for (issue of issues; track issue) { <li><i class="ph ph-warning" aria-hidden="true"></i>{{ issue }}</li> }</ul>
+                  }
+                }
+              </article>
+            } @empty {
+              <div class="workflow-state"><i class="ph ph-files" aria-hidden="true"></i><h3>No drafts remain</h3><p>Run extraction or generation again to prepare another review batch.</p></div>
+            }
+          </div>
+
+          @if (drafts().length) {
+            <section class="import-card" aria-labelledby="import-heading">
+              <div class="section-title"><span>3</span><div><h2 id="import-heading">Choose the destination</h2><p>The backend checks ownership, evidence, validation, and duplicates again.</p></div></div>
+              <form [formGroup]="importForm" (ngSubmit)="importSelected()">
+                <label>Destination learning item<select formControlName="destinationId"><option [ngValue]="0">Choose a learning item</option>@for (destination of destinations(); track destination.id) { <option [ngValue]="destination.id">{{ destination.title }}</option> }</select></label>
+                <p>{{ selectedCount() }} selected {{ selectedCount() === 1 ? 'draft' : 'drafts' }}</p>
+                @if (importError()) { <p class="form-error" role="alert">{{ importError() }}</p> }
+                <button type="submit" class="primary-btn" [disabled]="importing() || selectedCount() === 0">{{ importing() ? 'Importing…' : 'Import selected questions' }}</button>
+              </form>
+              @if (importResult(); as result) {
+                <div class="success-summary" role="status" aria-live="polite">
+                  <i class="ph ph-check-circle" aria-hidden="true"></i>
+                  <div><strong>{{ result.inserted_count }} imported</strong><p>{{ result.duplicate_count }} duplicates and {{ result.rejected_count }} rejected. No unexpected failures.</p>@if (destinationQuestionCount() !== null) { <small>The destination now has {{ destinationQuestionCount() }} stored questions.</small> }</div>
+                  <a [routerLink]="['/app/learning-items', importForm.controls.destinationId.value, 'questions']">View question bank</a>
+                </div>
+              }
+            </section>
+          }
+        </section>
+      }
+  }
+</main>

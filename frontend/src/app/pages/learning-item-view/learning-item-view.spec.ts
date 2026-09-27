@@ -5,6 +5,7 @@ import { BehaviorSubject, Observable, of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { LearningItem, LearningItemResponse, PdfNote } from '../../core/services/learning-item';
 import { DictionaryService } from '../../core/services/dictionary.service';
+import { LearningItemRecencyService } from '../../core/services/learning-item-recency.service';
 import { ToasterService } from '../../core/services/toaster.service';
 import { PdfJsLoaderService } from '../../shared/components/pdf-viewer/pdfjs-loader.service';
 import { LearningItemView } from './learning-item-view';
@@ -63,6 +64,8 @@ class FakeLearningItemService {
   deletePdfNote = vi.fn(() => of(undefined));
 }
 
+class FakeLearningItemRecencyService { markExplored = vi.fn(); }
+
 describe('LearningItemView', () => {
   let fixture: ComponentFixture<LearningItemView>;
   let component: LearningItemView;
@@ -79,6 +82,7 @@ describe('LearningItemView', () => {
         provideRouter([]),
         ToasterService,
         { provide: LearningItem, useClass: FakeLearningItemService },
+        { provide: LearningItemRecencyService, useClass: FakeLearningItemRecencyService },
         { provide: DictionaryService, useValue: { lookup: vi.fn() } },
         { provide: ActivatedRoute, useValue: { paramMap: routeParams.asObservable() } },
         {
@@ -113,6 +117,31 @@ describe('LearningItemView', () => {
     const viewAll = element.querySelector('a[href="/app/learning-items/12/questions"]');
     expect(viewAll).not.toBeNull();
     expect(component.pdfResources()).toHaveLength(1);
+    const importSection = element.querySelector('.pdf-question-import-section');
+    expect(importSection?.textContent).toContain('Add questions from a PDF');
+    expect(importSection?.textContent).toContain('Extract existing questions');
+    expect(importSection?.textContent).toContain('Generate questions from PDF');
+    expect(importSection?.querySelectorAll('.pdf-question-import-action')).toHaveLength(2);
+    expect(element.querySelector('.pdf-card .pdf-question-import-action')).toBeNull();
+    expect(element.querySelector('.pdf-card')?.textContent).not.toContain('Create questions');
+  });
+
+  it('renders formatted theory without displaying HTML source or bypassing sanitization', () => {
+    service.detailResponse = of({
+      ...response,
+      data: {
+        ...response.data,
+        theory: '<p><strong>Formatted theory</strong></p><script>window.evil = true</script>',
+      },
+    });
+
+    createComponent();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const theory = element.querySelector('.theory-content');
+    expect(theory?.querySelector('strong')?.textContent).toBe('Formatted theory');
+    expect(theory?.textContent).not.toContain('<p>');
+    expect(theory?.querySelector('script')).toBeNull();
   });
 
   it('routes question generation through the append-only question bank flow', () => {

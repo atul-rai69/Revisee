@@ -49,15 +49,18 @@ describe('NewItem', () => {
       description_text: '<p>Cell notes</p>',
       generationSource: 'PERSONAL',
       credentialId: 8,
-      personalRemarks: 'Use concise examples.',
     });
+    fixture.detectChanges();
+    component.generationPreferencesPanel?.toggleCustomization();
+    component.generationPreferencesPanel?.form.controls.additionalInstructions.setValue('Use concise examples.');
     component.onSubmit();
     component.onSubmit();
     expect(service.createLearningItem).toHaveBeenCalledTimes(1);
     const body = service.createLearningItem.mock.calls[0][0] as FormData;
     expect(body.get('generation_source')).toBe('PERSONAL');
     expect(body.get('credential_id')).toBe('8');
-    expect(body.get('personal_remarks')).toBe('Use concise examples.');
+    expect(body.get('personal_remarks')).toBeNull();
+    expect(JSON.parse(String(body.get('generation_preferences'))).additional_instructions).toBe('Use concise examples.');
     expect(component.saving()).toBe(true);
   });
 
@@ -84,7 +87,6 @@ describe('NewItem', () => {
       description_text: '<p>Cell notes</p>',
       generationSource: 'REVISEE',
       credentialId: null,
-      personalRemarks: '',
     });
     component.uploadedPdfs = [{
       file: sizedFile('large.pdf', 'application/pdf', MAX_PDF_UPLOAD_BYTES + 1),

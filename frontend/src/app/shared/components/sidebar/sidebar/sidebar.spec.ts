@@ -27,7 +27,10 @@ describe('Sidebar', () => {
 
   it('keeps honest primary navigation and excludes experimental pages', () => {
     const links = [...fixture.nativeElement.querySelectorAll('.nav-item')] as HTMLAnchorElement[];
-    expect(links.map((link) => link.textContent?.trim())).toEqual(['Home', 'Library', 'Revise', 'Topics']);
+    expect(links.map((link) => link.textContent?.trim())).toEqual(['Home', 'Library', 'Revise', 'Topics', 'Analytics']);
+    const analytics = links.find((link) => link.textContent?.trim() === 'Analytics');
+    expect(analytics?.getAttribute('href')).toBe('/app/analytics');
+    expect(analytics?.classList.contains('mobile-hidden')).toBe(true);
     expect(fixture.nativeElement.textContent).not.toContain('Playground');
     expect(fixture.nativeElement.textContent).not.toContain('Canvas');
     expect(fixture.nativeElement.textContent).not.toContain('Design Preview');

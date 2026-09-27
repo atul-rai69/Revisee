@@ -15,13 +15,13 @@ def _source(content: str) -> PreparedQuestionSource:
     )
 
 
-def test_prompt_requests_exact_question_count_and_questions_only() -> None:
+def test_prompt_requests_bounded_question_count_and_questions_only() -> None:
     prompt = build_question_prompt(_source("Study material"), 7, 4_000)
 
-    assert "Generate exactly 7" in prompt
+    assert "Generate up to 7" in prompt
     assert "Return questions only" in prompt
     assert '"questions"' in prompt
-    assert QUESTION_PROMPT_TEMPLATE_VERSION == "question-only-v1"
+    assert QUESTION_PROMPT_TEMPLATE_VERSION == "question-only-v2-preferences"
 
 
 def test_source_is_delimited_and_embedded_commands_remain_untrusted_data() -> None:

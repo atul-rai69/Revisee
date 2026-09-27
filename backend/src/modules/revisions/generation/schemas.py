@@ -7,19 +7,21 @@ import unicodedata
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from src.core.exceptions import ProviderOutputError
+from src.modules.revisions.generation.preferences import GenerationPreferences, QuestionType
 
 
 class ValidatedGeneratedQuestion(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     question: str = Field(min_length=1)
+    question_type: QuestionType | None = None
     options: tuple[str, str, str, str]
     correct_answer: str
     difficulty_level: int = Field(ge=1, le=3)
     expected_time_seconds: int = Field(gt=0)
-    explanation: str = Field(min_length=1)
+    explanation: str = ""
 
-    @field_validator("question", "explanation")
+    @field_validator("question")
     @classmethod
     def strip_required_text(cls, value: str) -> str:
         normalized = value.strip()
@@ -80,6 +82,7 @@ def parse_question_response(
     requested_count: int,
     maximum_response_characters: int,
     maximum_expected_time_seconds: int,
+    preferences: GenerationPreferences | None = None,
 ) -> ParsedQuestionBatch:
     if requested_count < 1:
         raise ValueError("requested_count must be positive")
@@ -102,8 +105,7 @@ def parse_question_response(
     rejected_count = 0
     for entry in entries[:requested_count]:
         try:
-            accepted.append(
-                ValidatedGeneratedQuestion.model_validate(
+            question = ValidatedGeneratedQuestion.model_validate(
                     entry,
                     context={
                         "maximum_expected_time_seconds": (
@@ -111,8 +113,20 @@ def parse_question_response(
                         )
                     },
                 )
-            )
-        except (ValidationError, TypeError):
+            if preferences is not None:
+                if preferences.explanations_required is not False and not question.explanation.strip():
+                    raise ValueError("explanation is required")
+                if preferences.question_types and question.question_type not in preferences.question_types:
+                    raise ValueError("question_type does not match requested types")
+                expected_difficulty = {"EASY": 1, "MEDIUM": 2, "HARD": 3}.get(
+                    preferences.difficulty_mode or ""
+                )
+                if expected_difficulty is not None and question.difficulty_level != expected_difficulty:
+                    raise ValueError("difficulty does not match requested mode")
+            elif not question.explanation.strip():
+                raise ValueError("explanation is required")
+            accepted.append(question)
+        except (ValidationError, TypeError, ValueError):
             rejected_count += 1
 
     return ParsedQuestionBatch(

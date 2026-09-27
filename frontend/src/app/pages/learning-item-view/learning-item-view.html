@@ -91,7 +91,11 @@
     <section class="card learning-item-details-card">
       <div class="detail-section">
         <h2>Theory</h2>
-        <p *ngIf="learningItem.theory; else noTheory">{{ learningItem.theory }}</p>
+        <div
+          class="theory-content"
+          *ngIf="learningItem.theory; else noTheory"
+          [innerHTML]="learningItem.theory"
+        ></div>
         <ng-template #noTheory>
           <p class="empty-copy">No generated theory is available yet.</p>
         </ng-template>
@@ -268,6 +272,36 @@
           </button>
         </div>
       </section>
+
+      <div class="detail-section pdf-question-import-section" aria-labelledby="pdf-question-import-heading">
+        <div class="pdf-question-import-copy">
+          <span class="eyebrow">Review-first import</span>
+          <h2 id="pdf-question-import-heading">Add questions from a PDF</h2>
+          <p>Upload a question paper, revision sheet or study document specifically for this workflow. The PDF is read locally, is not added to your attachments, and is discarded when you leave.</p>
+          <p class="pdf-question-import-guidance"><i class="ph ph-file-pdf" aria-hidden="true"></i> Text-based PDF · Maximum 10 MB · Scanned PDFs are not yet supported</p>
+          <p class="pdf-question-import-privacy"><i class="ph ph-shield-check" aria-hidden="true"></i> The PDF stays on your device. Extracted text is sent to Gemini only when you generate questions or explicitly request AI-assisted parsing.</p>
+        </div>
+        <div class="pdf-question-import-actions">
+          <a
+            class="pdf-question-import-action pdf-question-import-action--extract"
+            [routerLink]="['/app/learning-items', learningItem.id, 'questions', 'import-pdf']"
+            [queryParams]="{ mode: 'EXTRACT' }"
+          >
+            <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+            <span><strong>Extract existing questions</strong><small>Copy questions already written in the uploaded PDF. No questions are invented.</small></span>
+            <i class="ph ph-arrow-right" aria-hidden="true"></i>
+          </a>
+          <a
+            class="pdf-question-import-action pdf-question-import-action--generate"
+            [routerLink]="['/app/learning-items', learningItem.id, 'questions', 'import-pdf']"
+            [queryParams]="{ mode: 'GENERATE' }"
+          >
+            <i class="ph ph-sparkle" aria-hidden="true"></i>
+            <span><strong>Generate questions from PDF</strong><small>Create new MCQs supported exclusively by the uploaded document.</small></span>
+            <i class="ph ph-arrow-right" aria-hidden="true"></i>
+          </a>
+        </div>
+      </div>
 
       <div class="detail-section questions-section">
         <div class="section-heading-row">

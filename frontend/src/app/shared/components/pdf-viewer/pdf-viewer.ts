@@ -361,8 +361,17 @@ export class PdfViewer implements AfterViewInit, OnChanges, OnDestroy {
       if (generation !== this.loadGeneration) return false;
 
       const unscaled = page.getViewport({ scale: 1 });
-      const availableWidth = Math.max(280, this.viewport.nativeElement.clientWidth - 32);
-      const fitScale = Math.min(2.25, Math.max(0.5, availableWidth / unscaled.width));
+      const viewportElement = this.viewport.nativeElement;
+      const viewportStyles = getComputedStyle(viewportElement);
+      const horizontalPadding = this.cssPixels(viewportStyles.paddingLeft)
+        + this.cssPixels(viewportStyles.paddingRight);
+      const measuredWidth = Math.floor(viewportElement.clientWidth - horizontalPadding);
+      // A real viewport may be narrower than 280px inside the mobile shell. It
+      // must remain the source of truth so the rendered page never forces the
+      // application wider than the device. The fallback only covers hidden or
+      // non-layout environments (for example unit tests before measurement).
+      const availableWidth = measuredWidth > 0 ? measuredWidth : unscaled.width;
+      const fitScale = Math.min(2.25, Math.max(0.1, availableWidth / unscaled.width));
       const scale = fitScale * this.zoom();
       const viewport = page.getViewport({ scale });
       const canvas = this.canvas.nativeElement;
@@ -426,6 +435,11 @@ export class PdfViewer implements AfterViewInit, OnChanges, OnDestroy {
       }
       void this.renderCurrentPage(this.loadGeneration);
     }, 100);
+  }
+
+  private cssPixels(value: string): number {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
   private fail(message: string): void {

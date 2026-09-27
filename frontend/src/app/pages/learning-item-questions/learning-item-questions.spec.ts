@@ -124,6 +124,34 @@ describe('LearningItemQuestions', () => {
     expect(service.getCalls).toBe(2);
   });
 
+  it('sends normalized conditional generation preferences', () => {
+    createComponent();
+    component.generateMoreQuestions();
+    fixture.detectChanges();
+    component.generationPreferencesPanel?.toggleCustomization();
+    component.generationPreferencesPanel?.form.patchValue({
+      questionCount: 3,
+      typeTheory: false,
+      typeCoding: true,
+      codingLanguage: 'PYTHON',
+      codingDebugging: true,
+      codingConceptual: false,
+      generationGoal: 'INTERVIEWS',
+    });
+
+    component.submitGeneration();
+
+    expect(service.generateQuestions).toHaveBeenCalledWith(5, expect.objectContaining({
+      question_count: 3,
+      preferences: expect.objectContaining({
+        question_count: 3,
+        question_types: ['CODING'],
+        generation_goal: 'INTERVIEWS',
+        coding_preferences: expect.objectContaining({ language: 'PYTHON' }),
+      }),
+    }));
+  });
+
   it('shows safe local feedback and releases the busy state for a validation failure', () => {
     createComponent();
     const toaster = TestBed.inject(ToasterService);

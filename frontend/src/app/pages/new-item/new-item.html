@@ -55,14 +55,14 @@
                 <label [class.selected]="generationSourceControl.value === 'REVISEE'"><input type="radio" formControlName="generationSource" value="REVISEE"><span><strong>Revisee-provided generation</strong><small>Use the existing Revisee generation service.</small></span></label>
                 <label [class.selected]="generationSourceControl.value === 'PERSONAL'"><input type="radio" formControlName="generationSource" value="PERSONAL"><span><strong>My Gemini key</strong><small>Use one of your encrypted personal credentials.</small></span></label>
             </div>
-            <p class="generation-disclosure">Generation sends this item’s title and text notes to the selected provider. Gemini quotas and possible charges still apply; Revisee does not estimate remaining tokens.</p>
+            <p class="generation-disclosure">Generation sends this item’s title, text notes and any request-scoped preferences to the selected provider. Gemini quotas and possible charges still apply; Revisee does not estimate remaining tokens.</p>
             <div class="personal-options" *ngIf="generationSourceControl.value === 'PERSONAL'">
                 <label>Gemini credential<select formControlName="credentialId"><option [ngValue]="null">Choose a credential</option><option *ngFor="let credential of credentials()" [ngValue]="credential.id">{{ credential.name }} · {{ credential.masked_identifier }}{{ credential.is_default ? ' (default)' : '' }}</option></select></label>
-                <label>Personal remarks <span>Optional</span><textarea formControlName="personalRemarks" maxlength="2000" rows="4" placeholder="Focus areas, learning goals or preferred explanation style"></textarea><small>{{ learningItemForm.value.personalRemarks?.length || 0 }}/2000. Remarks cannot override safety or output validation.</small></label>
                 <p class="credential-state" *ngIf="credentialsLoading()">Loading your credentials…</p>
                 <p class="credential-state error-text" *ngIf="credentialsError()">Credentials could not be loaded. <button type="button" (click)="loadCredentials()">Retry</button></p>
                 <p class="credential-state" *ngIf="!credentialsLoading() && !credentialsError() && credentials().length === 0">No valid personal key is configured. <a href="/app/settings">Set up a Gemini key</a>.</p>
             </div>
+            <app-generation-preferences [fullContent]="true"></app-generation-preferences>
         </section>
 
         <div class="card">

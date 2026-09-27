@@ -15,6 +15,7 @@ from src.modules.revisions import repository as revision_repository
 from src.modules.revisions.service import RevisionService
 from src.modules.revisions.models import Question
 from src.modules.revisions.generation.fingerprint import question_fingerprint
+from src.modules.revisions.generation.preferences import GenerationPreferences
 from src.modules.learning_items.schemas import (
     ManualQuestionCreateRequest,
     PdfNoteCreateRequest,
@@ -47,6 +48,7 @@ class LearningItemService:
         *,
         personal_remarks: str | None = None,
         credential_id: int | None = None,
+        preferences: GenerationPreferences | None = None,
     ) -> dict[str, str]:
         if self.ai_provider is None or self.storage is None:
             raise RuntimeError("Learning-item creation providers are not configured")
@@ -59,12 +61,17 @@ class LearningItemService:
 
         revision_service = RevisionService(self.db, self.ai_provider)
         if credential_id is None:
-            generated = revision_service.generate_content(title, description_text)
+            generated = revision_service.generate_content(
+                title,
+                description_text,
+                preferences=preferences,
+            )
         else:
             generated, _ = revision_service.generate_content_with_usage(
                 title,
                 description_text,
                 personal_remarks,
+                preferences,
             )
 
         uploaded: list[tuple[str, UploadedAsset, str | None]] = []

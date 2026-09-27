@@ -5,6 +5,39 @@
     <p>Mastery and accuracy come only from your persisted revision answers.</p>
   </header>
 
+  <section class="overview-section" aria-labelledby="revision-activity-title">
+    <header class="overview-header"><div><span class="eyebrow">Completed practice</span><h2 id="revision-activity-title">Revision activity and accuracy</h2><p>Completed sessions by date, with accuracy weighted from all persisted answers.</p></div></header>
+    @if (insightsLoading()) {
+      <div class="overview-skeleton" role="status" aria-label="Loading revision activity"></div>
+    } @else if (insightsError()) {
+      <div class="chart-state error" role="alert"><p>Revision activity could not be loaded.</p><button type="button" (click)="loadInsights()">Retry</button></div>
+    } @else if (revisionAnalytics()?.completed_session_count === 0) {
+      <div class="chart-state"><i class="ph ph-chart-line-up" aria-hidden="true"></i><h3>No completed revisions yet</h3><p>Start practising to build revision activity and weighted accuracy.</p></div>
+    } @else if (activityOption(); as option) {
+      <div class="overview-chart"><app-echart [option]="option" ariaLabel="Completed revision sessions and weighted answer accuracy grouped by date"></app-echart></div>
+      <div class="overview-table"><table><caption>Revision activity values</caption><thead><tr><th>Date</th><th>Completed sessions</th><th>Correct / answered</th><th>Weighted accuracy</th></tr></thead><tbody>@for (point of revisionAnalytics()!.activity; track point.date) { <tr><td>{{ formatActivityDate(point.date) }}</td><td>{{ point.completed_session_count }}</td><td>{{ point.correct_count }} / {{ point.answered_count }}</td><td>{{ point.accuracy_percent === null ? 'Not available' : point.accuracy_percent + '%' }}</td></tr> }</tbody></table></div>
+    }
+  </section>
+
+  <section class="overview-section" aria-labelledby="topic-growth-title">
+    <header class="overview-header growth-header">
+      <div><span class="eyebrow">Persisted snapshots</span><h2 id="topic-growth-title">Topic mastery growth</h2><p>Mastery is evidence accumulated across revision attempts; it is not the same as a quiz mark.</p></div>
+      @if (!insightsLoading() && !insightsError() && topicAnalytics().length > 0) {
+        <details class="topic-selector"><summary>Select Topics ({{ selectedTopicIds().size }}/5)</summary><div>@for (topic of topicAnalytics(); track topic.entity_id) { <label [class.unavailable]="!hasMeasuredTopicTrend(topic)"><input type="checkbox" [checked]="selectedTopicIds().has(topic.entity_id)" [disabled]="!hasMeasuredTopicTrend(topic) || (!selectedTopicIds().has(topic.entity_id) && selectedTopicIds().size >= 5)" (change)="toggleGrowthTopic(topic.entity_id)" /><span>{{ topic.display_name }}</span><small>{{ hasMeasuredTopicTrend(topic) ? topic.trend.length + ' persisted snapshots' : 'No measured trend yet' }}</small></label> }</div></details>
+      }
+    </header>
+    @if (insightsLoading()) {
+      <div class="overview-skeleton" role="status" aria-label="Loading Topic mastery growth"></div>
+    } @else if (insightsError()) {
+      <div class="chart-state error" role="alert"><p>Topic mastery growth could not be loaded.</p><button type="button" (click)="loadInsights()">Retry</button></div>
+    } @else if (topicGrowthOption(); as option) {
+      <div class="overview-chart growth-chart"><app-echart [option]="option" ariaLabel="Selected Topics persisted mastery growth"></app-echart></div>
+      <ul class="growth-summary" aria-label="Selected Topic mastery values">@for (topic of selectedTopicAnalytics(); track topic.entity_id) { <li><strong>{{ topic.display_name }}</strong><span>{{ topic.mastery_score }}% current mastery · {{ topic.total_attempts }} attempts</span></li> }</ul>
+    } @else {
+      <div class="chart-state"><i class="ph ph-trend-up" aria-hidden="true"></i><h3>No measured Topic history yet</h3><p>Complete relevant practice to create genuine Topic mastery snapshots. No historical values are invented.</p></div>
+    }
+  </section>
+
   <div class="analytics-tabs" role="tablist" aria-label="Mastery entity type">
     <button type="button" role="tab" [attr.aria-selected]="entityType() === 'LABEL'" [class.active]="entityType() === 'LABEL'" (click)="selectType('LABEL')">Topics</button>
     <button type="button" role="tab" [attr.aria-selected]="entityType() === 'LEARNING_ITEM'" [class.active]="entityType() === 'LEARNING_ITEM'" (click)="selectType('LEARNING_ITEM')">Learning items</button>
