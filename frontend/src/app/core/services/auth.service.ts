@@ -1,116 +1,157 @@
+import { HttpClient, HttpContext, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpContext } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable, TimeoutError, catchError, filter, finalize, firstValueFrom, shareReplay, take, tap, throwError, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SKIP_GLOBAL_LOADER } from '../interceptors/loader-interceptor';
+
+export type AuthenticationStatus = 'checking' | 'authenticated' | 'unauthenticated' | 'error';
+
+export interface AuthenticatedUser {
+  id: number;
+  username: string;
+  email: string;
+}
 
 export interface LoginResponse {
   access_token: string;
   token_type: string;
+  expires_in: number;
+  user: AuthenticatedUser;
 }
 
-export interface RegistrationResponse extends LoginResponse {
-  message: string;
-}
+export interface RegistrationResponse extends LoginResponse { message: string; }
+export interface LogoutResponse { message: string; }
 
-export interface LogoutResponse {
-  message: string;
-}
+const CSRF_HEADERS = new HttpHeaders({ 'X-Revisee-CSRF': 'spa' });
+const REFRESH_TIMEOUT_MS = 15_000;
 
-interface JwtPayload {
-  exp?: number;
-  [key: string]: unknown;
-}
-
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class AuthService {
-  private apiUrl = environment.apiUrl;
-  private readonly tokenKey = 'token';
+  private readonly apiUrl = environment.apiUrl;
+  private accessToken: string | null = null;
+  private refreshInFlight: Observable<LoginResponse> | null = null;
+  private redirectHandled = false;
+  private readonly statusSubject = new BehaviorSubject<AuthenticationStatus>('checking');
+  private readonly userSubject = new BehaviorSubject<AuthenticatedUser | null>(null);
 
-  constructor(private http: HttpClient) {}
+  readonly status$ = this.statusSubject.asObservable();
+  readonly user$ = this.userSubject.asObservable();
+
+  constructor(private readonly http: HttpClient) {
+    // Remove the legacy persisted access token. Refresh credentials are cookie-only.
+    try { localStorage.removeItem('token'); } catch { /* Storage may be unavailable. */ }
+  }
 
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(
       `${this.apiUrl}/login`,
       { username, password },
-      { context: new HttpContext().set(SKIP_GLOBAL_LOADER, true) },
-    );
+      this.authRequestOptions(),
+    ).pipe(tap((response) => this.acceptAuthentication(response)));
   }
 
   register(username: string, email: string, password: string): Observable<RegistrationResponse> {
     return this.http.post<RegistrationResponse>(
       `${this.apiUrl}/register`,
       { username, email, password },
-      { context: new HttpContext().set(SKIP_GLOBAL_LOADER, true) },
+      this.authRequestOptions(),
+    ).pipe(tap((response) => this.acceptAuthentication(response)));
+  }
+
+  refreshAccessToken(): Observable<LoginResponse> {
+    if (this.refreshInFlight) return this.refreshInFlight;
+    this.refreshInFlight = this.http.post<LoginResponse>(
+      `${this.apiUrl}/auth/refresh`,
+      {},
+      this.authRequestOptions(),
+    ).pipe(
+      timeout(REFRESH_TIMEOUT_MS),
+      tap((response) => this.acceptAuthentication(response)),
+      catchError((error: unknown) => {
+        this.accessToken = null;
+        this.userSubject.next(null);
+        this.statusSubject.next(this.isTransientRefreshFailure(error) ? 'error' : 'unauthenticated');
+        return throwError(() => error);
+      }),
+      finalize(() => { this.refreshInFlight = null; }),
+      shareReplay({ bufferSize: 1, refCount: false }),
     );
+    return this.refreshInFlight;
   }
 
-  getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
-  }
-
-  setToken(token: string): void {
-    localStorage.setItem(this.tokenKey, token);
-  }
-
-  clearToken(): void {
-    localStorage.removeItem(this.tokenKey);
+  async restoreSession(): Promise<void> {
+    this.statusSubject.next('checking');
+    try {
+      await firstValueFrom(this.refreshAccessToken());
+    } catch {
+      // Missing/expired cookies and transient failures are represented by status.
+    }
   }
 
   logout(): Observable<LogoutResponse> {
     return this.http.post<LogoutResponse>(
-      `${this.apiUrl}/logout`,
-      {}
-    );
+      `${this.apiUrl}/auth/logout`,
+      {},
+      this.authRequestOptions(),
+    ).pipe(finalize(() => this.clearAuthentication()));
   }
+
+  getToken(): string | null { return this.accessToken; }
+
+  setToken(token: string): void {
+    this.accessToken = token;
+    this.statusSubject.next('authenticated');
+    this.redirectHandled = false;
+  }
+
+  clearToken(): void { this.clearAuthentication(); }
 
   isLoggedIn(): boolean {
-    const token = this.getToken();
-
-    return !!token && !this.isTokenExpired(token);
+    return this.statusSubject.value === 'authenticated' && this.accessToken !== null;
   }
 
-  isTokenExpired(token: string): boolean {
-    const payload = this.decodeJwtPayload(token);
+  currentStatus(): AuthenticationStatus { return this.statusSubject.value; }
 
-    // Tokens without an expiry are left for the backend to validate.
-    if (!payload?.exp) {
-      return false;
-    }
-
-    const expiryTime = payload.exp * 1000;
-
-    return Date.now() >= expiryTime;
+  waitForInitialCheck(): Observable<AuthenticationStatus> {
+    return this.status$.pipe(filter((status) => status !== 'checking'), take(1));
   }
 
-  private decodeJwtPayload(token: string): JwtPayload | null {
-    const parts = token.split('.');
+  invalidateSession(): boolean {
+    const shouldNotify = !this.redirectHandled;
+    this.redirectHandled = true;
+    this.clearAuthentication(false);
+    return shouldNotify;
+  }
 
-    // Non-JWT tokens cannot be decoded on the client.
-    if (parts.length !== 3) {
-      return null;
-    }
+  private acceptAuthentication(response: LoginResponse): void {
+    this.accessToken = response.access_token;
+    this.userSubject.next(response.user);
+    this.statusSubject.next('authenticated');
+    this.redirectHandled = false;
+  }
 
-    try {
-      const base64 = parts[1]
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
+  private clearAuthentication(resetRedirect = true): void {
+    this.accessToken = null;
+    this.userSubject.next(null);
+    this.statusSubject.next('unauthenticated');
+    if (resetRedirect) this.redirectHandled = false;
+  }
 
-      const payload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map((char) => `%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`)
-          .join('')
-      );
+  private authRequestOptions(): {
+    withCredentials: true;
+    headers: HttpHeaders;
+    context: HttpContext;
+  } {
+    return {
+      withCredentials: true,
+      headers: CSRF_HEADERS,
+      context: new HttpContext().set(SKIP_GLOBAL_LOADER, true),
+    };
+  }
 
-      return JSON.parse(payload);
-    } catch {
-      // Malformed JWTs should not be trusted.
-      return {
-        exp: 0,
-      };
-    }
+  private isTransientRefreshFailure(error: unknown): boolean {
+    return error instanceof TimeoutError || (
+      error instanceof HttpErrorResponse && (error.status === 0 || error.status >= 500)
+    );
   }
 }

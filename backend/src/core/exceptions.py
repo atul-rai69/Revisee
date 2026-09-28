@@ -11,6 +11,22 @@ class AuthenticationError(ApplicationError):
     status_code = 401
     detail = "Invalid or expired authentication credentials"
 
+    def __init__(
+        self,
+        detail: str | None = None,
+        *,
+        auth_code: str = "invalid_authentication",
+        clear_refresh_cookie: bool = False,
+    ) -> None:
+        super().__init__(detail)
+        self.auth_code = auth_code
+        self.clear_refresh_cookie = clear_refresh_cookie
+
+
+class CsrfError(ApplicationError):
+    status_code = 403
+    detail = "Request origin could not be verified"
+
 
 class ResourceNotFoundError(ApplicationError):
     status_code = 404

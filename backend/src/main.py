@@ -16,8 +16,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Revisee-CSRF"],
+    expose_headers=["X-Auth-Error"],
 )
 
 
@@ -31,15 +32,29 @@ async def application_error_handler(
     _request: Request,
     exc: ApplicationError,
 ) -> JSONResponse:
-    headers = {"WWW-Authenticate": "Bearer"} if isinstance(
-        exc,
-        AuthenticationError,
-    ) else None
-    return JSONResponse(
+    headers = None
+    if isinstance(exc, AuthenticationError):
+        headers = {
+            "WWW-Authenticate": "Bearer",
+            "X-Auth-Error": exc.auth_code,
+        }
+    response = JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
         headers=headers,
     )
+    if isinstance(exc, AuthenticationError) and exc.clear_refresh_cookie:
+        response.set_cookie(
+            key=settings.AUTH_COOKIE_NAME,
+            value="",
+            max_age=0,
+            expires=0,
+            httponly=True,
+            secure=settings.AUTH_COOKIE_SECURE,
+            samesite=settings.AUTH_COOKIE_SAMESITE,
+            path=settings.AUTH_COOKIE_PATH,
+        )
+    return response
 
 
 app.include_router(api_router)

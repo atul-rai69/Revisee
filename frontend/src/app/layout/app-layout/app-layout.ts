@@ -44,11 +44,13 @@ export class AppLayout {
   onLogout(): void {
     this.auth.logout().subscribe({
       next: () => {
-        this.auth.clearToken();
         this.toaster.success('Logged out successfully.');
         void this.router.navigate(['/']);
       },
-      error: () => this.toaster.error('Could not log out. Please try again.'),
+      error: () => {
+        this.toaster.error('The server could not confirm logout, but this browser was signed out.');
+        void this.router.navigate(['/']);
+      },
     });
   }
 

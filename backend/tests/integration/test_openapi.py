@@ -3,7 +3,6 @@ def test_legacy_openapi_paths_are_preserved(client) -> None:
     legacy_paths = {
         "/register",
         "/login",
-        "/logout",
         "/labels",
         "/learning-items",
         "/learning-item/{item_id}",
@@ -30,6 +29,8 @@ def test_legacy_openapi_paths_are_preserved(client) -> None:
         "/learning-items/{item_id}/pdf-notes/{note_id}",
         "/learning-items/{item_id}/pdf-question-drafts/generate",
         "/learning-items/{item_id}/pdf-questions/import",
+        "/auth/refresh",
+        "/auth/logout",
     }
     current_paths = set(schema["paths"])
 
@@ -59,7 +60,9 @@ def test_legacy_openapi_paths_are_preserved(client) -> None:
         for path in schema["paths"].values()
         for method in path
     )
-    assert operation_count == 35
+    assert "post" in schema["paths"]["/auth/refresh"]
+    assert "post" in schema["paths"]["/auth/logout"]
+    assert operation_count == 36
 
 
 def test_health_endpoint_is_public_and_minimal(client) -> None:
@@ -77,3 +80,12 @@ def test_registration_openapi_contract_uses_json_body(client) -> None:
         if parameter.get("in") == "query"
     ]
     assert not {"username", "email", "password"}.intersection(query_parameters)
+
+
+def test_refresh_contract_never_exposes_the_refresh_token(client) -> None:
+    schema = client.get("/openapi.json").json()
+    response_schema = schema["components"]["schemas"]["TokenResponse"]
+    assert "refresh_token" not in response_schema["properties"]
+    assert {"access_token", "token_type", "expires_in", "user"} <= set(
+        response_schema["properties"]
+    )

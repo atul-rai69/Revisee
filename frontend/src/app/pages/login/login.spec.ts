@@ -12,17 +12,21 @@ import { ToasterService } from '../../core/services/toaster.service';
 import { Login } from './login';
 
 class FakeAuthService {
-  result: Observable<LoginResponse> = of({ access_token: 'token', token_type: 'bearer' });
+  result: Observable<LoginResponse> = of({
+    access_token: 'token', token_type: 'bearer', expires_in: 1800,
+    user: { id: 1, username: 'atul', email: 'atul@example.test' },
+  });
   registrationResult: Observable<RegistrationResponse> = of({
     access_token: 'registration-token',
     token_type: 'bearer',
+    expires_in: 1800,
+    user: { id: 2, username: 'new-user', email: 'new-user@example.test' },
     message: 'Registration successful',
   });
   calls = 0;
   registrationCalls = 0;
   credentials: { username: string; password: string } | null = null;
   registration: { username: string; email: string; password: string } | null = null;
-  setToken = vi.fn();
 
   login(username: string, password: string): Observable<LoginResponse> {
     this.calls += 1;
@@ -107,11 +111,10 @@ describe('Login', () => {
     expect(toggle.getAttribute('aria-label')).toBe('Hide password');
   });
 
-  it('submits login, stores the token, and navigates', () => {
+  it('submits login and navigates after the service accepts authentication', () => {
     const success = vi.spyOn(toaster, 'success');
     submitLogin();
     expect(auth.credentials).toEqual({ username: 'atul', password: 'secret' });
-    expect(auth.setToken).toHaveBeenCalledWith('token');
     expect(success).toHaveBeenCalled();
     expect((TestBed.inject(Router) as unknown as FakeRouter).navigate).toHaveBeenCalledWith(['/app']);
   });
@@ -140,7 +143,7 @@ describe('Login', () => {
     expect(fixture.nativeElement.textContent).toContain('Enter a valid email address.');
   });
 
-  it('registers with the JSON-backed contract, stores the token, and enters the app', () => {
+  it('registers with the JSON-backed contract and enters the app', () => {
     const success = vi.spyOn(toaster, 'success');
     submitRegistration({ username: '  new-user  ', email: '  New@Example.test  ' });
     expect(auth.registration).toEqual({
@@ -148,7 +151,6 @@ describe('Login', () => {
       email: 'New@Example.test',
       password: 'safe-password',
     });
-    expect(auth.setToken).toHaveBeenCalledWith('registration-token');
     expect(success).toHaveBeenCalledWith('Your Revisee account is ready.', { title: 'Account created' });
     expect((TestBed.inject(Router) as unknown as FakeRouter).navigate).toHaveBeenCalledWith(['/app']);
   });

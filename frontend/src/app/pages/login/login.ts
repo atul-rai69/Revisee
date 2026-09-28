@@ -91,8 +91,7 @@ export class Login {
         }),
       )
       .subscribe({
-        next: (response) => {
-          this.authService.setToken(response.access_token);
+        next: () => {
           this.toaster.success('Welcome back to your learning space.', {
             title: 'Logged in',
           });
@@ -133,8 +132,7 @@ export class Login {
         }),
       )
       .subscribe({
-        next: (response) => {
-          this.authService.setToken(response.access_token);
+        next: () => {
           this.toaster.success('Your Revisee account is ready.', {
             title: 'Account created',
           });

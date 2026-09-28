@@ -3,7 +3,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
+from jose import ExpiredSignatureError, JWTError, jwt
 from pwdlib import PasswordHash
 
 from src.core.config import get_settings
@@ -48,20 +48,33 @@ def verify_password(password: str, stored_value: str) -> tuple[bool, bool]:
 def create_access_token(data: dict[str, Any]) -> str:
     settings = get_settings()
     payload = data.copy()
-    expires_at = datetime.now(timezone.utc) + timedelta(
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
-    payload["exp"] = expires_at
+    payload.update({
+        "iat": now,
+        "exp": expires_at,
+        "type": "access",
+        "jti": secrets.token_urlsafe(16),
+    })
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     try:
-        return jwt.decode(
+        payload = jwt.decode(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
         )
+        if payload.get("type") != "access":
+            raise AuthenticationError(auth_code="invalid_token_type")
+        return payload
+    except ExpiredSignatureError as exc:
+        raise AuthenticationError(auth_code="access_token_expired") from exc
+    except AuthenticationError:
+        raise
     except JWTError as exc:
-        raise AuthenticationError() from exc
+        raise AuthenticationError(auth_code="invalid_access_token") from exc

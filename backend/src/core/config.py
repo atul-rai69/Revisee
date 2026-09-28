@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlsplit
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
@@ -28,8 +29,18 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = Field(min_length=32)
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=5, gt=0)
-    SESSION_EXPIRE_MINUTES: int = Field(default=30, gt=0)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, ge=5, le=60)
+    REFRESH_TOKEN_IDLE_EXPIRE_DAYS: int = Field(default=14, ge=1, le=30)
+    REFRESH_TOKEN_ABSOLUTE_EXPIRE_DAYS: int = Field(default=30, ge=1, le=90)
+    AUTH_COOKIE_NAME: str = Field(
+        default="revisee_refresh",
+        min_length=1,
+        max_length=80,
+        pattern=r"^[A-Za-z0-9!#$%&'*+.^_`|~-]+$",
+    )
+    AUTH_COOKIE_SECURE: bool = False
+    AUTH_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
+    AUTH_COOKIE_PATH: str = "/auth"
 
     GOOGLE_API_KEY: str = Field(min_length=1)
     GEMINI_MODEL: str = "gemini-2.5-flash"
@@ -125,6 +136,22 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_test_database(self) -> "Settings":
+        if self.REFRESH_TOKEN_IDLE_EXPIRE_DAYS > self.REFRESH_TOKEN_ABSOLUTE_EXPIRE_DAYS:
+            raise ValueError(
+                "REFRESH_TOKEN_IDLE_EXPIRE_DAYS must not exceed "
+                "REFRESH_TOKEN_ABSOLUTE_EXPIRE_DAYS"
+            )
+        if self.AUTH_COOKIE_PATH != "/auth":
+            raise ValueError("AUTH_COOKIE_PATH must be /auth")
+        if self.AUTH_COOKIE_SAMESITE == "none" and not self.AUTH_COOKIE_SECURE:
+            raise ValueError("SameSite=None refresh cookies must be Secure")
+        if self.ENVIRONMENT == "production":
+            if not self.AUTH_COOKIE_SECURE:
+                raise ValueError("Production refresh cookies must be Secure")
+            if self.AUTH_COOKIE_SAMESITE != "none":
+                raise ValueError(
+                    "Cross-origin production refresh cookies require SameSite=None"
+                )
         if self.AI_MAX_THEORY_CHARACTERS > self.AI_MAX_SOURCE_CHARACTERS:
             raise ValueError(
                 "AI_MAX_THEORY_CHARACTERS must not exceed "

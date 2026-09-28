@@ -39,6 +39,7 @@ REVISION_0007 = "20260914_0007"
 REVISION_0008 = "20260915_0008"
 REVISION_0009 = "20260920_0009"
 REVISION_0010 = "20260920_0010"
+REVISION_0011 = "20260927_0011"
 
 
 class MigrationHarness:
@@ -123,40 +124,40 @@ def test_blank_chain_downgrade_reupgrade_and_orm_consistency(
     assert inspect(harness.engine).get_table_names() == []
 
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0010
-    _assert_0006_protection_contract(harness.engine)
+    assert harness.current_revision() == REVISION_0011
     _assert_0008_byok_contract(harness.engine)
     _assert_0009_pdf_note_contract(harness.engine)
     _assert_0010_media_filename_contract(harness.engine)
+    _assert_0011_refresh_session_contract(harness.engine)
     _assert_orm_schema_consistency(harness.engine)
     harness.check()
-
     harness.downgrade(REVISION_0008)
     assert harness.current_revision() == REVISION_0008
     assert "pdf_notes" not in inspect(harness.engine).get_table_names()
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0010
+    assert harness.current_revision() == REVISION_0011
     _assert_0009_pdf_note_contract(harness.engine)
     _assert_0010_media_filename_contract(harness.engine)
+    _assert_0011_refresh_session_contract(harness.engine)
 
     harness.downgrade(REVISION_0007)
     assert harness.current_revision() == REVISION_0007
     assert "mastery_history" in inspect(harness.engine).get_table_names()
     assert "ai_credentials" not in inspect(harness.engine).get_table_names()
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0010
+    assert harness.current_revision() == REVISION_0011
     _assert_0008_byok_contract(harness.engine)
 
     harness.downgrade(REVISION_0005)
     assert harness.current_revision() == REVISION_0005
     _assert_0005_protection_contract(harness.engine)
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0010
+    assert harness.current_revision() == REVISION_0011
 
     harness.downgrade(REVISION_0004)
     assert harness.current_revision() == REVISION_0004
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0010
+    assert harness.current_revision() == REVISION_0011
 
     # downgrade base drops every application table and is safe only here.
     harness.downgrade("base")
@@ -165,13 +166,50 @@ def test_blank_chain_downgrade_reupgrade_and_orm_consistency(
     assert harness.current_revision() is None
 
     harness.upgrade("head")
-    assert harness.current_revision() == REVISION_0010
-    _assert_0006_protection_contract(harness.engine)
+    assert harness.current_revision() == REVISION_0011
     _assert_0008_byok_contract(harness.engine)
     _assert_0009_pdf_note_contract(harness.engine)
     _assert_0010_media_filename_contract(harness.engine)
+    _assert_0011_refresh_session_contract(harness.engine)
     _assert_orm_schema_consistency(harness.engine)
     harness.check()
+
+
+def test_0011_invalidates_only_legacy_login_sessions(
+    migration_harness: MigrationHarness,
+) -> None:
+    harness = migration_harness
+    harness.upgrade(REVISION_0010)
+    with harness.engine.begin() as connection:
+        seeded = _seed_snapshot_session(connection)
+        connection.execute(
+            text(
+                "INSERT INTO user_sessions (user_id, session_id, is_active) "
+                "VALUES (:user_id, 'legacy-login-session', TRUE)"
+            ),
+            {"user_id": seeded["user_id"]},
+        )
+
+    harness.upgrade(REVISION_0011)
+
+    with harness.engine.connect() as connection:
+        assert connection.scalar(text("SELECT COUNT(*) FROM user_sessions")) == 0
+        assert connection.scalar(
+            text("SELECT COUNT(*) FROM users WHERE id = :id"),
+            {"id": seeded["user_id"]},
+        ) == 1
+        assert connection.scalar(
+            text("SELECT COUNT(*) FROM learning_item WHERE id = :id"),
+            {"id": seeded["item_id"]},
+        ) == 1
+        assert connection.scalar(
+            text("SELECT COUNT(*) FROM questions WHERE id = :id"),
+            {"id": seeded["question_id"]},
+        ) == 1
+        assert connection.scalar(
+            text("SELECT COUNT(*) FROM revision_sessions WHERE id = :id"),
+            {"id": seeded["session_id"]},
+        ) == 1
 
 
 def test_0002_upgrade_refuses_invalid_session_backfill(
@@ -862,6 +900,46 @@ def _assert_0010_media_filename_contract(engine: Engine) -> None:
     column = _column(inspector, "media", "original_filename")
     assert column["nullable"] is True
     assert getattr(column["type"], "length", None) == 255
+
+
+def _assert_0011_refresh_session_contract(engine: Engine) -> None:
+    inspector = inspect(engine)
+    columns = {
+        column["name"]: column
+        for column in inspector.get_columns("user_sessions")
+    }
+    assert {
+        "token_hash",
+        "family_id",
+        "parent_session_id",
+        "issued_at",
+        "expires_at",
+        "absolute_expires_at",
+        "last_used_at",
+        "revoked_at",
+        "replaced_by_session_id",
+        "user_agent",
+    } <= set(columns)
+    assert "session_id" not in columns
+    assert "is_active" not in columns
+    assert columns["token_hash"]["nullable"] is False
+    assert getattr(columns["token_hash"]["type"], "length", None) == 64
+    for timestamp_column in (
+        "issued_at",
+        "expires_at",
+        "absolute_expires_at",
+        "last_used_at",
+        "revoked_at",
+        "created_at",
+    ):
+        assert getattr(columns[timestamp_column]["type"], "timezone", False) is True
+    assert _foreign_key_ondelete(inspector, "user_sessions", ["user_id"]) == "CASCADE"
+    assert _foreign_key_ondelete(
+        inspector, "user_sessions", ["parent_session_id"]
+    ) == "SET NULL"
+    assert _foreign_key_ondelete(
+        inspector, "user_sessions", ["replaced_by_session_id"]
+    ) == "SET NULL"
 
 
 def _column(inspector, table_name: str, column_name: str) -> dict[str, object]:

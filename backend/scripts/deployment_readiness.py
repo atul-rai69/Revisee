@@ -24,6 +24,21 @@ REQUIRED_TABLES = {
     "ai_credentials",
     "ai_credential_usage",
     "pdf_notes",
+    "user_sessions",
+}
+
+REQUIRED_USER_SESSION_COLUMNS = {
+    "token_hash",
+    "family_id",
+    "parent_session_id",
+    "issued_at",
+    "expires_at",
+    "absolute_expires_at",
+    "last_used_at",
+    "revoked_at",
+    "replaced_by_session_id",
+    "user_agent",
+    "created_at",
 }
 
 
@@ -75,6 +90,44 @@ def main() -> int:
                 column["name"]
                 for column in inspector.get_columns("media", schema=schema)
             }
+            user_session_columns = (
+                {
+                    column["name"]
+                    for column in inspector.get_columns("user_sessions", schema=schema)
+                }
+                if "user_sessions" in tables
+                else set()
+            )
+            user_session_indexes = (
+                {
+                    tuple(index.get("column_names") or [])
+                    for index in inspector.get_indexes("user_sessions", schema=schema)
+                }
+                if "user_sessions" in tables
+                else set()
+            )
+            user_session_unique_constraints = (
+                {
+                    tuple(constraint.get("column_names") or [])
+                    for constraint in inspector.get_unique_constraints(
+                        "user_sessions", schema=schema
+                    )
+                }
+                if "user_sessions" in tables
+                else set()
+            )
+            user_session_foreign_keys = (
+                {
+                    tuple(foreign_key.get("constrained_columns") or []): str(
+                        foreign_key.get("options", {}).get("ondelete") or "NO ACTION"
+                    ).upper()
+                    for foreign_key in inspector.get_foreign_keys(
+                        "user_sessions", schema=schema
+                    )
+                }
+                if "user_sessions" in tables
+                else {}
+            )
             has_stored_ai_credentials = (
                 bool(
                     connection.execute(
@@ -114,6 +167,22 @@ def main() -> int:
     )
     if not original_filename_present:
         failures.append("media.original_filename is missing")
+
+    refresh_session_schema_ready = (
+        REQUIRED_USER_SESSION_COLUMNS <= user_session_columns
+        and {("user_id",), ("family_id",), ("expires_at",)}
+        <= user_session_indexes
+        and ("token_hash",) in user_session_unique_constraints
+        and user_session_foreign_keys.get(("user_id",)) == "CASCADE"
+        and user_session_foreign_keys.get(("parent_session_id",)) == "SET NULL"
+        and user_session_foreign_keys.get(("replaced_by_session_id",)) == "SET NULL"
+    )
+    print(
+        "refresh_session_schema="
+        + ("ready" if refresh_session_schema_ready else "missing_columns")
+    )
+    if not refresh_session_schema_ready:
+        failures.append("user_sessions refresh-token columns are missing")
 
     if failures:
         for failure in failures:

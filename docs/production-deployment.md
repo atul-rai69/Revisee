@@ -13,6 +13,10 @@ branch. Never commit `.env` files or paste secret values into this document.
    tables/columns are missing.
 3. Review pending migrations with `python -m alembic current` and
    `python -m alembic heads`. Apply migrations only after separate approval.
+   Migration `20260927_0011` intentionally removes only incompatible legacy
+   login-session rows, so existing users must sign in once after deployment.
+   Apply it in a maintenance window immediately before starting the compatible
+   backend; the old backend cannot use the new refresh-session columns.
 4. Run backend tests against an explicitly configured disposable PostgreSQL
    database. Never point `TEST_DATABASE_URL` at Neon production.
 5. Run `npm test -- --watch=false`, `npx tsc -p tsconfig.app.json --noEmit`,
@@ -43,6 +47,10 @@ until all stored credentials have been re-encrypted or deleted.
 Set `CORS_ORIGINS` as a JSON array of exact HTTPS origins, for example the
 stable Vercel production domain and an approved custom domain. Production
 configuration rejects wildcard, HTTP, localhost, paths, queries, and fragments.
+The same exact origins protect cookie-authenticated refresh and logout requests.
+Production uses a `Secure`, `HttpOnly`, `SameSite=None` refresh cookie because
+Vercel and Render are cross-site. Never set a cookie domain unless both services
+later share an approved parent domain.
 
 Do not configure `TEST_DATABASE_URL` on the production service. Do not add an
 automatic migration command to application startup.
@@ -67,7 +75,10 @@ Required deployment-specific values:
 Production controls and defaults represented in `render.yaml`:
 
 - `ENVIRONMENT`, `REVISEE_DEBUG` (or the supported alias `APP_DEBUG`)
-- `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `SESSION_EXPIRE_MINUTES`
+- `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`
+- `REFRESH_TOKEN_IDLE_EXPIRE_DAYS`, `REFRESH_TOKEN_ABSOLUTE_EXPIRE_DAYS`
+- `AUTH_COOKIE_NAME`, `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_SAMESITE`
+- `AUTH_COOKIE_PATH`
 - `GEMINI_MODEL`, `AI_GENERATION_ENABLED`
 - `AI_MAX_SOURCE_CHARACTERS`, `AI_MAX_THEORY_CHARACTERS`
 - `AI_MAX_KEY_POINT_CHARACTERS`, `AI_MAX_NOTES_CHARACTERS`
@@ -112,6 +123,7 @@ Render's `CORS_ORIGINS`, then redeploy the backend before testing authentication
 - [ ] Existing BYOK keyring copied exactly to Render through its secret UI.
 - [ ] Vercel `REVISEE_API_URL` set to the final Render HTTPS origin.
 - [ ] Render `CORS_ORIGINS` set to exact Vercel/custom HTTPS origins.
+- [ ] Production auth cookie settings are Secure=true, SameSite=none, Path=/auth.
 - [ ] Backend tests, frontend tests, strict TypeScript, and production build pass.
 - [ ] First Render deploy performed manually; `/health` returns 200.
 - [ ] API login, registration, file upload, PDF access, generation, and revision
